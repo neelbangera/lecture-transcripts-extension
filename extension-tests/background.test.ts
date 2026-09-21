@@ -626,6 +626,24 @@ describe("BackgroundCoordinator capture handoff", () => {
     });
   });
 
+  it("reports the submit rejection to the page instead of a false queued result", async () => {
+    const area = new MemoryStorageArea();
+    const storage = new ExtensionStorage(area);
+    const job = jobFor(1);
+    const { coordinator, client } = makeHarness(area);
+    client.submitResponses = [ackFor(job, "rejected_queue_full")];
+
+    const response = await coordinator.handleMessage(
+      { type: "capture_job", job },
+      CONTENT_SENDER,
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.status).toBe("rejected_queue_full");
+    expect(response.errorCategory).toBe("rejected_queue_full");
+    expect((await storage.snapshot()).pendingHandoffs).toBe(0);
+  });
+
   it("records the duplicate-terminal recapture action from the ack", async () => {
     const area = new MemoryStorageArea();
     const storage = new ExtensionStorage(area);
@@ -937,6 +955,25 @@ describe("BackgroundCoordinator popup commands", () => {
     });
   });
 
+  it("reads the extension version from the runtime manifest when not injected", async () => {
+    const storage = new ExtensionStorage(new MemoryStorageArea());
+    const client = new FakeNativeMessagingClient();
+    const runtime = new FakeRuntime();
+    runtime.version = "9.9.9";
+    const alarms = new FakeAlarms();
+    const coordinator = new BackgroundCoordinator({
+      client: client as unknown as NativeMessagingClient,
+      storage,
+      runtime,
+      alarms,
+      now: () => NOW_MS,
+    });
+
+    await coordinator.handleAlarm({ name: DRAIN_ALARM_NAME });
+
+    expect(client.connectCalls).toEqual(["9.9.9"]);
+  });
+
   it("reports a rejected reset without clearing the status", async () => {
     const area = new MemoryStorageArea();
     const storage = new ExtensionStorage(area);
@@ -955,6 +992,7 @@ describe("BackgroundCoordinator popup commands", () => {
     );
 
     expect(response.ok).toBe(false);
+    expect(response.status).toBe("ineligible_command");
     expect((await storage.snapshot()).uploader).not.toBeNull();
     expect(client.resetCalls).toBe(1);
   });

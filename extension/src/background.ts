@@ -183,10 +183,10 @@ export class BackgroundCoordinator {
   private readonly extensionVersion: string;
 
   constructor(private readonly options: BackgroundCoordinatorOptions = {}) {
-    this.extensionVersion = options.extensionVersion ?? this.readExtensionVersion();
     this.client = options.client ?? new NativeMessagingClient();
     this.storage = options.storage ?? new ExtensionStorage();
     this.runtime = options.runtime ?? runtimeApi();
+    this.extensionVersion = options.extensionVersion ?? this.readExtensionVersion();
     this.alarms = options.alarms ?? chromeApi()?.alarms;
     this.now = options.now ?? Date.now;
     this.client.onStatus((status) => {
@@ -296,6 +296,25 @@ export class BackgroundCoordinator {
     try {
       await this.runDrainCycle();
       const snapshot = await this.storage.snapshot();
+      const outcome = snapshot.lastOutcome;
+      // A submit rejection removes the pending copy once its notice is saved,
+      // so an empty outbox alone is not proof of acceptance. Surface the
+      // rejection instead of reporting a false queued result.
+      if (
+        snapshot.pendingHandoffs === 0 &&
+        outcome !== null &&
+        outcome.lectureKey === job.lectureKey &&
+        outcome.contentHash === job.contentHash &&
+        outcome.status.startsWith("rejected_")
+      ) {
+        return {
+          ok: false,
+          snapshot,
+          status: outcome.status,
+          errorCategory: outcome.status,
+          message: outcome.message,
+        };
+      }
       const stillPending = snapshot.pendingHandoffs > 0;
       return {
         ok: !stillPending,
@@ -425,7 +444,7 @@ export class BackgroundCoordinator {
           action: "none",
         });
       }
-      return { ok: result.result === "accepted", status: result.status ?? "internal", snapshot: await this.storage.snapshot() };
+      return { ok: result.result === "accepted", status: result.status ?? result.errorCategory ?? "internal", snapshot: await this.storage.snapshot() };
     } catch (error) {
       return { ...responseError(error), snapshot: await this.storage.snapshot() };
     }

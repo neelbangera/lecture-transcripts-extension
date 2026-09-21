@@ -177,11 +177,15 @@ export interface LastOutcome {
 
 const LABELS: Record<string, string> = {
   queued: "Queued for upload",
+  already_queued: "Already queued for upload",
   uploading: "Uploading",
   uploaded: "Uploaded",
   unchanged: "Already uploaded; unchanged",
+  discarded: "Discarded locally",
+  reset: "GitHub connection reset; queued jobs kept",
   retryable_error: "Temporary error; will retry",
   permanent_conflict: "Conflict — manual review needed",
+  rejected_duplicate_terminal: "Rejected — an existing terminal job covers this lecture",
   rejected_missing_identity: "Rejected — missing lecture identity",
   rejected_ambiguous_metadata: "Rejected — ambiguous lecture metadata",
   rejected_oversized: "Rejected — transcript is too large",
