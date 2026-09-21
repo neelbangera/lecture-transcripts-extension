@@ -13,36 +13,94 @@ the uploader's macOS Keychain, and the uploader owns the durable retry queue.
 
 ## Status
 
-The implementation is being built against the contracts in
-[TECHNICAL_PLAN.md](TECHNICAL_PLAN.md). Stage 0 fixtures and measurements are
-recorded in [docs/STAGE_0_REPORT.md](docs/STAGE_0_REPORT.md). The live render
-time measurement and machine-local GitHub provisioning remain owner-side setup
-items; no credential, repository ID, or extension ID belongs in this
-repository.
+Status: `IMPLEMENTED_THROUGH_PACKAGING / LIVE_ITEMS_OUTSTANDING`.
 
-## Development
+Implemented and tested in this tree:
 
-Prerequisites are Node.js 22 LTS, npm, Go 1.24.x, and (for the supported macOS
-uploader build) Xcode Command Line Tools with cgo enabled.
+- the capture-side TypeScript (parser, normalizer, job builder, content runtime,
+  outbox, Native Messaging client, popup) with the versioned protocol;
+- the Go uploader packages for machine-local config, durable SQLite queue,
+  sanitized rotating logs, retry backoff, GitHub App device flow and Keychain
+  storage, GitHub Contents write-once publishing, Markdown rendering, and the
+  Native Messaging host boundary;
+- the extension build, uploader build, host install/uninstall scripts, and
+  their packaging self-tests;
+- the Stage 0 evidence packet and fixtures described in
+  [docs/STAGE_0_REPORT.md](docs/STAGE_0_REPORT.md).
+
+Remaining before personal use:
+
+- `uploader/cmd/lecture-uploader` and `uploader/internal/processor` are not in
+  the tree, so `scripts/build-uploader.sh` fails closed with
+  `uploader/cmd/lecture-uploader is missing; nothing to build`;
+- the per-sample render-time measurement is still a live owner-side item
+  (recipe in [docs/STAGE_0_REPORT.md](docs/STAGE_0_REPORT.md));
+- the machine-local GitHub provisioning packet (App client ID, numeric
+  repository ID, initialized `main` branch, loaded extension ID) is owner-side
+  setup and is never committed.
+
+No credential, repository ID, token, or extension ID belongs in this
+repository; use `<loaded-extension-id>`-style placeholders in notes and issues.
+
+## Prerequisites
+
+- macOS with the Xcode Command Line Tools installed and selected (`xcode-select
+  --install`, then `xcode-select -p`); the Keychain adapter uses cgo.
+- Chrome desktop.
+- Node.js 22 LTS and npm.
+- Go 1.24.x.
+
+## Build and test
+
+From the repository root:
 
 ```sh
 npm ci
 npm run typecheck
 npm test
+npm run build
 ```
 
-The uploader module is under `uploader/`. Its tests are run with Go's standard
-tooling once uploader implementation files are present:
+`npm run build` writes the loadable unpacked extension to `dist/extension/`.
+
+The uploader module is under `uploader/`:
 
 ```sh
 cd uploader
 go test ./...
 ```
 
-The JavaScript build and macOS Native Messaging installation steps are
-described in the setup documentation as those files land. Do not place real
-Leccap page captures, credentials, queue databases, rendered host manifests,
-or build output under version control.
+Packaging self-tests (temporary `HOME`, stubbed `security`):
+
+```sh
+sh scripts/tests/run.sh
+```
+
+Build the macOS uploader and install the Native Messaging host:
+
+```sh
+scripts/build-uploader.sh
+scripts/install-native-host.sh <loaded-extension-id>
+```
+
+See [docs/SETUP.md](docs/SETUP.md) for the complete install runbook, the GitHub
+App and machine-local config steps, and the current executable gap.
+
+## Documentation
+
+- [docs/SETUP.md](docs/SETUP.md) — prerequisites, build, unpacked loading,
+  GitHub App, machine-local config, host installation, extension-ID drift.
+- [docs/SECURITY.md](docs/SECURITY.md) — permissions, Keychain records, queue
+  and log modes, redaction, URL sanitization, write-once conflicts, reset.
+- [docs/TESTING.md](docs/TESTING.md) — unit suites, fixture packet,
+  offline/restart/duplicate/conflict/retry checks, real-machine checks.
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — host-not-found,
+  protocol mismatch, authorization, repository, queue, retry, log, conflict,
+  oversized, and extension-ID-drift recovery.
+- [TECHNICAL_PLAN.md](TECHNICAL_PLAN.md) — normative behavior, limits, status
+  names, and schemas.
+- [PHASE_1_DECISIONS.md](PHASE_1_DECISIONS.md) — rationale and rejected
+  alternatives.
 
 ## Design guardrails
 
@@ -54,3 +112,5 @@ or build output under version control.
 - A remote lecture file is write-once: the same hash is unchanged, while a
   different or malformed existing file is a conflict and is never overwritten
   automatically.
+- Do not place real Leccap page captures, credentials, queue databases,
+  rendered host manifests, or build output under version control.
