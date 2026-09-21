@@ -15,7 +15,16 @@ export const TRANSCRIPT_JOB_SCHEMA_VERSION = 1 as const;
 export const MAX_TRANSCRIPT_BYTES = 450 * 1024;
 export const MAX_SERIALIZED_JOB_BYTES = 950 * 1024;
 export const MAX_SOURCE_URL_BYTES = 2048;
-export const MAX_OTHER_STRING_CHARACTERS = 256;
+export const MAX_FIELD_CHARACTERS = {
+  lectureKey: 128,
+  courseSlug: 64,
+  courseName: 256,
+  term: 32,
+  lectureDate: 10,
+  capturedAt: 20,
+  contentHash: 64,
+} as const;
+export const MAX_OTHER_STRING_CHARACTERS = MAX_FIELD_CHARACTERS.courseName;
 export const MAX_NATIVE_MESSAGE_BYTES = 1024 * 1024;
 
 const SOURCE_HOST = "leccap.engin.umich.edu";
@@ -398,15 +407,14 @@ export function validateTranscriptJob(value: unknown): TranscriptJobValidationRe
     "courseSlug",
     "courseName",
     "term",
-    "lectureDate",
-    "capturedAt",
     "contentHash",
   ] as const) {
     const fieldValue = value[field] as string;
-    if (characterLength(fieldValue) > MAX_OTHER_STRING_CHARACTERS) {
+    const maxCharacters = MAX_FIELD_CHARACTERS[field];
+    if (characterLength(fieldValue) > maxCharacters) {
       return validationFailure(
         "rejected_oversized",
-        `${field} exceeds ${MAX_OTHER_STRING_CHARACTERS} characters`,
+        `${field} exceeds ${maxCharacters} characters`,
         field,
       );
     }
