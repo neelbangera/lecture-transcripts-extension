@@ -1,0 +1,52 @@
+<!doctype html>
+<!--
+  Stage 0 sanitized overview-page fixture (2026-09-20).
+
+  Faithful to the observed authenticated EECS 484 - Fall 2026 course overview
+  page (the .recording card structure, play-link, rec-title, badge, and
+  rec-date). Sanitized: real recording route IDs are replaced with
+  r/sanitizedNN; titles keep their observed numeric-prefix shape. The badge
+  text 'Lecture - 001' is intentionally identical on every lecture card, as
+  observed: it is a category label, never a lecture number.
+
+  Card 3 is the observed no-numeric-prefix case ('Lecture recorded on
+  9/17/2026'): a player page opened from it must fail closed as
+  rejected_ambiguous_metadata. See no-number-lecture-page.html.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>EECS 484 - Fall 2026</title>
+  </head>
+  <body>
+    <div id="recordings">
+      <div class="recording card mb-3">
+        <div class="card-header d-flex gap-3 align-items-center">
+          <div class="play-link"><a aria-label="Play 01 Intro, [REDACTED]" class="btn btn-primary" href="https://leccap.engin.umich.edu/leccap/player/r/sanitized01" target="false">Play</a></div>
+          <div class="flex-grow-1">
+            <div class="rec-title"><span>01 Intro, [REDACTED]</span><span class="badge rounded-pill text-bg-warning ms-2">Lecture - 001</span></div>
+            <div class="rec-meta d-flex align-items-center gap-2"><span class="rec-date">9/1/2026 &#8226; 4:29 PM</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="recording card mb-3">
+        <div class="card-header d-flex gap-3 align-items-center">
+          <div class="play-link"><a aria-label="Play 02 The Entity-Relationship Model, [REDACTED]" class="btn btn-primary" href="https://leccap.engin.umich.edu/leccap/player/r/sanitized02" target="false">Play</a></div>
+          <div class="flex-grow-1">
+            <div class="rec-title"><span>02 The Entity-Relationship Model, [REDACTED]</span><span class="badge rounded-pill text-bg-warning ms-2">Lecture - 001</span></div>
+            <div class="rec-meta d-flex align-items-center gap-2"><span class="rec-date">9/3/2026 &#8226; 4:29 PM</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="recording card mb-3">
+        <div class="card-header d-flex gap-3 align-items-center">
+          <div class="play-link"><a aria-label="Play Lecture recorded on 9/17/2026" class="btn btn-primary" href="https://leccap.engin.umich.edu/leccap/player/r/sanitized17" target="false">Play</a></div>
+          <div class="flex-grow-1">
+            <div class="rec-title"><span>Lecture recorded on 9/17/2026</span><span class="badge rounded-pill text-bg-warning ms-2">Lecture - 001</span></div>
+            <div class="rec-meta d-flex align-items-center gap-2"><span class="rec-date">9/17/2026 &#8226; 4:29 PM</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

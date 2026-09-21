@@ -1,0 +1,24 @@
+{
+  "fixtureId": "lecture-page",
+  "supported": true,
+  "completion": "complete",
+  "courseName": "EECS 484",
+  "courseSlug": "eecs484",
+  "term": "2026-fall",
+  "lectureNumber": 1,
+  "lectureDate": "2026-09-01",
+  "sourceUrl": "https://leccap.engin.umich.edu/leccap/player/r/sanitized01",
+  "sourceUrlPublish": "include",
+  "transcript": "Can I ask you a question?\nI think we can start. Welcome in 484,\nDatabase Management System.\nThank you.",
+  "timestampedTranscript": "[00:00] Can I ask you a question?\n[00:02] I think we can start. Welcome in 484,\nDatabase Management System.\n[1:22:58] Thank you.",
+  "derivedFrom": "both",
+  "lectureKey": "eecs484/2026-fall/001",
+  "contentHash": "4bfc0f5736615f920fa7ad0f557ff1c20426f39525bfc8717f4d9f2a770ed0cd",
+  "stableSnapshotCount": 2,
+  "notes": {
+    "sourceUrl": "test stub for location.href; structural path shape preserved with a sanitized route ID, matching the committed sanitized fixtures",
+    "lectureDate": "supplied by the overview fixture (overview-page.html) card whose play-link href matches the stubbed player URL; rec-date 9/1/2026 parsed month-first",
+    "timestampedSerialization": "[time] text per row with the verbatim .transcript-time value; the normative timestamp regex fully consumes each prefix including the bracket and single-space delimiter",
+    "layoutLoadingClass": "present in this fixture exactly as observed on the real completed page; the parser must not read its absence as completion"
+  }
+}

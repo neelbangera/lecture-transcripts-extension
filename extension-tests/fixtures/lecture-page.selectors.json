@@ -1,0 +1,62 @@
+{
+  "capturedAt": "2026-09-20",
+  "pageShape": "leccap-player-rendered-v1",
+  "evidence": [
+    "EECS 484 - Fall 2026 lecture 01 player page, transcript-open rendered capture (2026-09-20)",
+    "EECS 484 - Fall 2026 lecture 01 player page, transcript-closed rendered capture (2026-09-20)",
+    "EECS 484 - Fall 2026 lecture 02 live player page, closed and post-click states (2026-09-20)",
+    "EECS 484 - Fall 2026 authenticated course overview page (2026-09-20)"
+  ],
+  "transcriptButtonSelector": "#sourcebar button[title='Show Transcript'], #sourcebar button[title='Hide Transcript']",
+  "transcriptContainerSelector": ".transcript-viewer",
+  "courseSelector": {
+    "selector": "#title-header .content-header-site-btn span",
+    "regex": "^\\s*(.+?)\\s+-\\s+(Winter|Spring|Summer|Fall)\\s+(\\d{4})\\s*$",
+    "captureGroup": 1
+  },
+  "termSelector": {
+    "selector": "#title-header .content-header-site-btn span",
+    "regex": "^\\s*(.+?)\\s+-\\s+(Winter|Spring|Summer|Fall)\\s+(\\d{4})\\s*$",
+    "seasonCaptureGroup": 2,
+    "yearCaptureGroup": 3
+  },
+  "lectureNumberSelector": {
+    "selector": "#title-header .content-header-recording-title",
+    "regex": "^\\s*(\\d{1,3})\\s+",
+    "captureGroup": 1
+  },
+  "lectureDateSource": {
+    "page": "linked_overview_page",
+    "runtimeLookup": "on_demand_fetch",
+    "lecturePageOverviewLinkSelector": "#title-header a.content-header-site-btn[href]",
+    "recordingCardSelector": "#recordings .recording",
+    "recordingLinkSelector": ".play-link a[href]",
+    "dateSelector": ".rec-date",
+    "dateRegex": "^\\s*(\\d{1,2}/\\d{1,2}/\\d{4})",
+    "dateCaptureGroup": 1,
+    "correlation": "absolute_player_href",
+    "dateOrder": "month-first",
+    "dateOrderEvidence": "cards dated 9/17/2026 and 9/18/2026 cannot be day-first; the rec-date tail after M/D/YYYY is a bullet separator plus time of day and is ignored",
+    "matchRule": "exactly one card whose play-link href equals the canonicalized current player URL supplies the date; zero matches, multiple matches, or a failed same-origin fetch fail closed as rejected_ambiguous_metadata",
+    "dateMeaning": "the rec-date is the lecture's recording date, evidenced by the observed card titled 'Lecture recorded on 9/17/2026' carrying rec-date 9/17/2026",
+    "overviewLinkNote": "the observed overview href is relative (/leccap/site/...); resolve against the page origin",
+    "badgeNote": "the card badge (observed 'Lecture - 001' on every lecture card) is a category label, never a lecture number"
+  },
+  "dateYearPolicy": "term_year_if_missing",
+  "completionIndicator": {
+    "selector": "#sourcebar button",
+    "mode": "attribute_equals",
+    "attribute": "title",
+    "valueRegex": "^Hide Transcript$",
+    "populationSelector": ".transcript-viewer .transcript-row .transcript-text",
+    "note": "compound completion per the 2026-09-20 plan revision: the observed shape has no explicit in-container complete marker, so completion requires the open-state title, at least one row with nonempty text, and two identical normalized snapshots 1500ms apart. Control states observed: closed = class 'hiding' + title 'Show Transcript'; open = class 'showing' + title 'Hide Transcript'."
+  },
+  "loadingIndicatorSelector": null,
+  "loadingRegionNote": "no loading/error element exists inside .transcript-viewer on the observed shape. The initial 'loading' label is outside the transcript container, and the page-level layout-loading class persists after completion (present on fully rendered captures), so neither is a completion or loading signal. Snapshot stability carries completeness for this shape.",
+  "timestampFormat": "separate .transcript-time div (MM:SS or H:MM:SS, no brackets or delimiters in the source) plus .transcript-text div per row; the timestamped form is serialized one line per row as \"[H:MM:SS] text\", which the normative timestamp regex fully consumes",
+  "isSPA": false,
+  "spaNote": "recordings open by full document navigation from the overview (anchor link, full document capture per recording); the plan's popstate + 1000ms URL poll remains installed as defense for in-player URL changes",
+  "stabilityDebounceMs": 1500,
+  "sanityMinChars": 50,
+  "loadingTextMarkers": []
+}

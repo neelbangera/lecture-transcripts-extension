@@ -1,0 +1,78 @@
+{
+  "capturedAt": "2026-09-21T02:40:30Z",
+  "method": {
+    "transcriptBytes": "UTF-8 bytes of the normalized plain transcript (NFC, LF, per-line whitespace rules, blank-line collapse) per the plan's normative normalization, computed from the rendered capture rows in source order",
+    "timestampedTranscriptBytes": "UTF-8 bytes of the normalized timestamped form, serialized one line per row as \"[verbatim .transcript-time] .transcript-text\"",
+    "serializedJobBytes": "UTF-8 length of compact canonical TranscriptJob JSON (schema property order, standard escaping, no insignificant whitespace) with real sample values",
+    "nativeMessageBytes": "UTF-8 length of the complete compact submit_job JSON payload including a worst-case 64-character requestId envelope, excluding the four-byte frame prefix",
+    "statusPageBytes": "UTF-8 length of a compact status response containing 50 worst-case bounded JobSummary objects (max-length lectureKey 128, targetPath 512, lastErrorCategory 64, longest status string, 20-digit counts), full worst-case counts object for all 15 keys, and max-length auth fields (64-char userCode, two 2048-byte HTTPS URIs); identical worst-case construction for every sample",
+    "sample2": "sample 2 comes from the live lecture-02 observation, which recorded raw DOM-derived UTF-8 text sizes but not the full text. Its values are upper bounds: raw pre-normalization sizes for the two transcript fields (normalization only removes whitespace on this content, and NFC was verified to be a no-op on sample 1), plus the sample-1 JSON escape overhead ratio (0.040852) applied and the same fixed envelope/field overhead, rounded up"
+  },
+  "samples": [
+    {
+      "sampleId": "eecs484-2026-fall-001-rendered-capture",
+      "courseSlug": "eecs484",
+      "term": "2026-fall",
+      "lectureNumber": 1,
+      "transcriptBytes": 46513,
+      "timestampedTranscriptBytes": 58893,
+      "serializedJobBytes": 110112,
+      "nativeMessageBytes": 110239,
+      "statusPageBytes": 63155,
+      "renderTimeMs": null,
+      "rows": 1473,
+      "timestampRange": "00:00 - 1:22:58"
+    },
+    {
+      "sampleId": "eecs484-2026-fall-002-live-observation",
+      "courseSlug": "eecs484",
+      "term": "2026-fall",
+      "lectureNumber": 2,
+      "transcriptBytes": 49177,
+      "timestampedTranscriptBytes": 59523,
+      "serializedJobBytes": 113541,
+      "nativeMessageBytes": 113672,
+      "statusPageBytes": 63155,
+      "renderTimeMs": null,
+      "upperBound": true,
+      "rows": 1577,
+      "timestampRange": "00:01 - 1:21:29"
+    }
+  ],
+  "observedMaxima": {
+    "transcriptBytes": 49177,
+    "timestampedTranscriptBytes": 59523,
+    "serializedJobBytes": 113541,
+    "nativeMessageBytes": 113672,
+    "statusPageBytes": 63155,
+    "renderTimeMs": null
+  },
+  "approvedLimits": {
+    "transcriptBytes": 460800,
+    "timestampedTranscriptBytes": 460800,
+    "serializedJobBytes": 972800,
+    "nativeMessageBytes": 1048576,
+    "statusPageBytes": 1048576,
+    "renderTimeMs": 30000
+  },
+  "capCheck": {
+    "transcriptBytes": "pass (10.7% of cap)",
+    "timestampedTranscriptBytes": "pass (12.9% of cap)",
+    "serializedJobBytes": "pass (11.7% of cap)",
+    "nativeMessageBytes": "pass (10.8% of cap)",
+    "statusPageBytes": "pass (6.0% of cap)",
+    "renderTimeMs": "pending live measurement; both live observations showed the populated transcript appearing immediately after the activation click, with no stall observed"
+  },
+  "renderTimeMeasurement": {
+    "status": "pending_live_measurement",
+    "definition": "activation (transcript control click) through the second matching stable snapshot, measured per sample on a real permitted page",
+    "recipe": "With the lecture page open and DevTools console running, paste the snippet from docs/STAGE_0_REPORT.md (section 'Render-time measurement'), click Show Transcript, and read the printed milliseconds. Record the value for both samples and replace the null renderTimeMs entries.",
+    "failCriteria": "if any supported sample reaches 30000ms or times out, Stage 0 fails and the plan must be revised before implementation"
+  },
+  "queueModeChecks": {
+    "databaseDirectoryMode": "0700 (contract value; verified at Stage 4 acceptance when the directory is created)",
+    "databaseFileModes": "0600 for queue.sqlite3, its WAL, and SHM files (contract value; verified at Stage 4 acceptance)",
+    "logFileMode": "0600, rotation at 5 MiB across at most three files (contract value; verified at Stage 4 acceptance)",
+    "singleInstance": "advisory flock LOCK_EX|LOCK_NB on queue.lock, fd held for process lifetime; second process exits already_running (contract value; verified at Stage 4 acceptance)"
+  }
+}

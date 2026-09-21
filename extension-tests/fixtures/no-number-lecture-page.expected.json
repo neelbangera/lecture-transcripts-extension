@@ -1,0 +1,14 @@
+{
+  "fixtureId": "no-number-lecture-page",
+  "supported": false,
+  "completion": "complete",
+  "courseName": "EECS 484",
+  "term": "2026-fall",
+  "lectureNumber": null,
+  "expectedRejection": "rejected_ambiguous_metadata",
+  "reason": "the recording title has no numeric lecture prefix; this is the real observed case on the EECS 484 Fall 2026 overview ('Lecture recorded on 9/17/2026', play route r/sanitized17). The category badge ('Lecture - 001') is shared by every lecture card and must never be used as the lecture number. No job is created.",
+  "notes": {
+    "fixtureRelation": "identical to lecture-page.html except the recording-title text, which is the only failing field",
+    "dateNote": "the overview supplies a rec-date for this recording, but a missing lecture number fails closed independently of the date"
+  }
+}

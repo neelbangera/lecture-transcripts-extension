@@ -1,0 +1,16 @@
+{
+  "capturedAt": "2026-09-20",
+  "courseMappings": [
+    {
+      "pageCourseText": "EECS 484",
+      "courseName": "EECS 484",
+      "courseSlug": "eecs484",
+      "supportedTerms": ["2026-fall"]
+    }
+  ],
+  "notes": {
+    "pageCourseText": "the course capture group from the observed header label 'EECS 484 - Fall 2026' (courseSelector regex group 1)",
+    "scope": "this is the complete personal allowlist as of 2026-09-20: EECS 484 Fall 2026 is the only course/term observed on permitted pages. Adding a course means adding an entry here with a verified page observation; unmapped labels fail closed as rejected_ambiguous_metadata.",
+    "slugRule": "courseSlug must match ^[a-z0-9]+$ per the plan's identity rules"
+  }
+}

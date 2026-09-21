@@ -1,0 +1,63 @@
+<!doctype html>
+<!--
+  Stage 0 negative fixture: lecture-page shape with the observed no-numeric-prefix recording title (2026-09-20).
+
+  Faithful to the observed rendered Leccap player page (EECS 484 - Fall 2026,
+  lecture 01, open/transcript-visible state). Sanitized: no cookies, no
+  authenticated user identifiers, no recording/site route IDs, no media or
+  WebVTT URLs, and the instructor name is replaced. Row markup is kept compact
+  (single line per row) exactly like the real rendered page so text nodes carry
+  no fixture indentation; row 1 keeps an internal line break because real
+  caption cues can contain one.
+
+  The parser reads location.href at runtime; tests stub it to
+  https://leccap.engin.umich.edu/leccap/player/r/sanitized01 (structural path
+  shape preserved, ID sanitized). The lecture date comes from the overview
+  page: see lecture-page.selectors.json "overviewPage" and the sanitized
+  overview fixture. The layout-loading class is retained deliberately: the
+  observed page keeps it after completion, and the parser must not treat its
+  absence as the completion signal.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>EECS 484 - Fall 2026 - Lecture recorded on 9/17/2026</title>
+  </head>
+  <body>
+    <div id="root">
+      <div class="App">
+        <div class="Main layout layout-main layout-loading">
+          <div class="content clearfix">
+            <div class="Header content-header" id="title-header">
+              <a class="content-header-btn content-header-site-btn"
+                 href="/leccap/site/sanitizedoverview"
+                 title="Return to site overview"><span>EECS 484 - Fall 2026</span></a>
+              <span class="content-header-recording-title">Lecture recorded on 9/17/2026</span>
+              <div class="secondary-controls">
+                <div id="sourcebar">
+                  <div class="source-buttons"><button class="showing" title="Hide Video (1)">Video</button></div>
+                  <div class="source-buttons"><button class="showing" title="Hide Slides (2)">Slides</button></div>
+                  <div class="source-buttons"><button class="hiding" title="Show Whiteboard (3)">Whiteboard</button></div>
+                  <button class="showing" title="Hide Transcript">Transcript</button>
+                </div>
+              </div>
+            </div>
+            <div class="content-inner">
+              <div class="viewer">
+                <div class="feature-content-pane">
+                  <div class="transcript-viewer">
+                    <h2 class="visuallyhidden">Transcript</h2>
+                    <div class="esc-notice">use esc to dismiss</div>
+                    <div class="toolbar" role="search"><input autocomplete="off" aria-label="Search transcript" id="search_transcript" type="search" placeholder="Search transcript" value=""></div>
+                    <div role="list" class="transcript-scroller"><div class="transcript-row active" role="listitem" id="0-transcript-line" tabindex="0"><div class="transcript-time">00:00</div><div class="transcript-text"><span><span class="">Can I ask you a question?</span></span></div></div><div class="transcript-row" role="listitem" id="1-transcript-line" tabindex="0"><div class="transcript-time">00:02</div><div class="transcript-text"><span><span class="">I think we can start. Welcome in 484,
+Database Management System.</span></span></div></div><div class="transcript-row" role="listitem" id="1472-transcript-line" tabindex="0"><div class="transcript-time">1:22:58</div><div class="transcript-text"><span><span class="">Thank you.</span></span></div></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
