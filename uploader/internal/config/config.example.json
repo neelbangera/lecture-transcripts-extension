@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "githubAppClientId": "REPLACE_WITH_REAL_GITHUB_APP_CLIENT_ID",
+  "repositoryId": 0,
+  "owner": "REPLACE_WITH_REPOSITORY_OWNER",
+  "repo": "REPLACE_WITH_REPOSITORY_NAME",
+  "branch": "REPLACE_WITH_BRANCH_NAME"
+}
