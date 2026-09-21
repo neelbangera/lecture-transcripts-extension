@@ -59,7 +59,6 @@ func TestLogsStructuredAllowedFields(t *testing.T) {
 	logger, path := openLogger(t)
 	logger.now = func() time.Time { return testTime }
 	logger.Info(EventJobClaimed, Fields{
-		JobID:         7,
 		LectureKey:    "eecs491/2026-winter/006",
 		CourseSlug:    "eecs491",
 		Term:          "2026-winter",
@@ -67,9 +66,6 @@ func TestLogsStructuredAllowedFields(t *testing.T) {
 		Status:        "uploading",
 		ErrorCategory: "internal",
 		SourceURL:     "https://leccap.engin.umich.edu/lecture/123?token=abc#frag",
-		Attempt:       2,
-		HTTPStatus:    503,
-		Count:         3,
 	})
 	logger.Warn(EventAuthState, Fields{Status: "authorizing"})
 	logger.Error(EventProtocolError, Fields{ErrorCategory: "invalid_message"})
@@ -87,7 +83,6 @@ func TestLogsStructuredAllowedFields(t *testing.T) {
 		"time":          "2026-09-20T12:00:00Z",
 		"level":         "info",
 		"event":         "job_claimed",
-		"jobId":         float64(7),
 		"lectureKey":    "eecs491/2026-winter/006",
 		"courseSlug":    "eecs491",
 		"term":          "2026-winter",
@@ -95,13 +90,17 @@ func TestLogsStructuredAllowedFields(t *testing.T) {
 		"status":        "uploading",
 		"errorCategory": "internal",
 		"source":        "leccap.engin.umich.edu/lecture/123",
-		"attempt":       float64(2),
-		"httpStatus":    float64(503),
-		"count":         float64(3),
 	}
 	for key, want := range expected {
 		if got := first[key]; got != want {
 			t.Fatalf("%s = %v, want %v", key, got, want)
+		}
+	}
+	for key := range first {
+		switch key {
+		case "time", "level", "event", "lectureKey", "courseSlug", "term", "lectureNumber", "status", "errorCategory", "source":
+		default:
+			t.Fatalf("unexpected log field %q", key)
 		}
 	}
 	if strings.Contains(readFile(t, path), "token=abc") || strings.Contains(readFile(t, path), "#frag") {
@@ -119,9 +118,6 @@ func TestRedactsSensitiveSamples(t *testing.T) {
 		ErrorCategory: "user_code=WDJB-MJHT",
 		SourceURL:     "https://leccap.engin.umich.edu/lecture/123?token=abc&sessionid=def#fragment",
 		LectureNumber: 6,
-		Attempt:       1,
-		HTTPStatus:    200,
-		Count:         2,
 	})
 	logger.Close()
 
@@ -189,9 +185,9 @@ func TestRotationKeepsAtMostThreeRestrictedFiles(t *testing.T) {
 	logger.maxFiles = 3
 	for i := 1; i <= 30; i++ {
 		logger.Info(EventJobEnqueued, Fields{
-			JobID:      int64(i),
-			LectureKey: "eecs491/2026-winter/006",
-			Status:     "queued",
+			LectureKey:    "eecs491/2026-winter/006",
+			LectureNumber: i,
+			Status:        "queued",
 		})
 	}
 	logger.Close()
@@ -217,7 +213,7 @@ func TestRotationKeepsAtMostThreeRestrictedFiles(t *testing.T) {
 	}
 	current := readFile(t, path)
 	previous := readFile(t, path+".1")
-	if !strings.Contains(current, `"jobId":30`) && !strings.Contains(previous, `"jobId":30`) {
+	if !strings.Contains(current, `"lectureNumber":30`) && !strings.Contains(previous, `"lectureNumber":30`) {
 		t.Fatalf("latest entry lost across rotation:\ncurrent:\n%s\nprevious:\n%s", current, previous)
 	}
 }

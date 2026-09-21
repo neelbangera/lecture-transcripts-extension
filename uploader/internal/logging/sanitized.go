@@ -53,7 +53,6 @@ const (
 )
 
 type Fields struct {
-	JobID         int64
 	LectureKey    string
 	CourseSlug    string
 	Term          string
@@ -61,9 +60,6 @@ type Fields struct {
 	Status        string
 	ErrorCategory string
 	SourceURL     string
-	Attempt       int
-	HTTPStatus    int
-	Count         int
 }
 
 type Logger struct {
@@ -80,16 +76,12 @@ type entry struct {
 	Time          string `json:"time"`
 	Level         Level  `json:"level"`
 	Event         string `json:"event"`
-	JobID         int64  `json:"jobId,omitempty"`
 	LectureKey    string `json:"lectureKey,omitempty"`
 	CourseSlug    string `json:"courseSlug,omitempty"`
 	Term          string `json:"term,omitempty"`
 	LectureNumber int    `json:"lectureNumber,omitempty"`
 	Status        string `json:"status,omitempty"`
 	ErrorCategory string `json:"errorCategory,omitempty"`
-	Attempt       int    `json:"attempt,omitempty"`
-	HTTPStatus    int    `json:"httpStatus,omitempty"`
-	Count         int    `json:"count,omitempty"`
 	Source        string `json:"source,omitempty"`
 }
 
@@ -165,16 +157,12 @@ func (l *Logger) encode(level Level, event Event, fields Fields) []byte {
 		Time:          l.now().UTC().Truncate(time.Second).Format(time.RFC3339),
 		Level:         level,
 		Event:         sanitizeEvent(event),
-		JobID:         fields.JobID,
 		LectureKey:    sanitizeField(fields.LectureKey, validLectureKey),
 		CourseSlug:    sanitizeField(fields.CourseSlug, validCourseSlug),
 		Term:          sanitizeField(fields.Term, validTerm),
 		LectureNumber: sanitizeLectureNumber(fields.LectureNumber),
 		Status:        sanitizeField(fields.Status, validStatus),
 		ErrorCategory: sanitizeField(fields.ErrorCategory, validErrorCategory),
-		Attempt:       nonNegative(fields.Attempt),
-		HTTPStatus:    sanitizeHTTPStatus(fields.HTTPStatus),
-		Count:         nonNegative(fields.Count),
 		Source:        sanitizeSource(fields.SourceURL),
 	}
 	line, err := json.Marshal(value)
@@ -269,20 +257,6 @@ func sanitizeEvent(event Event) string {
 
 func sanitizeLectureNumber(value int) int {
 	if value < 1 || value > 999 {
-		return 0
-	}
-	return value
-}
-
-func sanitizeHTTPStatus(value int) int {
-	if value < 100 || value > 599 {
-		return 0
-	}
-	return value
-}
-
-func nonNegative(value int) int {
-	if value < 0 {
 		return 0
 	}
 	return value
