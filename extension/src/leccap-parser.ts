@@ -157,17 +157,29 @@ const SOURCE_URL_HOST = "leccap.engin.umich.edu";
 const LOADING_ONLY_TRANSCRIPT = /^(?:loading…|loading transcript|no transcript)$/i;
 const RAW_TIMESTAMP = /^\d{1,2}:\d{2}(?::\d{2})?$/;
 const MONTH_NAMES: Record<string, number> = {
+  jan: 1,
   january: 1,
+  feb: 2,
   february: 2,
+  mar: 3,
   march: 3,
+  apr: 4,
   april: 4,
   may: 5,
+  jun: 6,
   june: 6,
+  jul: 7,
   july: 7,
+  aug: 8,
   august: 8,
+  sep: 9,
+  sept: 9,
   september: 9,
+  oct: 10,
   october: 10,
+  nov: 11,
   november: 11,
+  dec: 12,
   december: 12,
 };
 
@@ -373,7 +385,7 @@ function normalizeTranscript(input: string): string {
     .replace(/^\n+|\n+$/g, "");
 }
 
-function concatBytes(...parts: Uint8Array[]): Uint8Array {
+function concatBytes(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
   const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
   const output = new Uint8Array(total);
   let offset = 0;
@@ -544,7 +556,7 @@ export function parseRecordingDate(
   }
 
   const textual = captured.match(
-    /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:,?\s+(\d{4}))?$/i,
+    /^([A-Za-z]{3,9})\s+(\d{1,2})(?:,?\s+(\d{4}))?$/,
   );
   if (!textual) {
     return null;
@@ -554,6 +566,9 @@ export function parseRecordingDate(
     return null;
   }
   const month = MONTH_NAMES[textual[1].toLowerCase()];
+  if (month === undefined) {
+    return null;
+  }
   const day = Number(textual[2]);
   const year = textual[3] ? Number(textual[3]) : Number(yearMatch[1]);
   return parseDateParts(month, day, year);
@@ -680,7 +695,7 @@ async function resolveLectureDate(
   const matches = cards.filter((card) => {
     const link = queryOne(card, source.recordingLinkSelector!);
     const href = link?.getAttribute("href");
-    return href !== null && canonicalizeLeccapUrl(href, overviewUrl) === currentPlayerUrl;
+    return typeof href === "string" && canonicalizeLeccapUrl(href, overviewUrl) === currentPlayerUrl;
   });
   if (matches.length !== 1) {
     return reject(
@@ -847,11 +862,11 @@ export async function parseLecturePage(
   }
 
   const identity = extractIdentity(document, selectors, options.courseMappings);
-  if ("supported" in identity && identity.supported === false) {
+  if ("supported" in identity) {
     return identity;
   }
   const transcript = extractTranscript(container, selectors);
-  if ("supported" in transcript && transcript.supported === false) {
+  if ("supported" in transcript) {
     return transcript;
   }
   const lectureDate = await resolveLectureDate(

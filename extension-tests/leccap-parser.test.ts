@@ -183,8 +183,8 @@ describe("Leccap parser against the Stage 0 packet", () => {
   it("rejects an unmapped course/term rather than guessing a repository path", async () => {
     const { document } = makeDocument(
       readFixture("lecture-page.html").replace(
-        "EECS 484 - Fall 2026",
-        "EECS 485 - Fall 2026",
+        "<span>EECS 484 - Fall 2026</span>",
+        "<span>EECS 485 - Fall 2026</span>",
       ),
     );
     const result = await parseLecturePage(document, {
