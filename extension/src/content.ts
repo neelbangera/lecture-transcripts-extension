@@ -7,9 +7,14 @@
  * the parser, send arbitrary DOM data, or silently invent a handoff protocol.
  */
 
+import { createProductionContentDependencies } from "./content-runtime";
+import type { SelectorFixture } from "./leccap-parser";
+
 export const STABILITY_DEBOUNCE_MS = 1500;
 export const OBSERVATION_TIMEOUT_MS = 30_000;
 export const URL_POLL_INTERVAL_MS = 1000;
+
+declare const __STAGE0_SELECTORS__: SelectorFixture;
 
 export type ActivationSource = 'click' | 'already-expanded' | 'url-change';
 
@@ -49,9 +54,12 @@ export interface NormalizedTranscriptSnapshot {
   timestampedTranscript: string;
   /** Framed SHA-256 hash over both normalized forms. */
   contentHash: string;
+  /** Identical stable reads observed by the coordinator when it promotes a snapshot. */
+  stableSnapshotCount?: number;
 }
 
 export type ParserRejectionStatus =
+  | 'not_ready'
   | 'rejected_missing_identity'
   | 'rejected_ambiguous_metadata'
   | 'rejected_oversized'
@@ -117,6 +125,7 @@ interface CaptureRun {
   attachRetryId: number | null;
   stabilityId: number | null;
   firstSnapshot: NormalizedTranscriptSnapshot | null;
+  stableSnapshotCount: number;
   mutationVersion: number;
   handoffStarted: boolean;
   terminal: boolean;
@@ -356,6 +365,10 @@ export function createContentScript<Job>(
 
   const failNotReady = (capture: CaptureRun): void => {
     if (disposed || run !== capture || capture.terminal) return;
+    // Once a stable snapshot has been promoted and job construction or the
+    // handoff has begun, the observation timeout must not override the
+    // handoff_pending state with a false not_ready result.
+    if (capture.handoffStarted) return;
     capture.terminal = true;
     disconnectRun(capture);
     setStatus('not_ready');
@@ -408,6 +421,7 @@ export function createContentScript<Job>(
 
     if (!capture.firstSnapshot) {
       capture.firstSnapshot = snapshot;
+      capture.stableSnapshotCount = 1;
       scheduleStabilityCheck(capture);
       return;
     }
@@ -417,17 +431,19 @@ export function createContentScript<Job>(
       // later snapshot is not promoted to a stable first read; restart the
       // complete quiet interval from this point.
       capture.firstSnapshot = null;
+      capture.stableSnapshotCount = 0;
       scheduleStabilityCheck(capture);
       return;
     }
 
+    capture.stableSnapshotCount += 1;
     setStatus('ready');
     if (capture.handoffStarted) return;
     capture.handoffStarted = true;
 
     const jobResult = await dependencies.parser.buildJob(
       pageDocument,
-      snapshot,
+      { ...snapshot, stableSnapshotCount: capture.stableSnapshotCount },
       captureTimestamp(now),
     );
 
@@ -478,6 +494,7 @@ export function createContentScript<Job>(
     if (disposed || run !== capture || capture.terminal) return;
     capture.mutationVersion += 1;
     capture.firstSnapshot = null;
+    capture.stableSnapshotCount = 0;
     clearTimer(capture.stabilityId);
     capture.stabilityId = null;
     setStatus('waiting_for_transcript');
@@ -541,6 +558,7 @@ export function createContentScript<Job>(
       attachRetryId: null,
       stabilityId: null,
       firstSnapshot: null,
+      stableSnapshotCount: 0,
       mutationVersion: 0,
       handoffStarted: false,
       terminal: false,
@@ -622,3 +640,25 @@ export function createContentScript<Job>(
     },
   };
 }
+
+let contentRuntimeInstalled = false;
+
+/**
+ * Install the production capture pipeline once per page context. The Stage 0
+ * selectors are embedded by the build step; under Vitest the placeholder is
+ * undefined and this returns null without touching the page.
+ */
+export function installContentRuntime(): ContentScriptController | null {
+  if (contentRuntimeInstalled) return null;
+  if (typeof document === 'undefined' || typeof chrome === 'undefined') {
+    return null;
+  }
+  if (typeof __STAGE0_SELECTORS__ === 'undefined') return null;
+
+  contentRuntimeInstalled = true;
+  return createContentScript(
+    createProductionContentDependencies(__STAGE0_SELECTORS__),
+  );
+}
+
+installContentRuntime();

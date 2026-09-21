@@ -429,7 +429,7 @@ interface ExtractedTranscript {
 
 function extractTranscript(
   container: Element,
-  selectors: SelectorFixture,
+  selectors: Pick<SelectorFixture, "sanityMinChars">,
 ): ExtractedTranscript | RejectedLecture {
   const rows = queryAll(container, TRANSCRIPT_ROW_SELECTOR);
   if (rows.length === 0) {
@@ -495,6 +495,41 @@ function extractTranscript(
     timestampedTranscript: timestamped,
     derivedFrom: "both",
   };
+}
+
+export interface TranscriptSnapshot {
+  transcript: string;
+  timestampedTranscript: string;
+  derivedFrom: "both" | "timestamped-only" | "plain-only";
+}
+
+export type TranscriptSnapshotResult =
+  | { ok: true; value: TranscriptSnapshot }
+  | { ok: false; status: ParserRejectionStatus; reason: string };
+
+/**
+ * Extract the normalized transcript forms from only the verified transcript
+ * container. This performs no metadata resolution, no URL handling, and no
+ * overview fetch; the observer uses it for stability comparison before the
+ * final job build.
+ */
+export function extractTranscriptSnapshot(
+  document: Document,
+  selectors: Pick<SelectorFixture, "transcriptContainerSelector" | "sanityMinChars">,
+): TranscriptSnapshotResult {
+  const container = queryOne(document, selectors.transcriptContainerSelector);
+  if (!container) {
+    return {
+      ok: false,
+      status: "not_ready",
+      reason: "the verified transcript container is not present",
+    };
+  }
+  const extracted = extractTranscript(container, selectors);
+  if ("supported" in extracted) {
+    return { ok: false, status: extracted.status, reason: extracted.reason };
+  }
+  return { ok: true, value: extracted };
 }
 
 function parseDateParts(month: number, day: number, year: number): string | null {
