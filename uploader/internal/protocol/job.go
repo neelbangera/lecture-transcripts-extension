@@ -1,6 +1,9 @@
 package protocol
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 // Protocol and application limits are deliberately kept next to the wire
 // types.  The Native Messaging frame limit is enforced by the host package;
@@ -18,24 +21,31 @@ const (
 // struct field order, which is used for size measurements and cross-language
 // fixtures.
 type TranscriptJob struct {
-	SchemaVersion        int    `json:"schemaVersion"`
-	LectureKey           string `json:"lectureKey"`
-	CourseSlug           string `json:"courseSlug"`
-	CourseName           string `json:"courseName"`
-	Term                 string `json:"term"`
-	LectureNumber        int    `json:"lectureNumber"`
-	LectureDate          string `json:"lectureDate"`
-	SourceURL            string `json:"sourceUrl"`
-	CapturedAt           string `json:"capturedAt"`
-	Transcript           string `json:"transcript"`
+	SchemaVersion         int    `json:"schemaVersion"`
+	LectureKey            string `json:"lectureKey"`
+	CourseSlug            string `json:"courseSlug"`
+	CourseName            string `json:"courseName"`
+	Term                  string `json:"term"`
+	LectureNumber         int    `json:"lectureNumber"`
+	LectureDate           string `json:"lectureDate"`
+	SourceURL             string `json:"sourceUrl"`
+	CapturedAt            string `json:"capturedAt"`
+	Transcript            string `json:"transcript"`
 	TimestampedTranscript string `json:"timestampedTranscript"`
-	ContentHash          string `json:"contentHash"`
+	ContentHash           string `json:"contentHash"`
 }
 
 // MarshalCanonical returns compact UTF-8 JSON with no trailing newline.  It
 // intentionally does not sort keys: the schema's field order is canonical for
-// TranscriptJob byte measurements.
+// TranscriptJob byte measurements.  HTML escaping is disabled so the bytes
+// match the TypeScript canonical serializer (JSON.stringify), which is the
+// cross-language size report and fixture authority.
 func (j TranscriptJob) MarshalCanonical() ([]byte, error) {
-	return json.Marshal(j)
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(j); err != nil {
+		return nil, err
+	}
+	return bytes.TrimSuffix(buffer.Bytes(), []byte("\n")), nil
 }
-

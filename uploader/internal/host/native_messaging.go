@@ -15,11 +15,11 @@ import (
 const MaxFrameBytes = protocol.MaxFrameBytes
 
 var (
-	ErrFrameTooLarge      = errors.New("native messaging frame exceeds application cap")
-	ErrMalformedFrame     = errors.New("malformed native messaging frame")
+	ErrFrameTooLarge       = errors.New("native messaging frame exceeds application cap")
+	ErrMalformedFrame      = errors.New("malformed native messaging frame")
 	ErrOriginNotConfigured = errors.New("native messaging allowed origin is not configured")
-	ErrOriginMismatch     = errors.New("native messaging origin is not allowed")
-	ErrInvalidHandler     = errors.New("native messaging request handler is not configured")
+	ErrOriginMismatch      = errors.New("native messaging origin is not allowed")
+	ErrInvalidHandler      = errors.New("native messaging request handler is not configured")
 )
 
 type FrameError struct {
@@ -117,13 +117,13 @@ type SessionLifecycle interface {
 }
 
 type Server struct {
-	Reader         io.Reader
-	Writer         io.Writer
-	Handler        RequestHandler
-	Lifecycle      SessionLifecycle
-	Origin         string
-	AllowedOrigin  string
-	writeMu        sync.Mutex
+	Reader        io.Reader
+	Writer        io.Writer
+	Handler       RequestHandler
+	Lifecycle     SessionLifecycle
+	Origin        string
+	AllowedOrigin string
+	writeMu       sync.Mutex
 }
 
 func NewServer(reader io.Reader, writer io.Writer, handler RequestHandler, lifecycle SessionLifecycle, origin, allowedOrigin string) *Server {

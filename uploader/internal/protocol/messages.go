@@ -9,12 +9,12 @@ import (
 type RequestType string
 
 const (
-	RequestConnect       RequestType = "connect"
-	RequestSubmitJob     RequestType = "submit_job"
-	RequestStatus        RequestType = "status_request"
-	RequestRetryJob      RequestType = "retry_job"
-	RequestDiscardJob    RequestType = "discard_job"
-	RequestReset         RequestType = "reset"
+	RequestConnect    RequestType = "connect"
+	RequestSubmitJob  RequestType = "submit_job"
+	RequestStatus     RequestType = "status_request"
+	RequestRetryJob   RequestType = "retry_job"
+	RequestDiscardJob RequestType = "discard_job"
+	RequestReset      RequestType = "reset"
 )
 
 func (t RequestType) String() string { return string(t) }
@@ -56,39 +56,39 @@ const (
 type DuplicateAction string
 
 const (
-	ActionRetryExisting              DuplicateAction = "retry_existing"
+	ActionRetryExisting                DuplicateAction = "retry_existing"
 	ActionDiscardExistingThenRecapture DuplicateAction = "discard_existing_then_recapture"
 )
 
 type AuthState string
 
 const (
-	AuthNotConnected             AuthState = "not_connected"
-	AuthAuthorizing              AuthState = "authorizing"
-	AuthConnected                AuthState = "connected"
-	AuthReauthorizationRequired  AuthState = "reauthorization_required"
+	AuthNotConnected                AuthState = "not_connected"
+	AuthAuthorizing                 AuthState = "authorizing"
+	AuthConnected                   AuthState = "connected"
+	AuthReauthorizationRequired     AuthState = "reauthorization_required"
 	AuthTargetRepositoryUnavailable AuthState = "target_repository_unavailable"
-	AuthProtocolMismatch         AuthState = "protocol_mismatch"
+	AuthProtocolMismatch            AuthState = "protocol_mismatch"
 )
 
 type DrainState string
 
 const (
-	DrainIdle             DrainState = "idle"
-	DrainWorking          DrainState = "working"
+	DrainIdle              DrainState = "idle"
+	DrainWorking           DrainState = "working"
 	DrainWaitingForBackoff DrainState = "waiting_for_backoff"
-	DrainAuthorizing      DrainState = "authorizing"
+	DrainAuthorizing       DrainState = "authorizing"
 )
 
 type RemoteFileKind string
 
 const (
-	RemoteFile       RemoteFileKind = "file"
-	RemoteDirectory  RemoteFileKind = "directory"
-	RemoteSymlink    RemoteFileKind = "symlink"
-	RemoteSubmodule  RemoteFileKind = "submodule"
-	RemoteMalformed  RemoteFileKind = "malformed"
-	RemoteMissing    RemoteFileKind = "missing"
+	RemoteFile      RemoteFileKind = "file"
+	RemoteDirectory RemoteFileKind = "directory"
+	RemoteSymlink   RemoteFileKind = "symlink"
+	RemoteSubmodule RemoteFileKind = "submodule"
+	RemoteMalformed RemoteFileKind = "malformed"
+	RemoteMissing   RemoteFileKind = "missing"
 )
 
 // ErrorCategory is the complete wire error vocabulary.  It is intentionally
@@ -96,32 +96,32 @@ const (
 type ErrorCategory string
 
 const (
-	ErrorProtocolMismatch             ErrorCategory = "protocol_mismatch"
-	ErrorInvalidMessage               ErrorCategory = "invalid_message"
-	ErrorHostUnavailable              ErrorCategory = "host_unavailable"
-	ErrorInvalidState                 ErrorCategory = "invalid_state"
-	ErrorNotConnected                 ErrorCategory = "not_connected"
-	ErrorReauthorizationRequired      ErrorCategory = "reauthorization_required"
-	ErrorTargetRepositoryUnavailable  ErrorCategory = "target_repository_unavailable"
-	ErrorInternal                     ErrorCategory = "internal"
-	ErrorIneligibleCommand            ErrorCategory = "ineligible_command"
-	ErrorRejectedMissingIdentity      ErrorCategory = "rejected_missing_identity"
-	ErrorRejectedAmbiguousMetadata    ErrorCategory = "rejected_ambiguous_metadata"
-	ErrorRejectedOversized            ErrorCategory = "rejected_oversized"
-	ErrorRejectedQueueFull            ErrorCategory = "rejected_queue_full"
-	ErrorRejectedHandoffFull          ErrorCategory = "rejected_handoff_full"
-	ErrorRejectedInvalidHash          ErrorCategory = "rejected_invalid_hash"
-	ErrorRejectedUnsafeURL            ErrorCategory = "rejected_unsafe_url"
-	ErrorRejectedUnknownField         ErrorCategory = "rejected_unknown_field"
-	ErrorRejectedInvalidSchema        ErrorCategory = "rejected_invalid_schema"
-	ErrorRejectedPermission           ErrorCategory = "rejected_permission"
+	ErrorProtocolMismatch            ErrorCategory = "protocol_mismatch"
+	ErrorInvalidMessage              ErrorCategory = "invalid_message"
+	ErrorHostUnavailable             ErrorCategory = "host_unavailable"
+	ErrorInvalidState                ErrorCategory = "invalid_state"
+	ErrorNotConnected                ErrorCategory = "not_connected"
+	ErrorReauthorizationRequired     ErrorCategory = "reauthorization_required"
+	ErrorTargetRepositoryUnavailable ErrorCategory = "target_repository_unavailable"
+	ErrorInternal                    ErrorCategory = "internal"
+	ErrorIneligibleCommand           ErrorCategory = "ineligible_command"
+	ErrorRejectedMissingIdentity     ErrorCategory = "rejected_missing_identity"
+	ErrorRejectedAmbiguousMetadata   ErrorCategory = "rejected_ambiguous_metadata"
+	ErrorRejectedOversized           ErrorCategory = "rejected_oversized"
+	ErrorRejectedQueueFull           ErrorCategory = "rejected_queue_full"
+	ErrorRejectedHandoffFull         ErrorCategory = "rejected_handoff_full"
+	ErrorRejectedInvalidHash         ErrorCategory = "rejected_invalid_hash"
+	ErrorRejectedUnsafeURL           ErrorCategory = "rejected_unsafe_url"
+	ErrorRejectedUnknownField        ErrorCategory = "rejected_unknown_field"
+	ErrorRejectedInvalidSchema       ErrorCategory = "rejected_invalid_schema"
+	ErrorRejectedPermission          ErrorCategory = "rejected_permission"
 )
 
 // ProtocolError is a safe, classified error suitable for a response.  Its
 // Error method is category-only so accidentally printing it cannot reveal
 // transcript text, credentials, URLs, or remote response bodies.
 type ProtocolError struct {
-	Category ErrorCategory
+	Category  ErrorCategory
 	Retryable bool
 }
 
@@ -135,15 +135,15 @@ func NewProtocolError(category ErrorCategory, retryable bool) error {
 // is the authoritative parser; callers should not decode Native Messaging
 // payloads directly with encoding/json.
 type Request struct {
-	Type            RequestType
-	ProtocolVersion int
-	RequestID       string
+	Type             RequestType
+	ProtocolVersion  int
+	RequestID        string
 	ExtensionVersion string
-	Job             *TranscriptJob
-	BeforeJobID     *int64
-	Limit           *int
-	JobID           *int64
-	Confirmation    string
+	Job              *TranscriptJob
+	BeforeJobID      *int64
+	Limit            *int
+	JobID            *int64
+	Confirmation     string
 }
 
 func (r Request) EffectiveLimit() int {
@@ -157,16 +157,16 @@ func (r Request) MarshalJSON() ([]byte, error) {
 	switch r.Type {
 	case RequestConnect:
 		return json.Marshal(struct {
-			Type            RequestType `json:"type"`
-			ProtocolVersion int         `json:"protocolVersion"`
-			RequestID       string      `json:"requestId"`
-			ExtensionVersion string     `json:"extensionVersion"`
+			Type             RequestType `json:"type"`
+			ProtocolVersion  int         `json:"protocolVersion"`
+			RequestID        string      `json:"requestId"`
+			ExtensionVersion string      `json:"extensionVersion"`
 		}{r.Type, r.ProtocolVersion, r.RequestID, r.ExtensionVersion})
 	case RequestSubmitJob:
 		return json.Marshal(struct {
-			Type            RequestType   `json:"type"`
-			ProtocolVersion int           `json:"protocolVersion"`
-			RequestID       string        `json:"requestId"`
+			Type            RequestType    `json:"type"`
+			ProtocolVersion int            `json:"protocolVersion"`
+			RequestID       string         `json:"requestId"`
 			Job             *TranscriptJob `json:"job"`
 		}{r.Type, r.ProtocolVersion, r.RequestID, r.Job})
 	case RequestStatus:
@@ -211,34 +211,34 @@ func valueOrZero(value *int64) int64 {
 }
 
 type Ack struct {
-	Type            string          `json:"type"`
-	ProtocolVersion int             `json:"protocolVersion"`
-	RequestID       string          `json:"requestId"`
-	Operation       string          `json:"operation"`
-	JobID           *int64          `json:"jobId"`
-	LectureKey      *string         `json:"lectureKey"`
-	ContentHash     *string         `json:"contentHash"`
-	Status          AckStatus       `json:"status"`
-	ExistingStatus  *QueueStatus    `json:"existingStatus"`
+	Type            string           `json:"type"`
+	ProtocolVersion int              `json:"protocolVersion"`
+	RequestID       string           `json:"requestId"`
+	Operation       string           `json:"operation"`
+	JobID           *int64           `json:"jobId"`
+	LectureKey      *string          `json:"lectureKey"`
+	ContentHash     *string          `json:"contentHash"`
+	Status          AckStatus        `json:"status"`
+	ExistingStatus  *QueueStatus     `json:"existingStatus"`
 	Action          *DuplicateAction `json:"action"`
 }
 
 type CommandResult struct {
-	Type            string          `json:"type"`
-	ProtocolVersion int             `json:"protocolVersion"`
-	RequestID       string          `json:"requestId"`
-	Operation       string          `json:"operation"`
-	JobID           *int64          `json:"jobId"`
-	Result          string          `json:"result"`
-	Status          *string         `json:"status"`
-	ErrorCategory   *ErrorCategory  `json:"errorCategory"`
+	Type            string         `json:"type"`
+	ProtocolVersion int            `json:"protocolVersion"`
+	RequestID       string         `json:"requestId"`
+	Operation       string         `json:"operation"`
+	JobID           *int64         `json:"jobId"`
+	Result          string         `json:"result"`
+	Status          *string        `json:"status"`
+	ErrorCategory   *ErrorCategory `json:"errorCategory"`
 }
 
 type Authorization struct {
-	UserCode               *string `json:"userCode"`
-	VerificationURI        *string `json:"verificationUri"`
+	UserCode                *string `json:"userCode"`
+	VerificationURI         *string `json:"verificationUri"`
 	VerificationURIComplete *string `json:"verificationUriComplete"`
-	ExpiresAt              *string `json:"expiresAt"`
+	ExpiresAt               *string `json:"expiresAt"`
 }
 
 type QueueCounts struct {
@@ -260,40 +260,40 @@ type QueueCounts struct {
 }
 
 type JobSummary struct {
-	JobID              int64          `json:"jobId"`
-	LectureKey         string         `json:"lectureKey"`
-	ContentHash        string         `json:"contentHash"`
-	Status             QueueStatus    `json:"status"`
-	AttemptCount       int            `json:"attemptCount"`
-	NextAttemptAt      *string        `json:"nextAttemptAt"`
-	UpdatedAt          *string        `json:"updatedAt"`
-	TargetPath         string         `json:"targetPath"`
-	LastErrorCategory  *string        `json:"lastErrorCategory"`
-	LastErrorHTTPStatus *int          `json:"lastErrorHttpStatus"`
-	RemoteContentHash  *string        `json:"remoteContentHash"`
-	RemoteFileKind     *RemoteFileKind `json:"remoteFileKind"`
+	JobID               int64           `json:"jobId"`
+	LectureKey          string          `json:"lectureKey"`
+	ContentHash         string          `json:"contentHash"`
+	Status              QueueStatus     `json:"status"`
+	AttemptCount        int             `json:"attemptCount"`
+	NextAttemptAt       *string         `json:"nextAttemptAt"`
+	UpdatedAt           *string         `json:"updatedAt"`
+	TargetPath          string          `json:"targetPath"`
+	LastErrorCategory   *string         `json:"lastErrorCategory"`
+	LastErrorHTTPStatus *int            `json:"lastErrorHttpStatus"`
+	RemoteContentHash   *string         `json:"remoteContentHash"`
+	RemoteFileKind      *RemoteFileKind `json:"remoteFileKind"`
 }
 
 type StatusMessage struct {
-	Type            string         `json:"type"`
-	ProtocolVersion int            `json:"protocolVersion"`
-	RequestID       *string        `json:"requestId"`
+	Type             string        `json:"type"`
+	ProtocolVersion  int           `json:"protocolVersion"`
+	RequestID        *string       `json:"requestId"`
 	ExtensionVersion string        `json:"extensionVersion"`
 	UploaderVersion  string        `json:"uploaderVersion"`
-	AuthState       AuthState      `json:"authState"`
-	Authorization  Authorization  `json:"authorization"`
-	DrainState      DrainState     `json:"drainState"`
-	Counts          QueueCounts    `json:"counts"`
-	Jobs            []JobSummary   `json:"jobs"`
-	NextBeforeJobID *int64         `json:"nextBeforeJobId"`
+	AuthState        AuthState     `json:"authState"`
+	Authorization    Authorization `json:"authorization"`
+	DrainState       DrainState    `json:"drainState"`
+	Counts           QueueCounts   `json:"counts"`
+	Jobs             []JobSummary  `json:"jobs"`
+	NextBeforeJobID  *int64        `json:"nextBeforeJobId"`
 }
 
 type ErrorMessage struct {
-	Type            string         `json:"type"`
-	ProtocolVersion int            `json:"protocolVersion"`
-	RequestID       *string        `json:"requestId"`
-	Category        ErrorCategory  `json:"category"`
-	Retryable       bool           `json:"retryable"`
+	Type            string        `json:"type"`
+	ProtocolVersion int           `json:"protocolVersion"`
+	RequestID       *string       `json:"requestId"`
+	Category        ErrorCategory `json:"category"`
+	Retryable       bool          `json:"retryable"`
 }
 
 // EncodeResponse validates the closed response vocabulary before serializing
@@ -306,4 +306,3 @@ func EncodeResponse(message any) ([]byte, error) {
 }
 
 var errUnsupportedResponse = errors.New("unsupported response type")
-

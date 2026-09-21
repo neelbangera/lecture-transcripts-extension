@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	requestIDPattern = regexp.MustCompile(`^[\x20-\x7e]{1,64}$`)
-	versionPattern   = regexp.MustCompile(`^[\x20-\x7e]{1,32}$`)
-	hashPattern      = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	requestIDPattern  = regexp.MustCompile(`^[\x20-\x7e]{1,64}$`)
+	versionPattern    = regexp.MustCompile(`^[\x20-\x7e]{1,32}$`)
+	hashPattern       = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	lectureKeyPattern = regexp.MustCompile(`^[a-z0-9]+/[0-9]{4}-(winter|spring|summer|fall)/[0-9]{3}$`)
 	courseSlugPattern = regexp.MustCompile(`^[a-z0-9]+$`)
 	termPattern       = regexp.MustCompile(`^[0-9]{4}-(winter|spring|summer|fall)$`)
@@ -142,19 +142,27 @@ func DecodeRequest(data []byte) (Request, error) {
 	return request, nil
 }
 
+// transcriptJobKeys is the schema-required field list for TranscriptJob.  The
+// key and the value are both required: a missing key must not silently decode
+// to a zero value that happens to be valid (for example an empty
+// timestampedTranscript).
+var transcriptJobKeys = []string{
+	"schemaVersion", "lectureKey", "courseSlug", "courseName", "term",
+	"lectureNumber", "lectureDate", "sourceUrl", "capturedAt", "transcript",
+	"timestampedTranscript", "contentHash",
+}
+
 func decodeJob(data []byte) (TranscriptJob, error) {
 	var job TranscriptJob
 	object, err := strictJSONObject(data)
 	if err != nil {
 		return job, validationError(ErrorRejectedInvalidSchema)
 	}
-	allowed := map[string]struct{}{
-		"schemaVersion": {}, "lectureKey": {}, "courseSlug": {},
-		"courseName": {}, "term": {}, "lectureNumber": {},
-		"lectureDate": {}, "sourceUrl": {}, "capturedAt": {},
-		"transcript": {}, "timestampedTranscript": {}, "contentHash": {},
+	allowed := make(map[string]struct{}, len(transcriptJobKeys))
+	for _, key := range transcriptJobKeys {
+		allowed[key] = struct{}{}
 	}
-	if err := requireKeys(object, allowed); err != nil {
+	if err := requireKeys(object, allowed, transcriptJobKeys...); err != nil {
 		return job, err
 	}
 
@@ -202,24 +210,27 @@ func ValidateJob(job TranscriptJob) error {
 	}
 	canonicalSource, sourceErr := CanonicalizeSourceURL(job.SourceURL)
 	if sourceErr != nil {
-		if job.SourceURL == "" || !strings.HasPrefix(strings.ToLower(job.SourceURL), "https://") {
-			return validationError(ErrorRejectedInvalidSchema)
-		}
 		return validationError(ErrorRejectedUnsafeURL)
 	}
 	if len(canonicalSource) > MaxSourceURLBytes {
-		return validationError(ErrorRejectedOversized)
+		return validationError(ErrorRejectedUnsafeURL)
 	}
 	if !validUTCSecond(job.CapturedAt) {
 		return validationError(ErrorRejectedInvalidSchema)
 	}
-	if !utf8.ValidString(job.Transcript) || len([]byte(job.Transcript)) > MaxTranscriptBytes || strings.TrimSpace(job.Transcript) == "" {
+	if !utf8.ValidString(job.Transcript) {
+		return validationError(ErrorRejectedInvalidSchema)
+	}
+	if len([]byte(job.Transcript)) > MaxTranscriptBytes {
 		return validationError(ErrorRejectedOversized)
 	}
 	if nonWhitespaceRuneCount(job.Transcript) < 50 {
 		return validationError(ErrorRejectedInvalidSchema)
 	}
-	if !utf8.ValidString(job.TimestampedTranscript) || len([]byte(job.TimestampedTranscript)) > MaxTranscriptBytes {
+	if !utf8.ValidString(job.TimestampedTranscript) {
+		return validationError(ErrorRejectedInvalidSchema)
+	}
+	if len([]byte(job.TimestampedTranscript)) > MaxTranscriptBytes {
 		return validationError(ErrorRejectedOversized)
 	}
 	if !hashPattern.MatchString(job.ContentHash) {
@@ -305,24 +316,45 @@ func DecodeResponse(data []byte) (any, error) {
 	var value any
 	switch typeName {
 	case "ack":
+		if err := requireResponseKeys(object, ackResponseKeys); err != nil {
+			return nil, err
+		}
 		var message Ack
 		if err := decoder.Decode(&message); err != nil {
 			return nil, validationError(ErrorRejectedInvalidSchema)
 		}
 		value = message
 	case "command_result":
+		if err := requireResponseKeys(object, commandResultResponseKeys); err != nil {
+			return nil, err
+		}
 		var message CommandResult
 		if err := decoder.Decode(&message); err != nil {
 			return nil, validationError(ErrorRejectedInvalidSchema)
 		}
 		value = message
 	case "status":
+		if err := requireResponseKeys(object, statusResponseKeys); err != nil {
+			return nil, err
+		}
+		if err := requireNestedKeys(object["authorization"], authorizationKeys); err != nil {
+			return nil, err
+		}
+		if err := requireNestedKeys(object["counts"], countsKeys); err != nil {
+			return nil, err
+		}
+		if err := requireJobSummaryKeys(object["jobs"]); err != nil {
+			return nil, err
+		}
 		var message StatusMessage
 		if err := decoder.Decode(&message); err != nil {
 			return nil, validationError(ErrorRejectedInvalidSchema)
 		}
 		value = message
 	case "error":
+		if err := requireResponseKeys(object, errorResponseKeys); err != nil {
+			return nil, err
+		}
 		var message ErrorMessage
 		if err := decoder.Decode(&message); err != nil {
 			return nil, validationError(ErrorRejectedInvalidSchema)
@@ -431,6 +463,9 @@ func validateStatus(message StatusMessage) error {
 	}
 	if err := validateCounts(message.Counts); err != nil {
 		return err
+	}
+	if message.Jobs == nil {
+		return validationError(ErrorRejectedInvalidSchema)
 	}
 	if len(message.Jobs) > 50 {
 		return validationError(ErrorRejectedInvalidSchema)
@@ -636,7 +671,77 @@ func requireKeys(object map[string]json.RawMessage, allowed map[string]struct{},
 	return nil
 }
 
+// Every response property is schema-required, so presence must be checked on
+// the raw object before decoding into a struct; a missing key and a null key
+// both decode to the same Go zero value.
+var (
+	ackResponseKeys = []string{
+		"type", "protocolVersion", "requestId", "operation", "jobId",
+		"lectureKey", "contentHash", "status", "existingStatus", "action",
+	}
+	commandResultResponseKeys = []string{
+		"type", "protocolVersion", "requestId", "operation", "jobId",
+		"result", "status", "errorCategory",
+	}
+	statusResponseKeys = []string{
+		"type", "protocolVersion", "requestId", "extensionVersion",
+		"uploaderVersion", "authState", "authorization", "drainState",
+		"counts", "jobs", "nextBeforeJobId",
+	}
+	errorResponseKeys = []string{
+		"type", "protocolVersion", "requestId", "category", "retryable",
+	}
+	authorizationKeys = []string{
+		"userCode", "verificationUri", "verificationUriComplete", "expiresAt",
+	}
+	countsKeys = []string{
+		"queued", "uploading", "uploaded", "unchanged", "retryable_error",
+		"permanent_conflict", "rejected_missing_identity",
+		"rejected_ambiguous_metadata", "rejected_oversized",
+		"rejected_queue_full", "rejected_invalid_hash", "rejected_unsafe_url",
+		"rejected_unknown_field", "rejected_invalid_schema",
+		"rejected_permission",
+	}
+	jobSummaryKeys = []string{
+		"jobId", "lectureKey", "contentHash", "status", "attemptCount",
+		"nextAttemptAt", "updatedAt", "targetPath", "lastErrorCategory",
+		"lastErrorHttpStatus", "remoteContentHash", "remoteFileKind",
+	}
+)
+
+func requireResponseKeys(object map[string]json.RawMessage, keys []string) error {
+	allowed := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		allowed[key] = struct{}{}
+	}
+	return requireKeys(object, allowed, keys...)
+}
+
+func requireNestedKeys(raw json.RawMessage, keys []string) error {
+	object, err := strictJSONObject(raw)
+	if err != nil {
+		return validationError(ErrorRejectedInvalidSchema)
+	}
+	return requireResponseKeys(object, keys)
+}
+
+func requireJobSummaryKeys(raw json.RawMessage) error {
+	var items []json.RawMessage
+	if err := json.Unmarshal(raw, &items); err != nil {
+		return validationError(ErrorRejectedInvalidSchema)
+	}
+	for _, item := range items {
+		if err := requireNestedKeys(item, jobSummaryKeys); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func strictJSONObject(data []byte) (map[string]json.RawMessage, error) {
+	if !utf8.Valid(data) {
+		return nil, errors.New("invalid UTF-8")
+	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	if err := rejectDuplicateKeys(decoder); err != nil {
