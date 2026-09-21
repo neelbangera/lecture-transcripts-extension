@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lecture Transcripts</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header class="header">
+        <div>
+          <h1>Lecture Transcripts</h1>
+          <p id="connection-summary" class="muted">Checking local uploader…</p>
+        </div>
+        <span id="drain-state" class="pill">idle</span>
+      </header>
+
+      <section id="authorization" class="card hidden" aria-live="polite">
+        <h2>Connect GitHub</h2>
+        <p id="authorization-copy"></p>
+        <a id="authorization-link" class="button secondary hidden" target="_blank" rel="noopener noreferrer">Open GitHub authorization</a>
+      </section>
+
+      <section class="actions" aria-label="Connection actions">
+        <button id="connect-button" class="button primary" type="button">Connect GitHub</button>
+        <button id="reset-button" class="button secondary" type="button">Reset connection</button>
+        <button id="refresh-button" class="button secondary" type="button">Refresh</button>
+      </section>
+
+      <p id="last-outcome" class="notice" aria-live="polite"></p>
+
+      <section class="card">
+        <div class="section-heading">
+          <h2>Pending handoffs</h2>
+          <span id="pending-count" class="count">0</span>
+        </div>
+        <p id="pending-copy" class="muted">No unacknowledged captures.</p>
+      </section>
+
+      <section id="overflow-section" class="card hidden">
+        <div class="section-heading">
+          <h2>Reopen to recapture</h2>
+          <span id="overflow-count" class="count">0</span>
+        </div>
+        <p class="muted">These captures were not durably accepted. Reopen each transcript after capacity is available.</p>
+        <ul id="overflow-list" class="job-list"></ul>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <h2>Uploader queue</h2>
+          <span id="queue-count" class="count">0</span>
+        </div>
+        <ul id="job-list" class="job-list"></ul>
+        <button id="load-more-button" class="button secondary hidden" type="button">Load older jobs</button>
+      </section>
+
+      <footer class="footer">
+        <span id="versions" class="muted">Extension — · Uploader —</span>
+      </footer>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

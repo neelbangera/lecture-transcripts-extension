@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Lecture Transcripts",
+  "version": "0.1.0",
+  "description": "Captures activated Leccap transcripts for the local GitHub uploader.",
+  "permissions": [
+    "alarms",
+    "nativeMessaging",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://leccap.engin.umich.edu/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Lecture Transcripts",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://leccap.engin.umich.edu/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
