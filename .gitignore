@@ -1,0 +1,25 @@
+# Created in Stage 0 (pulled forward from the Stage 1 list) so raw discovery
+# captures with authenticated markers can never be committed.
+dist/
+node_modules/
+*.sqlite3*
+*.keychain
+**/*token*.json
+**/*secret*.json
+extension-tests/fixtures/*-real.html
+native-host/*.json
+uploader/lecture-uploader
+
+# Local JavaScript test/build output and uploader diagnostics.
+coverage/
+*.log
+.DS_Store
+
+# Raw Leccap discovery captures: they contain authenticated-page markers,
+# user identifiers, recording/site route IDs, and media URLs. They are local
+# evidence only; the committed fixtures under extension-tests/fixtures/ are
+# the sanitized versions.
+/open.html
+/closed.html
+/*.mhtml
+/raw-captures/

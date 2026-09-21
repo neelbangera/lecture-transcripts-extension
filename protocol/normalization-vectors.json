@@ -1,0 +1,82 @@
+[
+  {
+    "id": "line-endings-and-spaces",
+    "plainInput": "Hello  world\r\n",
+    "timestampedInput": "",
+    "expectedPlain": "Hello world",
+    "expectedTimestamped": "",
+    "hashAssertion": "normalized-self"
+  },
+  {
+    "id": "blank-lines",
+    "plainInput": "a\n\n\n\nb",
+    "timestampedInput": "",
+    "expectedPlain": "a\n\nb",
+    "expectedTimestamped": "",
+    "hashAssertion": "normalized-self"
+  },
+  {
+    "id": "word-change-fox",
+    "plainInput": "The fox",
+    "timestampedInput": "",
+    "expectedPlain": "The fox",
+    "expectedTimestamped": "",
+    "hashAssertion": "different-from:word-change-dog"
+  },
+  {
+    "id": "word-change-dog",
+    "plainInput": "The dog",
+    "timestampedInput": "",
+    "expectedPlain": "The dog",
+    "expectedTimestamped": "",
+    "hashAssertion": "different-from:word-change-fox"
+  },
+  {
+    "id": "timestamp-one",
+    "plainInput": "The fox",
+    "timestampedInput": "[00:01] The fox",
+    "expectedPlain": "The fox",
+    "expectedTimestamped": "[00:01] The fox",
+    "hashAssertion": "different-from:timestamp-two"
+  },
+  {
+    "id": "timestamp-two",
+    "plainInput": "The fox",
+    "timestampedInput": "[00:02] The fox",
+    "expectedPlain": "The fox",
+    "expectedTimestamped": "[00:02] The fox",
+    "hashAssertion": "different-from:timestamp-one"
+  },
+  {
+    "id": "timestamped-empty",
+    "plainInput": "The fox",
+    "timestampedInput": "",
+    "expectedPlain": "The fox",
+    "expectedTimestamped": "",
+    "hashAssertion": "different-from:timestamped-present"
+  },
+  {
+    "id": "timestamped-present",
+    "plainInput": "The fox",
+    "timestampedInput": "[00:01] The fox",
+    "expectedPlain": "The fox",
+    "expectedTimestamped": "[00:01] The fox",
+    "hashAssertion": "different-from:timestamped-empty"
+  },
+  {
+    "id": "unicode-nfc",
+    "plainInput": "e\u0301lan",
+    "timestampedInput": "",
+    "expectedPlain": "élan",
+    "expectedTimestamped": "",
+    "hashAssertion": "same-as:unicode-nfc-equivalent"
+  },
+  {
+    "id": "unicode-nfc-equivalent",
+    "plainInput": "élan",
+    "timestampedInput": "",
+    "expectedPlain": "élan",
+    "expectedTimestamped": "",
+    "hashAssertion": "same-as:unicode-nfc"
+  }
+]

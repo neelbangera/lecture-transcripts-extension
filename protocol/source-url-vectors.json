@@ -1,0 +1,24 @@
+[
+  {
+    "id": "uppercase-host-default-port-query-fragment",
+    "input": "https://LECCAP.ENGIN.UMICH.EDU:443/lecture/123?session=secret#transcript",
+    "expectedCanonicalUrl": "https://leccap.engin.umich.edu/lecture/123",
+    "expectedPublishSourceUrl": "https://leccap.engin.umich.edu/lecture/123",
+    "expectedAction": "include"
+  },
+  {
+    "id": "sensitive-token-path-segment",
+    "input": "https://leccap.engin.umich.edu/lecture/token/123",
+    "expectedCanonicalUrl": "https://leccap.engin.umich.edu/lecture/token/123",
+    "expectedPublishSourceUrl": null,
+    "expectedAction": "omit"
+  },
+  {
+    "id": "insecure-scheme",
+    "input": "http://leccap.engin.umich.edu/lecture/123",
+    "expectedCanonicalUrl": null,
+    "expectedPublishSourceUrl": null,
+    "expectedAction": "reject",
+    "expectedError": "rejected_unsafe_url"
+  }
+]

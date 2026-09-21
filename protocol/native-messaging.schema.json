@@ -1,0 +1,485 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lecture-transcripts.local/protocol/native-messaging.schema.json",
+  "title": "Lecture Transcripts Native Messaging Protocol",
+  "description": "Strict versioned Chrome Native Messaging requests and responses. Transcript text may occur only in submit_job.job.",
+  "$defs": {
+    "protocolVersion": {
+      "const": 1
+    },
+    "requestId": {
+      "type": "string",
+      "pattern": "^[ -~]{1,64}$"
+    },
+    "versionString": {
+      "type": "string",
+      "pattern": "^[ -~]{1,32}$"
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nonnegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lectureKey": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+/[0-9]{4}-(winter|spring|summer|fall)/[0-9]{3}$",
+      "maxLength": 128
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "maxLength": 64
+    },
+    "wholeSecondTimestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "maxLength": 20
+    },
+    "queueStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "uploading",
+        "uploaded",
+        "unchanged",
+        "retryable_error",
+        "permanent_conflict",
+        "rejected_missing_identity",
+        "rejected_ambiguous_metadata",
+        "rejected_oversized",
+        "rejected_queue_full",
+        "rejected_invalid_hash",
+        "rejected_unsafe_url",
+        "rejected_unknown_field",
+        "rejected_invalid_schema",
+        "rejected_permission"
+      ]
+    },
+    "submitRejectionStatus": {
+      "type": "string",
+      "enum": [
+        "rejected_invalid_schema",
+        "rejected_unknown_field",
+        "rejected_oversized",
+        "rejected_invalid_hash",
+        "rejected_unsafe_url",
+        "rejected_queue_full",
+        "rejected_duplicate_terminal"
+      ]
+    },
+    "errorCategory": {
+      "type": "string",
+      "enum": [
+        "protocol_mismatch",
+        "invalid_message",
+        "host_unavailable",
+        "invalid_state",
+        "not_connected",
+        "reauthorization_required",
+        "target_repository_unavailable",
+        "internal",
+        "ineligible_command",
+        "rejected_missing_identity",
+        "rejected_ambiguous_metadata",
+        "rejected_oversized",
+        "rejected_queue_full",
+        "rejected_handoff_full",
+        "rejected_invalid_hash",
+        "rejected_unsafe_url",
+        "rejected_unknown_field",
+        "rejected_invalid_schema",
+        "rejected_permission"
+      ]
+    },
+    "authState": {
+      "type": "string",
+      "enum": [
+        "not_connected",
+        "authorizing",
+        "connected",
+        "reauthorization_required",
+        "target_repository_unavailable",
+        "protocol_mismatch"
+      ]
+    },
+    "drainState": {
+      "type": "string",
+      "enum": ["idle", "working", "waiting_for_backoff", "authorizing"]
+    },
+    "remoteFileKind": {
+      "type": "string",
+      "enum": ["file", "directory", "symlink", "submodule", "malformed", "missing"]
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "userCode": {
+          "anyOf": [
+            { "type": "string", "pattern": "^[ -~]{1,64}$" },
+            { "type": "null" }
+          ]
+        },
+        "verificationUri": {
+          "anyOf": [
+            { "type": "string", "pattern": "^https://github\\.com/", "maxLength": 2048 },
+            { "type": "null" }
+          ]
+        },
+        "verificationUriComplete": {
+          "anyOf": [
+            { "type": "string", "pattern": "^https://github\\.com/", "maxLength": 2048 },
+            { "type": "null" }
+          ]
+        },
+        "expiresAt": {
+          "anyOf": [
+            { "$ref": "#/$defs/wholeSecondTimestamp" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["userCode", "verificationUri", "verificationUriComplete", "expiresAt"]
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "queued": { "$ref": "#/$defs/nonnegativeInteger" },
+        "uploading": { "$ref": "#/$defs/nonnegativeInteger" },
+        "uploaded": { "$ref": "#/$defs/nonnegativeInteger" },
+        "unchanged": { "$ref": "#/$defs/nonnegativeInteger" },
+        "retryable_error": { "$ref": "#/$defs/nonnegativeInteger" },
+        "permanent_conflict": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rejected_missing_identity": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rejected_ambiguous_metadata": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rejected_oversized": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rejected_queue_full": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rejected_invalid_hash": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rejected_unsafe_url": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rejected_unknown_field": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rejected_invalid_schema": { "$ref": "#/$defs/nonnegativeInteger" },
+        "rejected_permission": { "$ref": "#/$defs/nonnegativeInteger" }
+      },
+      "required": [
+        "queued",
+        "uploading",
+        "uploaded",
+        "unchanged",
+        "retryable_error",
+        "permanent_conflict",
+        "rejected_missing_identity",
+        "rejected_ambiguous_metadata",
+        "rejected_oversized",
+        "rejected_queue_full",
+        "rejected_invalid_hash",
+        "rejected_unsafe_url",
+        "rejected_unknown_field",
+        "rejected_invalid_schema",
+        "rejected_permission"
+      ]
+    },
+    "jobSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "jobId": { "$ref": "#/$defs/positiveInteger" },
+        "lectureKey": { "$ref": "#/$defs/lectureKey" },
+        "contentHash": { "$ref": "#/$defs/contentHash" },
+        "status": { "$ref": "#/$defs/queueStatus" },
+        "attemptCount": { "$ref": "#/$defs/nonnegativeInteger" },
+        "nextAttemptAt": {
+          "anyOf": [
+            { "$ref": "#/$defs/wholeSecondTimestamp" },
+            { "type": "null" }
+          ]
+        },
+        "updatedAt": {
+          "anyOf": [
+            { "$ref": "#/$defs/wholeSecondTimestamp" },
+            { "type": "null" }
+          ]
+        },
+        "targetPath": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "lastErrorCategory": {
+          "anyOf": [
+            { "$ref": "#/$defs/errorCategory" },
+            { "type": "null" }
+          ]
+        },
+        "lastErrorHttpStatus": {
+          "anyOf": [
+            { "type": "integer", "minimum": 100, "maximum": 599 },
+            { "type": "null" }
+          ]
+        },
+        "remoteContentHash": {
+          "anyOf": [
+            { "$ref": "#/$defs/contentHash" },
+            { "type": "null" }
+          ]
+        },
+        "remoteFileKind": {
+          "anyOf": [
+            { "$ref": "#/$defs/remoteFileKind" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "jobId",
+        "lectureKey",
+        "contentHash",
+        "status",
+        "attemptCount",
+        "nextAttemptAt",
+        "updatedAt",
+        "targetPath",
+        "lastErrorCategory",
+        "lastErrorHttpStatus",
+        "remoteContentHash",
+        "remoteFileKind"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "title": "ConnectRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "connect" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "extensionVersion": { "$ref": "#/$defs/versionString" }
+      },
+      "required": ["type", "protocolVersion", "requestId", "extensionVersion"]
+    },
+    {
+      "title": "SubmitJobRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "submit_job" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "job": { "$ref": "transcript-job.schema.json" }
+      },
+      "required": ["type", "protocolVersion", "requestId", "job"]
+    },
+    {
+      "title": "StatusRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "status_request" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "beforeJobId": { "$ref": "#/$defs/positiveInteger" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 50 }
+      },
+      "required": ["type", "protocolVersion", "requestId"]
+    },
+    {
+      "title": "RetryJobRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "retry_job" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "jobId": { "$ref": "#/$defs/positiveInteger" }
+      },
+      "required": ["type", "protocolVersion", "requestId", "jobId"]
+    },
+    {
+      "title": "DiscardJobRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "discard_job" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "jobId": { "$ref": "#/$defs/positiveInteger" },
+        "confirmation": { "const": "discard" }
+      },
+      "required": ["type", "protocolVersion", "requestId", "jobId", "confirmation"]
+    },
+    {
+      "title": "ResetRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "reset" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": { "$ref": "#/$defs/requestId" }
+      },
+      "required": ["type", "protocolVersion", "requestId"]
+    },
+    {
+      "title": "SubmitAck",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "ack" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "operation": { "const": "submit" },
+        "jobId": {
+          "anyOf": [
+            { "$ref": "#/$defs/positiveInteger" },
+            { "type": "null" }
+          ]
+        },
+        "lectureKey": {
+          "anyOf": [
+            { "$ref": "#/$defs/lectureKey" },
+            { "type": "null" }
+          ]
+        },
+        "contentHash": {
+          "anyOf": [
+            { "$ref": "#/$defs/contentHash" },
+            { "type": "null" }
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "already_queued",
+            "rejected_invalid_schema",
+            "rejected_unknown_field",
+            "rejected_oversized",
+            "rejected_invalid_hash",
+            "rejected_unsafe_url",
+            "rejected_queue_full",
+            "rejected_duplicate_terminal"
+          ]
+        },
+        "existingStatus": {
+          "anyOf": [
+            { "$ref": "#/$defs/queueStatus" },
+            { "type": "null" }
+          ]
+        },
+        "action": {
+          "anyOf": [
+            { "type": "null" },
+            { "enum": ["retry_existing", "discard_existing_then_recapture"] }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "protocolVersion",
+        "requestId",
+        "operation",
+        "jobId",
+        "lectureKey",
+        "contentHash",
+        "status",
+        "existingStatus",
+        "action"
+      ]
+    },
+    {
+      "title": "CommandResult",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "command_result" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "operation": { "enum": ["retry", "discard", "reset"] },
+        "jobId": {
+          "anyOf": [
+            { "$ref": "#/$defs/positiveInteger" },
+            { "type": "null" }
+          ]
+        },
+        "result": { "enum": ["accepted", "rejected"] },
+        "status": {
+          "anyOf": [
+            { "$ref": "#/$defs/queueStatus" },
+            { "enum": ["discarded", "reset"] },
+            { "type": "null" }
+          ]
+        },
+        "errorCategory": {
+          "anyOf": [
+            { "$ref": "#/$defs/errorCategory" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["type", "protocolVersion", "requestId", "operation", "jobId", "result", "status", "errorCategory"]
+    },
+    {
+      "title": "Status",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "status" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": {
+          "anyOf": [
+            { "$ref": "#/$defs/requestId" },
+            { "type": "null" }
+          ]
+        },
+        "extensionVersion": { "$ref": "#/$defs/versionString" },
+        "uploaderVersion": { "$ref": "#/$defs/versionString" },
+        "authState": { "$ref": "#/$defs/authState" },
+        "authorization": { "$ref": "#/$defs/authorization" },
+        "drainState": { "$ref": "#/$defs/drainState" },
+        "counts": { "$ref": "#/$defs/counts" },
+        "jobs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/jobSummary" },
+          "maxItems": 50
+        },
+        "nextBeforeJobId": {
+          "anyOf": [
+            { "$ref": "#/$defs/positiveInteger" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "protocolVersion",
+        "requestId",
+        "extensionVersion",
+        "uploaderVersion",
+        "authState",
+        "authorization",
+        "drainState",
+        "counts",
+        "jobs",
+        "nextBeforeJobId"
+      ]
+    },
+    {
+      "title": "Error",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "error" },
+        "protocolVersion": { "$ref": "#/$defs/protocolVersion" },
+        "requestId": {
+          "anyOf": [
+            { "$ref": "#/$defs/requestId" },
+            { "type": "null" }
+          ]
+        },
+        "category": { "$ref": "#/$defs/errorCategory" },
+        "retryable": { "type": "boolean" }
+      },
+      "required": ["type", "protocolVersion", "requestId", "category", "retryable"]
+    }
+  ]
+}
