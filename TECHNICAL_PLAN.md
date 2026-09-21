@@ -69,15 +69,13 @@ The following are not first-version goals:
 
 ## Implementation readiness
 
-The repository is intentionally design-only. Its current status is `DESIGN_ONLY / STAGE_0_REQUIRED`: it contains no implementation files, complete Stage 0 fixture packet, package manifests, Go module, database, credentials, or generated Native Messaging manifest. A small sanitized discovery fixture may exist while Stage 0 is being assembled; it is not a passing packet and must not be mistaken for an implementation-ready fixture.
+The repository is no longer design-only. Its current status is `IMPLEMENTED_THROUGH_PACKAGING / LIVE_ITEMS_OUTSTANDING`: the capture-side TypeScript, the versioned protocol, the Go packages for config, queue, logging, retry, auth, GitHub publishing, Markdown, and the Native Messaging host, the packaging scripts, and the packaging self-tests are all in the tree. The Go executable entrypoint (`uploader/cmd/lecture-uploader`) and the serial processor (`uploader/internal/processor`) have not landed yet, so `scripts/build-uploader.sh` fails closed until they do.
 
-No implementation agent may begin Stage 1 through Stage 8 until the Stage 0 readiness gate passes. In particular, creating a skeleton `package.json`, `go.mod`, parser, content script, queue schema, or host manifest before that gate passes is out of order. If a required fact is absent, placeholder-only, or contradictory, the agent must stop with `STAGE_0_INCOMPLETE`; it must not choose a plausible value.
+Stage 0's code-ready portion passed on 2026-09-20 (see `docs/STAGE_0_REPORT.md`): Stages 1-6 may proceed against the recorded contracts and have largely landed. The remaining live items are owner-side and gate Stage 8 end-to-end verification, not writing code against the recorded contracts. If a required fact is absent, placeholder-only, or contradictory, the agent must stop with `STAGE_0_INCOMPLETE`; it must not choose a plausible value.
 
-The missing facts are external observations or account-provisioning inputs, not design details that can be inferred from this document:
+The facts that remain outstanding are external measurements or account-provisioning inputs, not design details that can be inferred from this document:
 
-- the actual Leccap DOM selectors, loading/completion behavior, timestamp format, SPA behavior, parser evidence, and the runtime source/correlation rule for any metadata that lives on a linked overview page;
-- the complete supported course/term mapping;
-- measured transcript, serialized-job, Native Messaging, and render-time values from permitted pages;
+- the per-sample render-time measurement from permitted pages; the byte measurements, selectors, page facts, and course mapping are recorded in the committed Stage 0 packet;
 - the GitHub App client ID, numeric repository ID, installation, selected branch, initialized-main-branch state, and target-repository sanity check used by this personal installation;
 - the loaded Chrome extension ID used by the Native Messaging host. This is intentionally late-bound to Stage 7, after the extension is built and loaded; it must be supplied explicitly to the installer and must never be guessed or left as a placeholder.
 
@@ -1112,7 +1110,7 @@ This is the complete planned file set for the implementation. “Create” means
 
 | File | Action | Rationale |
 | --- | --- | --- |
-| `docs/STAGE_0_REPORT.md` | Create after Stage 0 | Records the human evidence, measured maxima, full course inventory, and verified App/repository provisioning without secrets; implementation cannot start without it. |
+| `docs/STAGE_0_REPORT.md` | Create after Stage 0 | Records the human evidence, measured maxima, full course inventory, and verified App/repository provisioning without secrets; it was the implementation gate artifact and now records the two outstanding live items (render-time measurement and machine-local provisioning). |
 | `docs/SETUP.md` | Create | Gives the owner installation, fixed-path extension loading, initialized-main-branch/repository configuration, Xcode/Keychain prerequisites, alarm behavior, and web authorization steps. |
 | `docs/SECURITY.md` | Create | Documents permissions, Keychain/device-flow storage, local queue data, logging restrictions, source-URL sanitization, remote-hash trust, and reset behavior. |
 | `docs/TESTING.md` | Create | Documents unit, integration, fixture, offline, duplicate, conflict, and end-to-end tests. |
@@ -1141,7 +1139,7 @@ Those remote lecture files are created dynamically from jobs. The uploader must 
 
 ## Definition of done
 
-Current design status is `NOT_READY_FOR_IMPLEMENTATION`: the repository is ready for Stage 0 capture and provisioning only. The implementation is not complete merely because the normative source contracts exist; the actual Leccap fixture, course inventory, measurements, and account setup must pass the readiness gate first.
+Current status is `IMPLEMENTED_THROUGH_PACKAGING / LIVE_ITEMS_OUTSTANDING`: the code through the packaging layer is in the tree, but the Go executable entrypoint and serial processor, the live render-time measurement, and the machine-local provisioning packet are still outstanding. The implementation is not complete merely because the normative source contracts exist; the actual Leccap fixture, course inventory, measurements, and account setup must still pass the remaining readiness checks.
 
 The implementation is ready for personal use only when all of the following are true:
 
