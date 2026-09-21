@@ -19,7 +19,7 @@ set -eu
 host_name=com.neelbangera.lecturetranscripts
 keychain_service=com.neelbangera.lecturetranscripts
 token_account=github-app-user-token
-device_flow_account=github-device-flow-transaction
+device_flow_account=github-app-device-transaction
 
 fail() {
     printf 'uninstall-native-host: %s\n' "$1" >&2
