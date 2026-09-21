@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAX_FIELD_CHARACTERS,
   MAX_OTHER_STRING_CHARACTERS,
   MAX_SOURCE_URL_BYTES,
   MAX_TRANSCRIPT_BYTES,
@@ -130,5 +131,60 @@ describe("TranscriptJob", () => {
       { ...job, courseName: "x".repeat(MAX_OTHER_STRING_CHARACTERS + 1) },
       "rejected_oversized",
     );
+  });
+
+  it("pins the per-field schema character limits", () => {
+    expect(MAX_FIELD_CHARACTERS).toEqual({
+      lectureKey: 128,
+      courseSlug: 64,
+      courseName: 256,
+      term: 32,
+      lectureDate: 10,
+      capturedAt: 20,
+      contentHash: 64,
+    });
+  });
+
+  it("rejects each metadata field above its own character limit", () => {
+    const job = createTranscriptJob(BASE_INPUT);
+    const cases = [
+      { field: "lectureKey", limit: 128, value: "a".repeat(129) },
+      { field: "courseSlug", limit: 64, value: "a".repeat(65) },
+      { field: "courseName", limit: 256, value: "a".repeat(257) },
+      { field: "term", limit: 32, value: "a".repeat(33) },
+      { field: "contentHash", limit: 64, value: "a".repeat(65) },
+    ] as const;
+
+    for (const { field, limit, value } of cases) {
+      const result = validateTranscriptJob({ ...job, [field]: value });
+      expect(result.valid).toBe(false);
+      if (result.valid) {
+        throw new Error(`expected ${field} to be rejected`);
+      }
+      expect(result.error.code).toBe("rejected_oversized");
+      expect(result.error.field).toBe(field);
+      expect(result.error.message).toBe(`${field} exceeds ${limit} characters`);
+    }
+  });
+
+  it("does not reject exact per-field boundary lengths as oversized", () => {
+    const job = createTranscriptJob(BASE_INPUT);
+    expect(validateTranscriptJob(job).valid).toBe(true);
+    expect(job.lectureDate).toHaveLength(MAX_FIELD_CHARACTERS.lectureDate);
+    expect(job.capturedAt).toHaveLength(MAX_FIELD_CHARACTERS.capturedAt);
+    expect(job.contentHash).toHaveLength(MAX_FIELD_CHARACTERS.contentHash);
+
+    expectInvalid({ ...job, lectureKey: "a".repeat(128) }, "rejected_invalid_schema");
+    expectInvalid({ ...job, courseSlug: "a".repeat(64) }, "rejected_invalid_schema");
+    expectInvalid({ ...job, courseName: "x".repeat(256) }, "rejected_invalid_schema");
+    expectInvalid({ ...job, term: "x".repeat(32) }, "rejected_invalid_schema");
+    expectInvalid({ ...job, contentHash: "a".repeat(64) }, "rejected_invalid_hash");
+  });
+
+  it("keeps lectureDate and capturedAt limits on their canonical checks", () => {
+    const job = createTranscriptJob(BASE_INPUT);
+    expectInvalid({ ...job, lectureDate: "x".repeat(11) }, "rejected_invalid_schema");
+    expectInvalid({ ...job, capturedAt: "x".repeat(21) }, "rejected_invalid_schema");
+    expectInvalid({ ...job, capturedAt: "2026-09-20T12:34:56.123Z" }, "rejected_invalid_schema");
   });
 });
