@@ -671,10 +671,10 @@ func TestConnectStatusEchoesExtensionVersionAndChallenge(t *testing.T) {
 	if message.Authorization.VerificationURI == nil || *message.Authorization.VerificationURI != "https://github.com/login/device" {
 		t.Fatalf("verification uri = %v", message.Authorization.VerificationURI)
 	}
-	// The protocol validator rejects a verificationUriComplete with a query
-	// string, so the processor omits it instead of emitting an invalid frame.
-	if message.Authorization.VerificationURIComplete != nil {
-		t.Fatalf("query-bearing complete URI must be omitted: %v", *message.Authorization.VerificationURIComplete)
+	// GitHub's device flow returns a query-bearing verification_uri_complete
+	// (user_code), which the schema permits and the popup links to directly.
+	if message.Authorization.VerificationURIComplete == nil || *message.Authorization.VerificationURIComplete != "https://github.com/login/device?user_code=ABCD-1234" {
+		t.Fatalf("complete verification uri = %v", message.Authorization.VerificationURIComplete)
 	}
 	if message.Authorization.ExpiresAt == nil || *message.Authorization.ExpiresAt != expiresAt.Format(time.RFC3339) {
 		t.Fatalf("expires at = %v", message.Authorization.ExpiresAt)

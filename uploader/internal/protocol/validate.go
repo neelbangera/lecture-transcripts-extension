@@ -490,7 +490,7 @@ func validateAuthorization(auth Authorization) error {
 			continue
 		}
 		u, err := url.Parse(*value)
-		if err != nil || !strings.EqualFold(u.Scheme, "https") || !strings.EqualFold(u.Hostname(), "github.com") || u.User != nil || u.RawQuery != "" || u.Fragment != "" || len([]byte(*value)) > 2048 {
+		if err != nil || !strings.EqualFold(u.Scheme, "https") || !strings.EqualFold(u.Hostname(), "github.com") || u.User != nil || len([]byte(*value)) > 2048 {
 			return validationError(ErrorRejectedInvalidSchema)
 		}
 	}

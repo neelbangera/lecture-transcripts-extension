@@ -809,7 +809,7 @@ func safeGitHubURL(raw string) (string, bool) {
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || !strings.EqualFold(parsed.Hostname(), "github.com") ||
-		parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		parsed.User != nil {
 		return "", false
 	}
 	return raw, true

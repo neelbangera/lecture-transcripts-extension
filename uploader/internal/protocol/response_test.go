@@ -187,9 +187,9 @@ func TestEncodeResponseRejectsInvalidMessages(t *testing.T) {
 			s.Authorization.VerificationURI = stringPointer("https://example.com/login")
 			return s
 		}(), ErrorRejectedInvalidSchema},
-		{"status verification uri with query", func() StatusMessage {
+		{"status verification uri with userinfo", func() StatusMessage {
 			s := validStatusMessage()
-			s.Authorization.VerificationURI = stringPointer("https://github.com/login?x=1")
+			s.Authorization.VerificationURI = stringPointer("https://user@github.com/login")
 			return s
 		}(), ErrorRejectedInvalidSchema},
 		{"status oversized user code", func() StatusMessage {
@@ -459,5 +459,39 @@ func TestResponseErrorTextIsCategoryOnly(t *testing.T) {
 	assertCategory(t, err, ErrorRejectedInvalidSchema)
 	if strings.Contains(err.Error(), "SECRET") {
 		t.Fatalf("error %q leaked raw payload text", err.Error())
+	}
+}
+
+func TestAuthorizationVerificationURIsAllowDeviceFlowQuery(t *testing.T) {
+	userCode := "ABCD-1234"
+	verificationURI := "https://github.com/login/device"
+	verificationURIComplete := "https://github.com/login/device?user_code=ABCD-1234"
+	expiresAt := "2026-09-20T12:34:56Z"
+
+	auth := Authorization{
+		UserCode:                &userCode,
+		VerificationURI:         &verificationURI,
+		VerificationURIComplete: &verificationURIComplete,
+		ExpiresAt:               &expiresAt,
+	}
+	if err := validateAuthorization(auth); err != nil {
+		t.Fatalf("validateAuthorization: %v", err)
+	}
+
+	status := validStatusMessage()
+	status.AuthState = AuthAuthorizing
+	status.Authorization = auth
+	status.DrainState = DrainAuthorizing
+	encoded, err := EncodeResponse(status)
+	if err != nil {
+		t.Fatalf("EncodeResponse(authorizing): %v", err)
+	}
+	decoded, err := DecodeResponse(encoded)
+	if err != nil {
+		t.Fatalf("DecodeResponse(authorizing): %v", err)
+	}
+	roundTripped, ok := decoded.(StatusMessage)
+	if !ok || roundTripped.Authorization.VerificationURIComplete == nil || *roundTripped.Authorization.VerificationURIComplete != verificationURIComplete {
+		t.Fatalf("unexpected round trip: %+v", decoded)
 	}
 }
