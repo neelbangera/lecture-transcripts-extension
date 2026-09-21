@@ -6,10 +6,10 @@ Make the documentation describe the repository that actually exists and give the
 
 ## Current state
 
-- `TECHNICAL_PLAN.md` is the normative contract, but it still contains statements that the repository is design-only.
+- `TECHNICAL_PLAN.md` is the normative contract and its readiness section now reflects the implemented tree.
 - `docs/STAGE_0_REPORT.md` says Stage 0 is code-ready with render-time measurement and machine-local provisioning outstanding.
-- `README.md` has basic development commands but no installation/runbook.
-- `SETUP.md`, `SECURITY.md`, `TESTING.md`, and `TROUBLESHOOTING.md` are still missing.
+- `README.md` documents status, prerequisites, build/test, and links to the guides.
+- `SETUP.md`, `SECURITY.md`, `TESTING.md`, and `TROUBLESHOOTING.md` are in the tree.
 
 ## Work items
 

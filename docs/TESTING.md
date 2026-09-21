@@ -133,9 +133,9 @@ The real integration boundary begins at the machine-local setup described in
 extension ID, the Keychain prompt, and the actual permitted Leccap page. Those
 inputs are intentionally not in the repository, so they cannot be part of the
 offline suites. The `uploader/cmd/lecture-uploader` executable and
-`uploader/internal/processor` that would connect the tested packages into a
-running host are not in the tree yet; `scripts/build-uploader.sh` fails closed
-until they land.
+`uploader/internal/processor` connect the tested packages into a running host;
+their behavior is covered with fakes, while the real host session requires the
+machine-local setup above.
 
 ## Packaging self-tests
 

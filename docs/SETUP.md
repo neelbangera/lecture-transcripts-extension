@@ -15,17 +15,11 @@ written as `<...>` is a value the owner supplies and must not be committed.
 ## Current build state
 
 The capture-side TypeScript, the protocol contracts, and the Go packages for
-config, queue, logging, retry, auth, GitHub publishing, Markdown rendering, and
-the Native Messaging host are implemented and covered by the test suites in
-[TESTING.md](TESTING.md). The packaging scripts and their self-tests are also in
-the tree.
-
-The Go executable entrypoint `uploader/cmd/lecture-uploader` and the serial
-processor `uploader/internal/processor` are not in the tree yet. As a result,
-`scripts/build-uploader.sh` currently fails closed with
-`uploader/cmd/lecture-uploader is missing; nothing to build`. Everything up to
-"Build the uploader" can be completed and verified; "Install the Native
-Messaging host" and the end-to-end checks require the executable to land first.
+config, queue, logging, retry, auth, GitHub publishing, Markdown rendering, the
+serial processor, and the `lecture-uploader` Native Messaging executable are
+implemented and covered by the test suites in [TESTING.md](TESTING.md). The
+packaging scripts and their self-tests are also in the tree. `scripts/
+build-uploader.sh` builds `dist/native/lecture-uploader` with cgo enabled.
 
 ## Prerequisites
 
@@ -155,10 +149,9 @@ scripts/build-uploader.sh --dry-run
 scripts/build-uploader.sh --version 0.1.0
 ```
 
-As noted under [Current build state](#current-build-state), the script currently
-stops at `uploader/cmd/lecture-uploader is missing; nothing to build` because
-the executable entrypoint has not landed yet. The binary path and all checks
-below assume that entrypoint exists.
+As noted under [Current build state](#current-build-state), the script builds
+the executable from `uploader/cmd/lecture-uploader`. The binary path and all
+checks below assume that entrypoint exists.
 
 ## Install the Native Messaging host
 

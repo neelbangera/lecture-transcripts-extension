@@ -21,8 +21,8 @@ Implemented and tested in this tree:
   outbox, Native Messaging client, popup) with the versioned protocol;
 - the Go uploader packages for machine-local config, durable SQLite queue,
   sanitized rotating logs, retry backoff, GitHub App device flow and Keychain
-  storage, GitHub Contents write-once publishing, Markdown rendering, and the
-  Native Messaging host boundary;
+  storage, GitHub Contents write-once publishing, Markdown rendering, the
+  serial processor, and the `lecture-uploader` Native Messaging executable;
 - the extension build, uploader build, host install/uninstall scripts, and
   their packaging self-tests;
 - the Stage 0 evidence packet and fixtures described in
@@ -30,9 +30,6 @@ Implemented and tested in this tree:
 
 Remaining before personal use:
 
-- `uploader/cmd/lecture-uploader` and `uploader/internal/processor` are not in
-  the tree, so `scripts/build-uploader.sh` fails closed with
-  `uploader/cmd/lecture-uploader is missing; nothing to build`;
 - the per-sample render-time measurement is still a live owner-side item
   (recipe in [docs/STAGE_0_REPORT.md](docs/STAGE_0_REPORT.md));
 - the machine-local GitHub provisioning packet (App client ID, numeric

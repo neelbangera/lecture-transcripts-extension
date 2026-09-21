@@ -69,7 +69,7 @@ The following are not first-version goals:
 
 ## Implementation readiness
 
-The repository is no longer design-only. Its current status is `IMPLEMENTED_THROUGH_PACKAGING / LIVE_ITEMS_OUTSTANDING`: the capture-side TypeScript, the versioned protocol, the Go packages for config, queue, logging, retry, auth, GitHub publishing, Markdown, and the Native Messaging host, the packaging scripts, and the packaging self-tests are all in the tree. The Go executable entrypoint (`uploader/cmd/lecture-uploader`) and the serial processor (`uploader/internal/processor`) have not landed yet, so `scripts/build-uploader.sh` fails closed until they do.
+The repository is no longer design-only. Its current status is `IMPLEMENTED_THROUGH_PACKAGING / LIVE_ITEMS_OUTSTANDING`: the capture-side TypeScript, the versioned protocol, the Go packages for config, queue, logging, retry, auth, GitHub publishing, Markdown, the serial processor, and the Native Messaging host, the `lecture-uploader` executable, the packaging scripts, and the packaging self-tests are all in the tree. The live items are the Stage 0 render-time measurement and the machine-local GitHub provisioning/loaded extension ID; both are owner-side and are never committed.
 
 Stage 0's code-ready portion passed on 2026-09-20 (see `docs/STAGE_0_REPORT.md`): Stages 1-6 may proceed against the recorded contracts and have largely landed. The remaining live items are owner-side and gate Stage 8 end-to-end verification, not writing code against the recorded contracts. If a required fact is absent, placeholder-only, or contradictory, the agent must stop with `STAGE_0_INCOMPLETE`; it must not choose a plausible value.
 
