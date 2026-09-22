@@ -684,8 +684,13 @@ async function resolveLectureDate(
   try {
     // "include" is required here: a content-script fetch is not treated as
     // same-origin with the page for credential purposes, so "same-origin"
-    // silently drops the Leccap session and the server redirects to SSO.
-    response = await fetcher(overviewUrl, { credentials: "include" });
+    // silently drops the Leccap session. The Accept header and no-store keep
+    // the request shaped like a document navigation instead of a bare fetch.
+    response = await fetcher(overviewUrl, {
+      credentials: "include",
+      cache: "no-store",
+      headers: { Accept: "text/html,application/xhtml+xml" },
+    });
   } catch {
     return reject(
       "rejected_ambiguous_metadata",

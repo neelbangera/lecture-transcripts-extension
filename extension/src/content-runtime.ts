@@ -140,10 +140,84 @@ function redactPath(value: string): string {
 }
 
 /**
- * Temporary, sanitized fetch diagnostics: URL path with identifiers redacted,
- * status, size, and page-shape marker booleans. Never logs page content.
+ * True when a successful overview fetch returned a page without the recorded
+ * recording list (the live server serves a reduced page to bare fetches) and
+ * the page is not a sign-in redirect.
  */
-function withOverviewDiagnostics(fetcher: OverviewFetcher): OverviewFetcher {
+export function needsOverviewRender(html: string): boolean {
+  if (html.includes('id="recordings"')) return false;
+  if (/weblogin|shibboleth|sign in|log in/i.test(html)) return false;
+  return true;
+}
+
+/**
+ * Render the linked overview in a hidden same-origin iframe so the server
+ * treats the request like a document navigation, then return the rendered
+ * DOM. Returns null when framing is blocked or the page never populates.
+ */
+export function renderOverviewInIframe(
+  document: Document,
+  url: string,
+  timeoutMs = 12_000,
+): Promise<string | null> {
+  const view = document.defaultView;
+  if (!view) return Promise.resolve(null);
+  return new Promise<string | null>((resolve) => {
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.style.position = "absolute";
+    iframe.style.width = "1px";
+    iframe.style.height = "1px";
+    iframe.style.opacity = "0";
+    iframe.style.pointerEvents = "none";
+    let settled = false;
+    const finish = (value: string | null): void => {
+      if (settled) return;
+      settled = true;
+      view.clearTimeout(deadline);
+      iframe.remove();
+      resolve(value);
+    };
+    const deadline = view.setTimeout(() => finish(null), timeoutMs);
+    const readDocument = (): string | null => {
+      try {
+        const doc = iframe.contentDocument;
+        return doc?.documentElement?.outerHTML ?? null;
+      } catch {
+        return null;
+      }
+    };
+    iframe.addEventListener("load", () => {
+      const started = Date.now();
+      const poll = (): void => {
+        const html = readDocument();
+        if (html && html.includes('id="recordings"')) {
+          finish(html);
+          return;
+        }
+        if (Date.now() - started > 4000) {
+          finish(html);
+          return;
+        }
+        view.setTimeout(poll, 200);
+      };
+      poll();
+    });
+    iframe.src = url;
+    (document.body ?? document.documentElement).append(iframe);
+  });
+}
+
+/**
+ * Temporary, sanitized fetch diagnostics: URL path with identifiers redacted,
+ * status, size, and page-shape marker booleans. Never logs page content. When
+ * a successful fetch lacks the recording list, the linked overview is rendered
+ * in a hidden same-origin iframe and the rendered DOM is used instead.
+ */
+function withOverviewFallback(
+  fetcher: OverviewFetcher,
+  document: Document,
+): OverviewFetcher {
   return async (input, init) => {
     const response = await fetcher(input, init);
     const raw = response as { status?: number; url?: string };
@@ -152,6 +226,14 @@ function withOverviewDiagnostics(fetcher: OverviewFetcher): OverviewFetcher {
       html = await response.text();
     } catch {
       html = "";
+    }
+    let source = "fetch";
+    if (response.ok && needsOverviewRender(html)) {
+      const rendered = await renderOverviewInIframe(document, String(input));
+      if (rendered && rendered.includes('id="recordings"')) {
+        html = rendered;
+        source = "iframe";
+      }
     }
     const titleMatch = /<title>\s*([^<]{0,80}?)\s*<\/title>/i.exec(html);
     const markers = {
@@ -165,6 +247,7 @@ function withOverviewDiagnostics(fetcher: OverviewFetcher): OverviewFetcher {
     };
     console.log(
       `[lecture-transcripts] overview fetch url=${redactPath(String(input))}` +
+        ` source=${source}` +
         ` status=${typeof raw.status === "number" ? raw.status : "?"}` +
         ` bytes=${html.length}` +
         ` title=${JSON.stringify(titleMatch ? titleMatch[1] : null)}` +
@@ -250,7 +333,7 @@ export function createContentRuntimeParser(
         courseMappings,
         fetchOverview:
           options.fetchOverview ??
-          (pageFetcher ? withOverviewDiagnostics(pageFetcher) : undefined),
+          (pageFetcher ? withOverviewFallback(pageFetcher, document) : undefined),
         stableSnapshotCount:
           snapshot.stableSnapshotCount ?? DEFAULT_STABLE_SNAPSHOT_COUNT,
       });

@@ -22,6 +22,7 @@ import {
   createContentRuntimeParser,
   createRuntimeHandoff,
   isBackgroundResponse,
+  needsOverviewRender,
   toPageSelectors,
   type ChromeRuntimeMessaging,
 } from "../extension/src/content-runtime";
@@ -763,5 +764,19 @@ describe("production bootstrap", () => {
     expect(controller).not.toBeNull();
     expect(installContentRuntime()).toBeNull();
     controller?.dispose();
+  });
+});
+
+describe("overview render fallback decision", () => {
+  it("renders only when the fetched page lacks the recording list", () => {
+    expect(needsOverviewRender('<div id="recordings"></div>')).toBe(false);
+    expect(
+      needsOverviewRender("<html><body>Sign in to continue</body></html>"),
+    ).toBe(false);
+    expect(
+      needsOverviewRender(
+        "<html><head><title>EECS 484 - Fall 2026</title></head><body>no list</body></html>",
+      ),
+    ).toBe(true);
   });
 });
