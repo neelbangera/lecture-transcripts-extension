@@ -223,7 +223,7 @@ func TestEnqueuePersistsCanonicalJobBeforeAck(t *testing.T) {
 	if !stored.CreatedAt.Equal(baseTime) || !stored.UpdatedAt.Equal(baseTime) {
 		t.Fatalf("timestamps = %s/%s", stored.CreatedAt, stored.UpdatedAt)
 	}
-	if stored.TargetPath() != "eecs491/lectures/006.md" {
+	if stored.TargetPath() != "eecs491/006.md" {
 		t.Fatalf("target path = %q", stored.TargetPath())
 	}
 	if stored.TimestampedPath() != "eecs491/timestamped/006.md" {
@@ -708,7 +708,7 @@ func TestStatusPagePagination(t *testing.T) {
 	if next == nil || *next != 4 {
 		t.Fatalf("page 1 cursor = %v", next)
 	}
-	if page[0].TargetPath != "eecs491/lectures/005.md" || page[0].Status != protocol.StatusQueued {
+	if page[0].TargetPath != "eecs491/005.md" || page[0].Status != protocol.StatusQueued {
 		t.Fatalf("page 1 summary = %+v", page[0])
 	}
 	if page[0].UpdatedAt == nil || page[0].NextAttemptAt != nil {
@@ -912,7 +912,7 @@ func TestPlainOnlyTargetPath(t *testing.T) {
 		t.Fatalf("plain-only target path = %q, want %q", got, want)
 	}
 	withTimestamps := Job{Payload: testJob(2)}
-	if got, want := withTimestamps.TargetPath(), "eecs491/lectures/002.md"; got != want {
+	if got, want := withTimestamps.TargetPath(), "eecs491/002.md"; got != want {
 		t.Fatalf("timestamped target path = %q, want %q", got, want)
 	}
 }

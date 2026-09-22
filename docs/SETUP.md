@@ -225,12 +225,13 @@ its sidecars are `0600`.
 Then verify the real flow:
 
 1. Open a permitted Leccap lecture page. It captures automatically on load: the
-   content script opens the transcript control itself if it is closed.
+   content script opens the transcript control itself if it is closed and closes
+   it again after the capture finishes.
 2. The popup shows the job in the uploader queue as `Queued for upload`, then
    `Uploaded` or `Already uploaded; unchanged`.
-3. The repository gains two files at
-   `<courseSlug>/lectures/<NNN>.md` and `<courseSlug>/timestamped/<NNN>.md`
-   (a lecture with no timestamped form writes only `<courseSlug>/<NNN>.md`).
+3. The repository gains two files at `<courseSlug>/<NNN>.md` and
+   `<courseSlug>/timestamped/<NNN>.md` (a lecture with no timestamped form
+   writes only the plain file).
 4. Reopening the same lecture creates no new commit.
 
 The per-sample render-time measurement is still an owner-side item; the recipe

@@ -5,6 +5,7 @@ import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  AUTO_ACTIVATE_RETRY_MS,
   OBSERVATION_TIMEOUT_MS,
   STABILITY_DEBOUNCE_MS,
   URL_POLL_INTERVAL_MS,
@@ -241,6 +242,52 @@ describe("content coordinator activation", () => {
     expect(statuses).toContain("activated");
     expect(buildJob).toHaveBeenCalledTimes(1);
     expect(handoff).toHaveBeenCalledTimes(1);
+    controller.dispose();
+  });
+
+  it("retries auto-activation until the transcript control appears", async () => {
+    const dom = makeDom(lectureHtml);
+    const button = transcriptButton(dom);
+    button.setAttribute("title", "Loading");
+    const { parser } = fakeParser({});
+    const handoff = vi.fn<Handoff>(async () => {});
+    const controller = startCoordinator(dom, parser, handoff);
+
+    await vi.advanceTimersByTimeAsync(AUTO_ACTIVATE_RETRY_MS * 2);
+    expect(handoff).not.toHaveBeenCalled();
+
+    button.setAttribute("title", "Show Transcript");
+    await vi.advanceTimersByTimeAsync(AUTO_ACTIVATE_RETRY_MS + 1);
+    button.setAttribute("title", "Hide Transcript");
+    const text = dom.window.document.querySelector(".transcript-text");
+    if (!text) throw new Error("fixture transcript text is missing");
+    text.textContent = READY_TRANSCRIPT;
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(STABILITY_DEBOUNCE_MS * 2);
+
+    expect(handoff).toHaveBeenCalledTimes(1);
+    controller.dispose();
+  });
+
+  it("closes the transcript it opened once the handoff completes", async () => {
+    const dom = makeDom(lectureHtml);
+    const button = transcriptButton(dom);
+    button.setAttribute("title", "Show Transcript");
+    const clickSpy = vi.spyOn(button, "click");
+    const { parser } = fakeParser({});
+    const handoff = vi.fn<Handoff>(async () => {});
+    const controller = startCoordinator(dom, parser, handoff);
+
+    await vi.advanceTimersByTimeAsync(1);
+    button.setAttribute("title", "Hide Transcript");
+    const text = dom.window.document.querySelector(".transcript-text");
+    if (!text) throw new Error("fixture transcript text is missing");
+    text.textContent = READY_TRANSCRIPT;
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(STABILITY_DEBOUNCE_MS * 2);
+
+    expect(handoff).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(2);
     controller.dispose();
   });
 

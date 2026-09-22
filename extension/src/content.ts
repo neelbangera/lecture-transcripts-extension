@@ -13,6 +13,7 @@ import type { SelectorFixture } from "./leccap-parser";
 export const STABILITY_DEBOUNCE_MS = 1500;
 export const OBSERVATION_TIMEOUT_MS = 30_000;
 export const URL_POLL_INTERVAL_MS = 1000;
+export const AUTO_ACTIVATE_RETRY_MS = 500;
 
 declare const __STAGE0_SELECTORS__: SelectorFixture;
 
@@ -125,10 +126,11 @@ interface CaptureRun {
   attachRetryId: number | null;
   stabilityId: number | null;
   firstSnapshot: NormalizedTranscriptSnapshot | null;
-  stableSnapshotCount: number;
   mutationVersion: number;
+  stableSnapshotCount: number;
   handoffStarted: boolean;
   terminal: boolean;
+  autoOpened: boolean;
 }
 
 const TERMINAL_PARSER_REJECTIONS = new Set<ParserRejectionStatus>([
@@ -330,6 +332,8 @@ export function createContentScript<Job>(
   let generation = 0;
   let run: CaptureRun | null = null;
   let urlPollId: number | null = null;
+  let autoActivateId: number | null = null;
+  let pendingAutoOpen = false;
   let disposed = false;
 
   const debounceMs = selectors.stabilityDebounceMs || STABILITY_DEBOUNCE_MS;
@@ -343,6 +347,22 @@ export function createContentScript<Job>(
 
   const clearTimer = (id: number | null): void => {
     if (id !== null) pageWindow.clearTimeout(id);
+  };
+
+  const stopAutoActivate = (): void => {
+    clearTimer(autoActivateId);
+    autoActivateId = null;
+  };
+
+  const closeAutoOpenedTranscript = (capture: CaptureRun): void => {
+    if (!capture.autoOpened) return;
+    capture.autoOpened = false;
+    const button = findTranscriptButton(pageDocument, selectors);
+    if (!button || button.getAttribute('title') !== 'Hide Transcript') return;
+    const clickable = button as Partial<HTMLElement>;
+    if (typeof clickable.click === 'function') {
+      clickable.click();
+    }
   };
 
   const disconnectRun = (capture: CaptureRun): void => {
@@ -371,6 +391,7 @@ export function createContentScript<Job>(
     if (capture.handoffStarted) return;
     capture.terminal = true;
     disconnectRun(capture);
+    closeAutoOpenedTranscript(capture);
     setStatus('not_ready');
   };
 
@@ -381,6 +402,7 @@ export function createContentScript<Job>(
     if (disposed || run !== capture || capture.terminal) return;
     capture.terminal = true;
     disconnectRun(capture);
+    closeAutoOpenedTranscript(capture);
     setStatus(TERMINAL_PARSER_REJECTIONS.has(parserStatus) ? parserStatus : 'not_ready');
   };
 
@@ -469,6 +491,7 @@ export function createContentScript<Job>(
     if (disposed || run !== capture || capture.terminal) return;
     capture.terminal = true;
     disconnectRun(capture);
+    closeAutoOpenedTranscript(capture);
   };
 
   const takeStableSnapshot = async (capture: CaptureRun): Promise<void> => {
@@ -548,6 +571,7 @@ export function createContentScript<Job>(
     }
 
     if (run) disconnectRun(run);
+    stopAutoActivate();
     generation += 1;
     const capture: CaptureRun = {
       generation,
@@ -562,7 +586,9 @@ export function createContentScript<Job>(
       mutationVersion: 0,
       handoffStarted: false,
       terminal: false,
+      autoOpened: pendingAutoOpen,
     };
+    pendingAutoOpen = false;
     run = capture;
     setStatus('activated');
     capture.timeoutId = pageWindow.setTimeout(() => failNotReady(capture), OBSERVATION_TIMEOUT_MS);
@@ -590,7 +616,7 @@ export function createContentScript<Job>(
     if (titleAtActivation !== 'Show Transcript') {
       // Clicking the open control closes the transcript.  It cancels an
       // unfinished run but never starts a capture by itself.
-      if (titleAtActivation === 'Hide Transcript' && run && !run.handoffStarted) {
+      if (titleAtActivation === 'Hide Transcript' && run && !run.terminal && !run.handoffStarted) {
         resetCapture('idle');
       }
       return;
@@ -602,25 +628,36 @@ export function createContentScript<Job>(
   };
 
   const autoActivate = (source: ActivationSource): void => {
-    if (disposed) return;
-    if (alreadyExpandedAndPopulated()) {
-      startCapture(source);
-      return;
-    }
-
-    // The transcript viewer is not rendered until the control is used, so a
-    // recognized lecture page activates capture by opening the transcript
-    // itself. The synthetic click also flows through the normal document
-    // listener, which keeps one activation path for user and automatic runs.
-    const button = findTranscriptButton(pageDocument, selectors);
-    if (!button || button.getAttribute('title') !== 'Show Transcript') return;
-    pageWindow.setTimeout(() => {
-      if (disposed) return;
-      const clickable = button as Partial<HTMLElement>;
-      if (typeof clickable.click === 'function') {
-        clickable.click();
+    stopAutoActivate();
+    const deadline = now() + OBSERVATION_TIMEOUT_MS;
+    const attempt = (): void => {
+      autoActivateId = null;
+      if (disposed || (run && !run.terminal)) return;
+      if (alreadyExpandedAndPopulated()) {
+        startCapture(source);
+        return;
       }
-    }, 0);
+
+      // The player is a client-rendered page, so the transcript control can
+      // appear after this script runs. Retry until the control exists, then
+      // open it; the synthetic click flows through the normal document
+      // listener, which keeps one activation path for user and automatic runs.
+      const button = findTranscriptButton(pageDocument, selectors);
+      if (button && button.getAttribute('title') === 'Show Transcript') {
+        pendingAutoOpen = true;
+        const clickable = button as Partial<HTMLElement>;
+        if (typeof clickable.click === 'function') {
+          clickable.click();
+        }
+        return;
+      }
+      if (now() >= deadline) {
+        pendingAutoOpen = false;
+        return;
+      }
+      autoActivateId = pageWindow.setTimeout(attempt, AUTO_ACTIVATE_RETRY_MS);
+    };
+    attempt();
   };
 
   const onUrlChange = (): void => {
@@ -651,6 +688,8 @@ export function createContentScript<Job>(
       pageWindow.removeEventListener('popstate', onPopState);
       if (urlPollId !== null) pageWindow.clearInterval(urlPollId);
       urlPollId = null;
+      stopAutoActivate();
+      pendingAutoOpen = false;
       if (run) disconnectRun(run);
       run = null;
     },

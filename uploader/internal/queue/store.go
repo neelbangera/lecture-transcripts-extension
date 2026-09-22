@@ -66,17 +66,10 @@ type Store struct {
 	path string
 }
 
-// TargetPath is the single write-once plain-transcript path. The term stays
-// part of the lecture identity and lectureKey but not of the repository path:
-// this repository holds one term only.
+// TargetPath is the single write-once plain-transcript path: the plain
+// transcript lives directly under the course slug. The term stays part of the
+// lecture identity and lectureKey but not of the repository path.
 func TargetPath(courseSlug string, lectureNumber int) string {
-	return fmt.Sprintf("%s/lectures/%03d.md", courseSlug, lectureNumber)
-}
-
-// PlainOnlyPath is the path for a lecture that has no timestamped form: the
-// plain transcript lives directly under the course slug and no timestamped
-// file is written.
-func PlainOnlyPath(courseSlug string, lectureNumber int) string {
 	return fmt.Sprintf("%s/%03d.md", courseSlug, lectureNumber)
 }
 
@@ -86,9 +79,6 @@ func TimestampedPath(courseSlug string, lectureNumber int) string {
 }
 
 func (j Job) TargetPath() string {
-	if strings.TrimSpace(j.Payload.TimestampedTranscript) == "" {
-		return PlainOnlyPath(j.Payload.CourseSlug, j.Payload.LectureNumber)
-	}
 	return TargetPath(j.Payload.CourseSlug, j.Payload.LectureNumber)
 }
 

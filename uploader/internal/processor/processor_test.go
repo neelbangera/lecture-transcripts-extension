@@ -1229,13 +1229,13 @@ func TestPlainOnlyPublishesSingleFile(t *testing.T) {
 	if publisher.createCalls != 1 {
 		t.Fatalf("create calls = %d, want 1", publisher.createCalls)
 	}
-	if _, ok := publisher.contents[queue.PlainOnlyPath(job.CourseSlug, job.LectureNumber)]; !ok {
-		t.Fatalf("plain-only content missing at %s", queue.PlainOnlyPath(job.CourseSlug, job.LectureNumber))
+	if _, ok := publisher.contents[queue.TargetPath(job.CourseSlug, job.LectureNumber)]; !ok {
+		t.Fatalf("plain-only content missing at %s", queue.TargetPath(job.CourseSlug, job.LectureNumber))
 	}
 	if _, ok := publisher.contents[queue.TimestampedPath(job.CourseSlug, job.LectureNumber)]; ok {
 		t.Fatal("plain-only job must not publish a timestamped file")
 	}
-	if stored.TargetPath() != queue.PlainOnlyPath(job.CourseSlug, job.LectureNumber) {
+	if stored.TargetPath() != queue.TargetPath(job.CourseSlug, job.LectureNumber) {
 		t.Fatalf("target path = %q", stored.TargetPath())
 	}
 }
