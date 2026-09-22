@@ -485,6 +485,11 @@ export function createContentScript<Job>(
       // Keep the state as handoff_pending: the background layer may have
       // retained the job in its outbox even though this call lost its reply.
       // It is unsafe for the page script to report a false rejection here.
+      // The capture is over either way, so a transcript this run opened is
+      // closed instead of being left open indefinitely.
+      capture.terminal = true;
+      disconnectRun(capture);
+      closeAutoOpenedTranscript(capture);
       return;
     }
 

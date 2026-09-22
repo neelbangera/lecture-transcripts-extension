@@ -291,6 +291,31 @@ describe("content coordinator activation", () => {
     controller.dispose();
   });
 
+  it("closes the transcript it opened even when the handoff is not acknowledged", async () => {
+    const dom = makeDom(lectureHtml);
+    const button = transcriptButton(dom);
+    button.setAttribute("title", "Show Transcript");
+    const clickSpy = vi.spyOn(button, "click");
+    const { parser } = fakeParser({});
+    const handoff = vi.fn<Handoff>(async () => {
+      throw new Error("background channel closed");
+    });
+    const controller = startCoordinator(dom, parser, handoff);
+
+    await vi.advanceTimersByTimeAsync(1);
+    button.setAttribute("title", "Hide Transcript");
+    const text = dom.window.document.querySelector(".transcript-text");
+    if (!text) throw new Error("fixture transcript text is missing");
+    text.textContent = READY_TRANSCRIPT;
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(STABILITY_DEBOUNCE_MS * 2);
+
+    expect(handoff).toHaveBeenCalledTimes(1);
+    expect(controller.getStatus()).toBe("handoff_pending");
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+    controller.dispose();
+  });
+
   it("starts exactly one capture from a Show Transcript click", async () => {
     const dom = makeDom(lectureHtml);
     const button = transcriptButton(dom);
