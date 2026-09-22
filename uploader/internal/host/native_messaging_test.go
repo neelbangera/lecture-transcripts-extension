@@ -407,7 +407,7 @@ func TestServerRunInvalidRequestNeverReachesHandler(t *testing.T) {
 }
 
 func TestServerRunSubmitRejectionReturnsAck(t *testing.T) {
-	job := `{"schemaVersion":1,"lectureKey":"eecs484/2026-fall/001","courseSlug":"eecs484","courseName":"EECS 484","term":"2026-fall","lectureNumber":1,"lectureDate":"2026-09-01","sourceUrl":"https://leccap.engin.umich.edu/a","capturedAt":"2026-09-20T12:34:56Z","transcript":"` + strings.Repeat("word ", 20) + `","timestampedTranscript":"","contentHash":"` + strings.Repeat("A", 64) + `"}`
+	job := `{"schemaVersion":1,"kind":"lecture","lectureKey":"eecs484/2026-fall/001","courseSlug":"eecs484","courseName":"EECS 484","term":"2026-fall","lectureNumber":1,"lectureDate":"2026-09-01","sourceUrl":"https://leccap.engin.umich.edu/a","capturedAt":"2026-09-20T12:34:56Z","transcript":"` + strings.Repeat("word ", 20) + `","timestampedTranscript":"","contentHash":"` + strings.Repeat("A", 64) + `"}`
 	payload := []byte(`{"type":"submit_job","protocolVersion":1,"requestId":"req-9","job":` + job + `}`)
 	handler := &recordingHandler{}
 	writer, err := runServer(t, bytes.NewReader(frame(payload)), handler, nil)

@@ -8,6 +8,7 @@ CREATE TABLE schema_migrations (
 
 CREATE TABLE jobs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL DEFAULT 'lecture',
   lecture_key TEXT NOT NULL,
   content_hash TEXT NOT NULL,
   job_json TEXT NOT NULL,
@@ -21,15 +22,16 @@ CREATE TABLE jobs (
   last_error_http_status INTEGER,
   remote_content_hash TEXT,
   remote_file_kind TEXT,
-  UNIQUE (lecture_key, content_hash),
+  UNIQUE (kind, lecture_key, content_hash),
   CHECK (attempt_count >= 0),
-  CHECK (length(content_hash) = 64)
+  CHECK (length(content_hash) = 64),
+  CHECK (kind IN ('lecture', 'discussion'))
 );
 
 CREATE INDEX jobs_ready_idx
   ON jobs (status, next_attempt_at, created_at);
 
 CREATE INDEX jobs_lecture_idx
-  ON jobs (lecture_key, created_at);
+  ON jobs (kind, lecture_key, created_at);
 
-INSERT INTO schema_migrations(version) VALUES (1);
+INSERT INTO schema_migrations(version) VALUES (2);

@@ -48,6 +48,12 @@ export const COURSE_MAPPINGS: readonly CourseConfig[] = Object.freeze([
     courseSlug: "eecs484",
     supportedTerms: Object.freeze(["2026-fall"]),
   }),
+  Object.freeze({
+    pageCourseText: "EECS 491",
+    courseName: "EECS 491",
+    courseSlug: "eecs491",
+    supportedTerms: Object.freeze(["2026-fall"]),
+  }),
 ]);
 
 const HUMAN_TERM_RE = /^\s*(Winter|Spring|Summer|Fall)\s+(\d{4})\s*$/i;

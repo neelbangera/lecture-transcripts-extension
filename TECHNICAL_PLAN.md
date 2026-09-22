@@ -170,10 +170,14 @@ TranscriptJob {
 courseSlug: lowercase alphanumeric only, e.g. "EECS 491" -> "eecs491", must match ^[a-z0-9]+$
 term: YYYY-season lowercase, e.g. "Winter 2026" -> "2026-winter", season in {winter,spring,summer,fall}. "Spring 2026" and "Summer 2026" are separate terms; the combined label "Spring/Summer 2026" is not a Phase 1 term and must fail closed.
 lectureNumber: integer 1-999, stored as integer in job + metadata block, zero-padded to 3 digits only in filename/path
+kind: "lecture" or "discussion"; the recording title decides it. A lecture title begins with its number ("01 Intro"); an observed discussion title begins with "Discussion N" ("Discussion 1"). A discussion and a lecture may share the same numeric identity, so kind disambiguates queue identity and paths.
 lectureKey: "<courseSlug>/<term>/<lectureNumber:03d>", e.g. "eecs491/2026-winter/006"
-plain path: "<courseSlug>/<lectureNumber:03d>.md", e.g. "eecs491/006.md"
-timestamped path: "<courseSlug>/timestamped/<lectureNumber:03d>.md", e.g. "eecs491/timestamped/006.md"
+lecture plain path: "<courseSlug>/<lectureNumber:03d>.md", e.g. "eecs491/006.md"
+lecture timestamped path: "<courseSlug>/timestamped/<lectureNumber:03d>.md", e.g. "eecs491/timestamped/006.md"
+discussion plain path: "<courseSlug>/discussions/<lectureNumber:03d>.md", e.g. "eecs491/discussions/001.md"
+discussion timestamped path: "<courseSlug>/discussions/timestamped/<lectureNumber:03d>.md", e.g. "eecs491/discussions/timestamped/001.md"
 A job with no timestamped form writes only the plain path; no timestamped file is written.
+Discussion dedup is first-capture-wins by kind+lectureKey: once any row for that discussion exists, later sections of the same discussion are acknowledged as duplicates even when their transcript differs, so no conflict is raised.
 The personal repository holds one term, so the term stays part of lectureKey but is not part of either repository path.
 ```
 
@@ -201,7 +205,7 @@ contentHash is lowercase hex SHA-256 (64 chars, ^[0-9a-f]{64}$) of one determini
     + ASCII(decimal UTF-8 byte length of transcript) + ASCII(":") + transcript UTF-8 bytes
     + ASCII(decimal UTF-8 byte length of timestampedTranscript) + ASCII(":") + timestampedTranscript UTF-8 bytes
 
-The version prefix, byte lengths, field order, separators, and empty timestamped form are normative. This prevents ambiguity and makes a meaningful timestamp change the hash. `transcript_sha256` in the bottom metadata block of each Markdown file MUST equal contentHash. Same hash at the same path is unchanged; different content is permanent_conflict.
+The version prefix, byte lengths, field order (kind immediately after schemaVersion), separators, and empty timestamped form are normative. This prevents ambiguity and makes a meaningful timestamp change the hash. `transcript_sha256` in the bottom metadata block of each Markdown file MUST equal contentHash. Same hash at the same path is unchanged; different content is permanent_conflict.
 
 Normalization (must be identical in TypeScript and Go) for hash stability. Reference implementations MUST share test vectors in `protocol/normalization-vectors.json` (created in Stage 1; minimal seed vectors below must pass):
 
@@ -397,6 +401,7 @@ When `authState` is `not_connected`, `reauthorization_required`, `target_reposit
   "additionalProperties": false,
   "properties": {
     "schemaVersion": { "const": 1 },
+    "kind": { "type": "string", "enum": ["lecture", "discussion"] },
     "lectureKey": { "type": "string", "pattern": "^[a-z0-9]+/[0-9]{4}-(winter|spring|summer|fall)/[0-9]{3}$", "maxLength": 128 },
     "courseSlug": { "type": "string", "pattern": "^[a-z0-9]+$", "maxLength": 64 },
     "courseName": { "type": "string", "minLength": 1, "maxLength": 256 },
@@ -411,6 +416,7 @@ When `authState` is `not_connected`, `reauthorization_required`, `target_reposit
   },
   "required": [
     "schemaVersion",
+    "kind",
     "lectureKey",
     "courseSlug",
     "courseName",
@@ -916,8 +922,8 @@ Acceptance checks:
 
 1. Implement the Markdown renderer in `uploader/internal/markdown/render.go`. It must produce two documents: the plain transcript (`## Transcript`) and the timestamped transcript (`## Timestamped transcript`), each followed by the same bottom metadata block. `transcript_sha256` == job `contentHash`. The timestamped document renders exactly one line per timestamp entry, joining caption continuation lines onto their entry with a single space. If `timestampedTranscript==""`, render `## Timestamped transcript` with `_No timestamped source; see Transcript._`.
 2. Sanitize or omit `source_url` according to the exact canonicalization and vector rules above. The extension pre-canonicalizes for fast rejection; the uploader repeats the operation and persists the canonical value before rendering. Split the canonical path on `/._-`, case-insensitive whole-segment match against `{token,session,auth,sid}` (so `author` does NOT trigger, `auth` does). Include in the metadata block only if host==`leccap.engin.umich.edu` and no segment matches. Else omit the field entirely. Never place session tokens, authorization parameters, query values, or unrelated page text in the metadata block. This keeps the artifact safe if the repository goes from private to public.
-3. Implement the GitHub client and Contents API operations in `uploader/internal/github/client.go` and `contents.go`. Send the documented `Accept: application/vnd.github+json` and `X-GitHub-Api-Version: 2026-03-10` headers. Use `GET /repos/{owner}/{repo}/contents/{path}?ref={configured branch}` then `PUT` create with `message="Add <courseName> lecture <N> (<path>)"` and `branch={configured branch}`. The configured branch is verified during Stage 0 and must be `main`; the placeholder means the validated config value, not a second runtime choice. Encode the branch as a query/body value, never by string concatenation into a path. Each GitHub Contents request has a 30-second total deadline; a timeout or cancellation is a retryable error, and no request may outlive the ten-minute queue lease. Omit custom author and committer objects so GitHub uses the authenticated App user identity. Commit message example: `Add EECS 491 lecture 6 (eecs491/006.md)`.
-4. For each queued job, derive both write-once paths: `<courseSlug>/<NNN>.md` and `<courseSlug>/timestamped/<NNN>.md` with NNN zero-padded 3 digits (e.g. `eecs491/006.md`). A job with an empty timestamped form writes only the plain path and no timestamped file. The metadata block `lecture:` stays integer (e.g. `6`), `term:` stays the normalized term, filename uses the padded number only.
+3. Implement the GitHub client and Contents API operations in `uploader/internal/github/client.go` and `contents.go`. Send the documented `Accept: application/vnd.github+json` and `X-GitHub-Api-Version: 2026-03-10` headers. Use `GET /repos/{owner}/{repo}/contents/{path}?ref={configured branch}` then `PUT` create with `message="Add <courseName> lecture <N> (<path>)"` and `branch={configured branch}`. The configured branch is verified during Stage 0 and must be `main`; the placeholder means the validated config value, not a second runtime choice. Encode the branch as a query/body value, never by string concatenation into a path. Each GitHub Contents request has a 30-second total deadline; a timeout or cancellation is a retryable error, and no request may outlive the ten-minute queue lease. Omit custom author and committer objects so GitHub uses the authenticated App user identity. Commit message format is `Add <courseName> <kind> <N> (<path>)`; examples: `Add EECS 491 lecture 6 (eecs491/006.md)` and `Add EECS 491 discussion 1 (eecs491/discussions/001.md)`.
+4. For each queued job, derive both write-once paths by kind with NNN zero-padded 3 digits: lectures use `<courseSlug>/<NNN>.md` and `<courseSlug>/timestamped/<NNN>.md` (e.g. `eecs491/006.md`); discussions use `<courseSlug>/discussions/<NNN>.md` and `<courseSlug>/discussions/timestamped/<NNN>.md` (e.g. `eecs491/discussions/001.md`). A job with an empty timestamped form writes only the plain path and no timestamped file. The metadata block `lecture:` stays integer (e.g. `6`), `term:` stays the normalized term, filename uses the padded number only.
 5. Read the target path before writing. If it does not exist (404), issue a create-only PUT without a sha. If the Contents API returns a directory object or a JSON array for the target path, classify it as `permanent_conflict` with a directory-at-file-path diagnostic; never treat it as a missing file. Any object whose `type` is not exactly `file` (including directory, symlink, and submodule) is a conflict. Accept only the documented created response as a successful upload. For an existing file, decode the documented base64 content, require the metadata block at the bottom of the document (a legacy top block is still accepted), and accept only one `transcript_sha256` scalar matching `^[0-9a-f]{64}$`. If it equals job `contentHash`, mark `unchanged` without commit. If the hash differs or the metadata block is unparseable/missing, mark `permanent_conflict` and do not update. Malformed remote files are never trusted for same-hash comparison. Never send a PUT containing sha in Phase 1. Each job publishes the plain file first and the timestamped file second; a retry re-inspects both, so a partially created pair is completed rather than duplicated.
 
 The write-once comparison intentionally trusts a valid remote `transcript_sha256` metadata field as the remote contract. If a person manually edits the Markdown body without changing that field, a later capture is classified as `unchanged`; Phase 1 does not attempt to reverse-engineer or overwrite manual edits. `SECURITY.md` and `TROUBLESHOOTING.md` must call this out as an accepted machine-owned-file invariant.

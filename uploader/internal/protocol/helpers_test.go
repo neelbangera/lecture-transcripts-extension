@@ -19,6 +19,7 @@ func testTranscript() string {
 func validTestJob() TranscriptJob {
 	return TranscriptJob{
 		SchemaVersion:         1,
+		Kind:                  "lecture",
 		LectureKey:            "eecs484/2026-fall/001",
 		CourseSlug:            "eecs484",
 		CourseName:            "EECS 484",

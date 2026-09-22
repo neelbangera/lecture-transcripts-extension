@@ -115,6 +115,7 @@ export type OverviewFetcher = (
 export interface ParsedLecture {
   supported: true;
   completion: "complete";
+  kind: "lecture" | "discussion";
   courseName: string;
   courseSlug: string;
   term: string;
@@ -156,6 +157,8 @@ const SOURCE_URL_HOST = "leccap.engin.umich.edu";
 
 const LOADING_ONLY_TRANSCRIPT = /^(?:loading…|loading transcript|no transcript)$/i;
 const RAW_TIMESTAMP = /^\d{1,2}:\d{2}(?::\d{2})?$/;
+/** Observed recording-title prefix for discussion recordings ("Discussion 1"). */
+const DISCUSSION_TITLE_PREFIX = /^\s*Discussion\s+(\d{1,3})\b/i;
 const MONTH_NAMES: Record<string, number> = {
   jan: 1,
   january: 1,
@@ -777,6 +780,7 @@ function extractIdentity(
   mappings: readonly CourseMapping[],
 ):
   | {
+      kind: "lecture" | "discussion";
       courseName: string;
       courseSlug: string;
       term: string;
@@ -846,16 +850,26 @@ function extractIdentity(
   }
   const numberMatcher = compileRegex(selectors.lectureNumberSelector.regex);
   const numberMatch = numberMatcher?.exec(textOf(numberElement)) ?? null;
-  const numberText = capture(numberMatch, selectors.lectureNumberSelector.captureGroup);
+  let numberText = capture(numberMatch, selectors.lectureNumberSelector.captureGroup);
+  let kind: "lecture" | "discussion" = "lecture";
+  if (!numberText) {
+    // The observed overview lists discussion recordings as "Discussion N"
+    // (badge "Discussion - 0NN" is not an identity); decoys such as
+    // "DISREGARD -- Empty discussion" or "Lecture recorded on ..." fail here.
+    const discussionMatch = DISCUSSION_TITLE_PREFIX.exec(textOf(numberElement));
+    numberText = discussionMatch ? discussionMatch[1] : null;
+    if (numberText) kind = "discussion";
+  }
   const lectureNumber = numberText ? Number(numberText) : Number.NaN;
   if (!numberText || !Number.isInteger(lectureNumber) || lectureNumber < 1 || lectureNumber > 999) {
     return reject(
       "rejected_ambiguous_metadata",
-      "the recording title has no valid numeric lecture prefix; the overview badge is not an identity",
+      "the recording title has no valid numeric lecture or discussion prefix; the overview badge is not an identity",
       { courseName: mapping.courseName, term, lectureNumber: null },
     );
   }
   return {
+    kind,
     courseName: mapping.courseName,
     courseSlug: mapping.courseSlug,
     term,
@@ -938,6 +952,7 @@ export async function parseLecturePage(
   return {
     supported: true,
     completion: "complete",
+    kind: identity.kind,
     courseName: identity.courseName,
     courseSlug: identity.courseSlug,
     term: identity.term,

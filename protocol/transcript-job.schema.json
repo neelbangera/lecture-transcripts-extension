@@ -7,6 +7,7 @@
   "additionalProperties": false,
   "properties": {
     "schemaVersion": { "const": 1 },
+    "kind": { "type": "string", "enum": ["lecture", "discussion"] },
     "lectureKey": { "type": "string", "pattern": "^[a-z0-9]+/[0-9]{4}-(winter|spring|summer|fall)/[0-9]{3}$", "maxLength": 128 },
     "courseSlug": { "type": "string", "pattern": "^[a-z0-9]+$", "maxLength": 64 },
     "courseName": { "type": "string", "minLength": 1, "maxLength": 256 },
@@ -21,6 +22,7 @@
   },
   "required": [
     "schemaVersion",
+    "kind",
     "lectureKey",
     "courseSlug",
     "courseName",

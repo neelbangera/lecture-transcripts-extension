@@ -229,9 +229,12 @@ Then verify the real flow:
    it again after the capture finishes.
 2. The popup shows the job in the uploader queue as `Queued for upload`, then
    `Uploaded` or `Already uploaded; unchanged`.
-3. The repository gains two files at `<courseSlug>/<NNN>.md` and
-   `<courseSlug>/timestamped/<NNN>.md` (a lecture with no timestamped form
-   writes only the plain file).
+3. The repository gains two files: lectures at `<courseSlug>/<NNN>.md` and
+   `<courseSlug>/timestamped/<NNN>.md`; discussions at
+   `<courseSlug>/discussions/<NNN>.md` and
+   `<courseSlug>/discussions/timestamped/<NNN>.md`. A recording with no
+   timestamped form writes only the plain file, and only the first captured
+   section of a discussion is kept.
 4. Reopening the same lecture creates no new commit.
 
 The per-sample render-time measurement is still an owner-side item; the recipe

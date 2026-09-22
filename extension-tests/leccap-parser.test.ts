@@ -272,6 +272,49 @@ describe("Leccap parser against the Stage 0 packet", () => {
     });
   });
 
+  it("parses a discussion recording and rejects discussion-shaped decoys", async () => {
+    const discussionDocument = makeDocument(
+      readFixture("lecture-page.html").replace(
+        '<span class="content-header-recording-title">01 Intro, [REDACTED]</span>',
+        '<span class="content-header-recording-title">Discussion 1, [REDACTED]</span>',
+      ),
+    ).document;
+    const discussion = await parseLecturePage(discussionDocument, {
+      selectors,
+      courseMappings: courseFixture.courseMappings,
+      sourceUrl: lectureUrl,
+      fetchOverview: fixtureFetcher(readFixture("overview-page.html")),
+    });
+    expect(discussion).toMatchObject({
+      supported: true,
+      kind: "discussion",
+      lectureNumber: 1,
+      lectureKey: "eecs484/2026-fall/001",
+    });
+
+    for (const decoy of [
+      "DISREGARD -- Empty discussion",
+      "Lecture recorded on 9/18/2026",
+    ]) {
+      const { document } = makeDocument(
+        readFixture("lecture-page.html").replace(
+          '<span class="content-header-recording-title">01 Intro, [REDACTED]</span>',
+          `<span class="content-header-recording-title">${decoy}</span>`,
+        ),
+      );
+      const rejected = await parseLecturePage(document, {
+        selectors,
+        courseMappings: courseFixture.courseMappings,
+        sourceUrl: lectureUrl,
+        fetchOverview: fixtureFetcher(readFixture("overview-page.html")),
+      });
+      expect(rejected).toMatchObject({
+        supported: false,
+        status: "rejected_ambiguous_metadata",
+      });
+    }
+  });
+
   it("accepts a textual month/day only with the validated term year", () => {
     const textualDateRegex = "^\\s*(.+?)\\s*(?:•|$)";
     expect(parseRecordingDate("Feb 12", textualDateRegex, 1, "2026-fall")).toBe(

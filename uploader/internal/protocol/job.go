@@ -16,12 +16,20 @@ const (
 	MaxSourceURLBytes    = 2048
 )
 
+// Transcript job kinds. A discussion and a lecture may share the same numeric
+// identity, so the kind disambiguates queue identity and repository paths.
+const (
+	KindLecture    = "lecture"
+	KindDiscussion = "discussion"
+)
+
 // TranscriptJob is the only protocol value allowed to carry transcript text.
 // Keep the field order in the canonical schema order: encoding/json preserves
 // struct field order, which is used for size measurements and cross-language
 // fixtures.
 type TranscriptJob struct {
 	SchemaVersion         int    `json:"schemaVersion"`
+	Kind                  string `json:"kind"`
 	LectureKey            string `json:"lectureKey"`
 	CourseSlug            string `json:"courseSlug"`
 	CourseName            string `json:"courseName"`

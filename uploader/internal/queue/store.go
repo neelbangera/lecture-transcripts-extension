@@ -21,6 +21,44 @@ import (
 //go:embed schema.sql
 var schemaSQL string
 
+// migration2SQL rebuilds the jobs table to add the kind column and replace the
+// unique key with (kind, lecture_key, content_hash). Existing rows are
+// lectures.
+const migration2SQL = `
+PRAGMA foreign_keys = OFF;
+BEGIN;
+CREATE TABLE jobs_v2 (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL DEFAULT 'lecture',
+  lecture_key TEXT NOT NULL,
+  content_hash TEXT NOT NULL,
+  job_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at TEXT,
+  lease_started_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  last_error_category TEXT,
+  last_error_http_status INTEGER,
+  remote_content_hash TEXT,
+  remote_file_kind TEXT,
+  UNIQUE (kind, lecture_key, content_hash),
+  CHECK (attempt_count >= 0),
+  CHECK (length(content_hash) = 64),
+  CHECK (kind IN ('lecture', 'discussion'))
+);
+INSERT INTO jobs_v2 (id, kind, lecture_key, content_hash, job_json, status, attempt_count, next_attempt_at, lease_started_at, created_at, updated_at, last_error_category, last_error_http_status, remote_content_hash, remote_file_kind)
+  SELECT id, 'lecture', lecture_key, content_hash, job_json, status, attempt_count, next_attempt_at, lease_started_at, created_at, updated_at, last_error_category, last_error_http_status, remote_content_hash, remote_file_kind FROM jobs;
+DROP TABLE jobs;
+ALTER TABLE jobs_v2 RENAME TO jobs;
+CREATE INDEX jobs_ready_idx ON jobs (status, next_attempt_at, created_at);
+CREATE INDEX jobs_lecture_idx ON jobs (kind, lecture_key, created_at);
+INSERT INTO schema_migrations(version) VALUES (2);
+COMMIT;
+PRAGMA foreign_keys = ON;
+`
+
 var (
 	ErrAlreadyRunning    = errors.New("already_running")
 	ErrJobNotFound       = errors.New("job not found")
@@ -66,24 +104,31 @@ type Store struct {
 	path string
 }
 
-// TargetPath is the single write-once plain-transcript path: the plain
-// transcript lives directly under the course slug. The term stays part of the
-// lecture identity and lectureKey but not of the repository path.
-func TargetPath(courseSlug string, lectureNumber int) string {
+// TargetPath is the single write-once plain-transcript path. Lectures live
+// directly under the course slug; discussions live in the course's discussions
+// folder. The term stays part of the lecture identity and lectureKey but not
+// of the repository path.
+func TargetPath(kind, courseSlug string, lectureNumber int) string {
+	if kind == protocol.KindDiscussion {
+		return fmt.Sprintf("%s/discussions/%03d.md", courseSlug, lectureNumber)
+	}
 	return fmt.Sprintf("%s/%03d.md", courseSlug, lectureNumber)
 }
 
 // TimestampedPath is the write-once timestamped-transcript path.
-func TimestampedPath(courseSlug string, lectureNumber int) string {
+func TimestampedPath(kind, courseSlug string, lectureNumber int) string {
+	if kind == protocol.KindDiscussion {
+		return fmt.Sprintf("%s/discussions/timestamped/%03d.md", courseSlug, lectureNumber)
+	}
 	return fmt.Sprintf("%s/timestamped/%03d.md", courseSlug, lectureNumber)
 }
 
 func (j Job) TargetPath() string {
-	return TargetPath(j.Payload.CourseSlug, j.Payload.LectureNumber)
+	return TargetPath(j.Payload.Kind, j.Payload.CourseSlug, j.Payload.LectureNumber)
 }
 
 func (j Job) TimestampedPath() string {
-	return TimestampedPath(j.Payload.CourseSlug, j.Payload.LectureNumber)
+	return TimestampedPath(j.Payload.Kind, j.Payload.CourseSlug, j.Payload.LectureNumber)
 }
 
 func Open(path string) (*Store, error) {
@@ -166,7 +211,13 @@ func migrate(db *sql.DB) error {
 	if err := db.QueryRow(`SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&version); err != nil {
 		return fmt.Errorf("read queue schema version: %w", err)
 	}
-	if version != 1 {
+	if version == 1 {
+		if _, err := db.Exec(migration2SQL); err != nil {
+			return fmt.Errorf("migrate queue schema to version 2: %w", err)
+		}
+		version = 2
+	}
+	if version != 2 {
 		return fmt.Errorf("%w: %d", ErrUnsupportedSchema, version)
 	}
 	return nil
@@ -190,7 +241,13 @@ func (s *Store) Enqueue(job protocol.TranscriptJob, now time.Time) (EnqueueResul
 
 	var existingID int64
 	var existingStatus string
-	err = tx.QueryRow(`SELECT id, status FROM jobs WHERE lecture_key = ? AND content_hash = ?`, canonical.LectureKey, canonical.ContentHash).Scan(&existingID, &existingStatus)
+	if canonical.Kind == protocol.KindDiscussion {
+		// First capture wins: any existing discussion row, whatever its hash,
+		// covers the discussion identity, so later sections are duplicates.
+		err = tx.QueryRow(`SELECT id, status FROM jobs WHERE kind = ? AND lecture_key = ? ORDER BY id LIMIT 1`, canonical.Kind, canonical.LectureKey).Scan(&existingID, &existingStatus)
+	} else {
+		err = tx.QueryRow(`SELECT id, status FROM jobs WHERE kind = ? AND lecture_key = ? AND content_hash = ?`, canonical.Kind, canonical.LectureKey, canonical.ContentHash).Scan(&existingID, &existingStatus)
+	}
 	if err == nil {
 		return duplicateResult(existingID, protocol.QueueStatus(existingStatus)), nil
 	}
@@ -208,8 +265,8 @@ func (s *Store) Enqueue(job protocol.TranscriptJob, now time.Time) (EnqueueResul
 
 	nowText := formatTime(now)
 	result, err := tx.Exec(
-		`INSERT INTO jobs (lecture_key, content_hash, job_json, status, attempt_count, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)`,
-		canonical.LectureKey, canonical.ContentHash, string(payload), protocol.StatusQueued, nowText, nowText,
+		`INSERT INTO jobs (kind, lecture_key, content_hash, job_json, status, attempt_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
+		canonical.Kind, canonical.LectureKey, canonical.ContentHash, string(payload), protocol.StatusQueued, nowText, nowText,
 	)
 	if err != nil {
 		return EnqueueResult{}, err

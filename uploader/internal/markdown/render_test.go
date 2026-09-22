@@ -12,6 +12,7 @@ const goldenHash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab
 func goldenJob() protocol.TranscriptJob {
 	return protocol.TranscriptJob{
 		SchemaVersion:         1,
+		Kind:                  "lecture",
 		LectureKey:            "eecs491/2026-winter/006",
 		CourseSlug:            "eecs491",
 		CourseName:            "EECS 491",

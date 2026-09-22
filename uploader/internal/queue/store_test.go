@@ -26,6 +26,7 @@ func testHash(seed string) string {
 func testJob(number int) protocol.TranscriptJob {
 	return protocol.TranscriptJob{
 		SchemaVersion:         1,
+		Kind:                  "lecture",
 		LectureKey:            fmt.Sprintf("eecs491/2026-winter/%03d", number),
 		CourseSlug:            "eecs491",
 		CourseName:            "EECS 491",
@@ -139,7 +140,7 @@ func TestOpenIsIdempotentAndRejectsFutureSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("raw open: %v", err)
 	}
-	if _, err := raw.Exec(`UPDATE schema_migrations SET version = 2`); err != nil {
+	if _, err := raw.Exec(`UPDATE schema_migrations SET version = 3`); err != nil {
 		t.Fatalf("bump schema: %v", err)
 	}
 	raw.Close()
@@ -167,7 +168,7 @@ func TestSchemaColumnsAndIndexes(t *testing.T) {
 		columns = append(columns, name)
 	}
 	want := []string{
-		"id", "lecture_key", "content_hash", "job_json", "status", "attempt_count",
+		"id", "kind", "lecture_key", "content_hash", "job_json", "status", "attempt_count",
 		"next_attempt_at", "lease_started_at", "created_at", "updated_at",
 		"last_error_category", "last_error_http_status", "remote_content_hash", "remote_file_kind",
 	}
@@ -914,5 +915,127 @@ func TestPlainOnlyTargetPath(t *testing.T) {
 	withTimestamps := Job{Payload: testJob(2)}
 	if got, want := withTimestamps.TargetPath(), "eecs491/002.md"; got != want {
 		t.Fatalf("timestamped target path = %q, want %q", got, want)
+	}
+}
+
+func TestMigrationFromVersion1AddsKind(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "queue.sqlite3")
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("raw open: %v", err)
+	}
+	legacySchema := `
+CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY);
+CREATE TABLE jobs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lecture_key TEXT NOT NULL,
+  content_hash TEXT NOT NULL,
+  job_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at TEXT,
+  lease_started_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  last_error_category TEXT,
+  last_error_http_status INTEGER,
+  remote_content_hash TEXT,
+  remote_file_kind TEXT,
+  UNIQUE (lecture_key, content_hash),
+  CHECK (attempt_count >= 0),
+  CHECK (length(content_hash) = 64)
+);
+CREATE INDEX jobs_ready_idx ON jobs (status, next_attempt_at, created_at);
+CREATE INDEX jobs_lecture_idx ON jobs (lecture_key, created_at);
+INSERT INTO schema_migrations(version) VALUES (1);
+`
+	if _, err := raw.Exec(legacySchema); err != nil {
+		t.Fatalf("apply legacy schema: %v", err)
+	}
+	job := testJob(1)
+	payload, err := job.MarshalCanonical()
+	if err != nil {
+		t.Fatalf("MarshalCanonical: %v", err)
+	}
+	if _, err := raw.Exec(
+		`INSERT INTO jobs (lecture_key, content_hash, job_json, status, attempt_count, created_at, updated_at) VALUES (?, ?, ?, 'uploaded', 0, ?, ?)`,
+		job.LectureKey, job.ContentHash, string(payload), "2026-02-12T18:03:22Z", "2026-02-12T18:03:22Z",
+	); err != nil {
+		t.Fatalf("insert legacy row: %v", err)
+	}
+	raw.Close()
+
+	store, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open migrated store: %v", err)
+	}
+	defer store.Close()
+	var version int
+	if err := store.db.QueryRow(`SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil {
+		t.Fatalf("read version: %v", err)
+	}
+	if version != 2 {
+		t.Fatalf("version = %d, want 2", version)
+	}
+	var kind string
+	if err := store.db.QueryRow(`SELECT kind FROM jobs WHERE id = 1`).Scan(&kind); err != nil {
+		t.Fatalf("read kind: %v", err)
+	}
+	if kind != protocol.KindLecture {
+		t.Fatalf("migrated kind = %q, want lecture", kind)
+	}
+	job2 := testJob(2)
+	job2.Kind = protocol.KindDiscussion
+	if _, err := store.Enqueue(job2, baseTime); err != nil {
+		t.Fatalf("enqueue discussion after migration: %v", err)
+	}
+}
+
+func TestDiscussionPathsAndFirstCaptureWins(t *testing.T) {
+	if got, want := TargetPath(protocol.KindDiscussion, "eecs491", 1), "eecs491/discussions/001.md"; got != want {
+		t.Fatalf("discussion target path = %q, want %q", got, want)
+	}
+	if got, want := TimestampedPath(protocol.KindDiscussion, "eecs491", 1), "eecs491/discussions/timestamped/001.md"; got != want {
+		t.Fatalf("discussion timestamped path = %q, want %q", got, want)
+	}
+
+	store := newStore(t)
+	first := testJob(1)
+	first.Kind = protocol.KindDiscussion
+	first.TimestampedTranscript = ""
+	result, err := store.Enqueue(first, baseTime)
+	if err != nil {
+		t.Fatalf("Enqueue first discussion: %v", err)
+	}
+	if result.Outcome != EnqueueQueued {
+		t.Fatalf("first discussion outcome = %v, want queued", result.Outcome)
+	}
+
+	secondSection := testJob(1)
+	secondSection.Kind = protocol.KindDiscussion
+	secondSection.ContentHash = testHash("other-section")
+	result, err = store.Enqueue(secondSection, baseTime)
+	if err != nil {
+		t.Fatalf("Enqueue second section: %v", err)
+	}
+	if result.Outcome != EnqueueDuplicate {
+		t.Fatalf("second section outcome = %v, want duplicate", result.Outcome)
+	}
+
+	counts, err := store.Counts()
+	if err != nil {
+		t.Fatalf("Counts: %v", err)
+	}
+	if counts.Queued != 1 {
+		t.Fatalf("queued = %d, want 1", counts.Queued)
+	}
+
+	lecture := testJob(1)
+	result, err = store.Enqueue(lecture, baseTime)
+	if err != nil {
+		t.Fatalf("Enqueue lecture 1: %v", err)
+	}
+	if result.Outcome != EnqueueQueued {
+		t.Fatalf("lecture 1 outcome = %v, want queued (kind disambiguates)", result.Outcome)
 	}
 }

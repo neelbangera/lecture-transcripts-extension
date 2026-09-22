@@ -170,8 +170,9 @@ never assumes conditional-create semantics. A same-hash remote file is
 `unchanged`. A different hash, a directory, a symlink, a submodule, or a
 malformed file is `permanent_conflict` and the remote content is left untouched.
 Only the configured machine-owned lecture paths
-(`<courseSlug>/<NNN>.md` and `<courseSlug>/timestamped/<NNN>.md`) are ever
-written.
+(`<courseSlug>/<NNN>.md`, `<courseSlug>/timestamped/<NNN>.md`,
+`<courseSlug>/discussions/<NNN>.md`, and
+`<courseSlug>/discussions/timestamped/<NNN>.md`) are ever written.
 
 ## Reset semantics
 

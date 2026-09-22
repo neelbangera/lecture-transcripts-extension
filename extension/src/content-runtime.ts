@@ -348,6 +348,7 @@ export function createContentRuntimeParser(
       }
       try {
         const job = createTranscriptJob({
+          kind: parsed.kind,
           courseName: parsed.courseName,
           courseSlug: parsed.courseSlug,
           term: parsed.term,

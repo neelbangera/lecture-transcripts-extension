@@ -46,7 +46,7 @@ type PublishResult struct {
 
 // CommitMessage is the exact create-commit message for a job and its path.
 func CommitMessage(job protocol.TranscriptJob, path string) string {
-	return fmt.Sprintf("Add %s lecture %d (%s)", job.CourseName, job.LectureNumber, path)
+	return fmt.Sprintf("Add %s %s %d (%s)", job.CourseName, job.Kind, job.LectureNumber, path)
 }
 
 var hashValuePattern = regexp.MustCompile(`^[0-9a-f]{64}$`)

@@ -147,7 +147,7 @@ func DecodeRequest(data []byte) (Request, error) {
 // to a zero value that happens to be valid (for example an empty
 // timestampedTranscript).
 var transcriptJobKeys = []string{
-	"schemaVersion", "lectureKey", "courseSlug", "courseName", "term",
+	"schemaVersion", "kind", "lectureKey", "courseSlug", "courseName", "term",
 	"lectureNumber", "lectureDate", "sourceUrl", "capturedAt", "transcript",
 	"timestampedTranscript", "contentHash",
 }
@@ -185,6 +185,9 @@ func decodeJob(data []byte) (TranscriptJob, error) {
 // and the minimum useful transcript size.
 func ValidateJob(job TranscriptJob) error {
 	if job.SchemaVersion != ProtocolVersion {
+		return validationError(ErrorRejectedInvalidSchema)
+	}
+	if job.Kind != KindLecture && job.Kind != KindDiscussion {
 		return validationError(ErrorRejectedInvalidSchema)
 	}
 	if !lectureKeyPattern.MatchString(job.LectureKey) || runeLen(job.LectureKey) > 128 {

@@ -34,6 +34,7 @@ func testHash(seed string) string {
 func testJob(number int) protocol.TranscriptJob {
 	return protocol.TranscriptJob{
 		SchemaVersion:         1,
+		Kind:                  "lecture",
 		LectureKey:            fmt.Sprintf("eecs491/2026-winter/%03d", number),
 		CourseSlug:            "eecs491",
 		CourseName:            "EECS 491",
@@ -351,8 +352,8 @@ func TestSubmitDuplicateReturnsAlreadyQueued(t *testing.T) {
 func TestSameHashMarksUnchanged(t *testing.T) {
 	p, store, _, publisher, _ := newTestProcessor(t)
 	job := testJob(1)
-	publisher.remote[queue.TargetPath(job.CourseSlug, job.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &job.ContentHash}
-	publisher.remote[queue.TimestampedPath(job.CourseSlug, job.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &job.ContentHash}
+	publisher.remote[queue.TargetPath(job.Kind, job.CourseSlug, job.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &job.ContentHash}
+	publisher.remote[queue.TimestampedPath(job.Kind, job.CourseSlug, job.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &job.ContentHash}
 
 	submitJob(t, p, "req-1", job)
 	if _, err := p.drainOnce(context.Background()); err != nil {
@@ -377,7 +378,7 @@ func TestDifferentHashMarksPermanentConflict(t *testing.T) {
 	p, store, _, publisher, _ := newTestProcessor(t)
 	job := testJob(1)
 	remoteHash := testHash("remote-different")
-	publisher.remote[queue.TargetPath(job.CourseSlug, job.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &remoteHash}
+	publisher.remote[queue.TargetPath(job.Kind, job.CourseSlug, job.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &remoteHash}
 
 	submitJob(t, p, "req-1", job)
 	if _, err := p.drainOnce(context.Background()); err != nil {
@@ -409,7 +410,7 @@ func TestDifferentHashMarksPermanentConflict(t *testing.T) {
 func TestMalformedRemoteMarksPermanentConflict(t *testing.T) {
 	p, store, _, publisher, _ := newTestProcessor(t)
 	job := testJob(1)
-	publisher.remote[queue.TargetPath(job.CourseSlug, job.LectureNumber)] = fakeRemote{kind: protocol.RemoteMalformed}
+	publisher.remote[queue.TargetPath(job.Kind, job.CourseSlug, job.LectureNumber)] = fakeRemote{kind: protocol.RemoteMalformed}
 
 	submitJob(t, p, "req-1", job)
 	if _, err := p.drainOnce(context.Background()); err != nil {
@@ -746,7 +747,7 @@ func TestRetryCommandEligibility(t *testing.T) {
 	if err := store.MarkPermanentConflict(claimed.ID, string(protocol.ErrorInternal), nil, nil, string(protocol.RemoteMissing), baseTime); err != nil {
 		t.Fatalf("MarkPermanentConflict: %v", err)
 	}
-	path := queue.TargetPath(conflict.CourseSlug, conflict.LectureNumber)
+	path := queue.TargetPath(conflict.Kind, conflict.CourseSlug, conflict.LectureNumber)
 	publisher.remote[path] = fakeRemote{kind: protocol.RemoteFile, hash: &conflict.ContentHash}
 	response, err = p.HandleRequest(ctx, retryRequest("retry-conflict", claimed.ID))
 	if err != nil {
@@ -979,8 +980,8 @@ func TestWriteOnceFixtures(t *testing.T) {
 
 	unchangedJob := testJob(1)
 	unchangedJob.ContentHash = sameHash
-	publisher.remote[queue.TargetPath(unchangedJob.CourseSlug, unchangedJob.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &sameHash}
-	publisher.remote[queue.TimestampedPath(unchangedJob.CourseSlug, unchangedJob.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &sameHash}
+	publisher.remote[queue.TargetPath(unchangedJob.Kind, unchangedJob.CourseSlug, unchangedJob.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &sameHash}
+	publisher.remote[queue.TimestampedPath(unchangedJob.Kind, unchangedJob.CourseSlug, unchangedJob.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &sameHash}
 	submitJob(t, p, "req-same", unchangedJob)
 	if _, err := p.drainOnce(ctx); err != nil {
 		t.Fatalf("drainOnce same: %v", err)
@@ -995,7 +996,7 @@ func TestWriteOnceFixtures(t *testing.T) {
 
 	conflictJob := testJob(2)
 	conflictJob.ContentHash = testHash("conflict-local")
-	publisher.remote[queue.TargetPath(conflictJob.CourseSlug, conflictJob.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &differentHash}
+	publisher.remote[queue.TargetPath(conflictJob.Kind, conflictJob.CourseSlug, conflictJob.LectureNumber)] = fakeRemote{kind: protocol.RemoteFile, hash: &differentHash}
 	submitJob(t, p, "req-different", conflictJob)
 	if _, err := p.drainOnce(ctx); err != nil {
 		t.Fatalf("drainOnce different: %v", err)
@@ -1009,7 +1010,7 @@ func TestWriteOnceFixtures(t *testing.T) {
 	}
 
 	malformedJob := testJob(3)
-	publisher.remote[queue.TargetPath(malformedJob.CourseSlug, malformedJob.LectureNumber)] = fakeRemote{kind: protocol.RemoteMalformed}
+	publisher.remote[queue.TargetPath(malformedJob.Kind, malformedJob.CourseSlug, malformedJob.LectureNumber)] = fakeRemote{kind: protocol.RemoteMalformed}
 	submitJob(t, p, "req-malformed", malformedJob)
 	if _, err := p.drainOnce(ctx); err != nil {
 		t.Fatalf("drainOnce malformed: %v", err)
@@ -1229,13 +1230,48 @@ func TestPlainOnlyPublishesSingleFile(t *testing.T) {
 	if publisher.createCalls != 1 {
 		t.Fatalf("create calls = %d, want 1", publisher.createCalls)
 	}
-	if _, ok := publisher.contents[queue.TargetPath(job.CourseSlug, job.LectureNumber)]; !ok {
-		t.Fatalf("plain-only content missing at %s", queue.TargetPath(job.CourseSlug, job.LectureNumber))
+	if _, ok := publisher.contents[queue.TargetPath(job.Kind, job.CourseSlug, job.LectureNumber)]; !ok {
+		t.Fatalf("plain-only content missing at %s", queue.TargetPath(job.Kind, job.CourseSlug, job.LectureNumber))
 	}
-	if _, ok := publisher.contents[queue.TimestampedPath(job.CourseSlug, job.LectureNumber)]; ok {
+	if _, ok := publisher.contents[queue.TimestampedPath(job.Kind, job.CourseSlug, job.LectureNumber)]; ok {
 		t.Fatal("plain-only job must not publish a timestamped file")
 	}
-	if stored.TargetPath() != queue.TargetPath(job.CourseSlug, job.LectureNumber) {
+	if stored.TargetPath() != queue.TargetPath(job.Kind, job.CourseSlug, job.LectureNumber) {
 		t.Fatalf("target path = %q", stored.TargetPath())
+	}
+}
+
+func TestDiscussionPublishesToDiscussionsFolder(t *testing.T) {
+	p, store, _, publisher, _ := newTestProcessor(t)
+	job := testJob(1)
+	job.Kind = protocol.KindDiscussion
+	submitJob(t, p, "req-discussion", job)
+
+	if _, err := p.drainOnce(context.Background()); err != nil {
+		t.Fatalf("drainOnce: %v", err)
+	}
+	stored, err := store.Get(1)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if stored.Status != protocol.StatusUploaded {
+		t.Fatalf("status = %s, want uploaded", stored.Status)
+	}
+	if publisher.createCalls != 2 {
+		t.Fatalf("create calls = %d, want 2", publisher.createCalls)
+	}
+	plainPath := queue.TargetPath(protocol.KindDiscussion, job.CourseSlug, job.LectureNumber)
+	timestampedPath := queue.TimestampedPath(protocol.KindDiscussion, job.CourseSlug, job.LectureNumber)
+	if plainPath != "eecs491/discussions/001.md" || timestampedPath != "eecs491/discussions/timestamped/001.md" {
+		t.Fatalf("discussion paths = %q / %q", plainPath, timestampedPath)
+	}
+	if _, ok := publisher.contents[plainPath]; !ok {
+		t.Fatalf("missing discussion plain content at %s", plainPath)
+	}
+	if _, ok := publisher.contents[timestampedPath]; !ok {
+		t.Fatalf("missing discussion timestamped content at %s", timestampedPath)
+	}
+	if stored.TargetPath() != plainPath {
+		t.Fatalf("stored target path = %q, want %q", stored.TargetPath(), plainPath)
 	}
 }

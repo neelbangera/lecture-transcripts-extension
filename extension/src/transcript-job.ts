@@ -37,6 +37,7 @@ const CAPTURED_AT_RE =
 
 const TRANSCRIPT_JOB_FIELDS = [
   "schemaVersion",
+  "kind",
   "lectureKey",
   "courseSlug",
   "courseName",
@@ -52,8 +53,12 @@ const TRANSCRIPT_JOB_FIELDS = [
 
 export type TranscriptJobField = (typeof TRANSCRIPT_JOB_FIELDS)[number];
 
+export type TranscriptJobKind = "lecture" | "discussion";
+
 export interface TranscriptJob {
   readonly schemaVersion: typeof TRANSCRIPT_JOB_SCHEMA_VERSION;
+  /** Lecture or discussion; disambiguates equal numeric identities. */
+  readonly kind: TranscriptJobKind;
   readonly lectureKey: string;
   readonly courseSlug: string;
   readonly courseName: string;
@@ -69,6 +74,7 @@ export interface TranscriptJob {
 }
 
 export interface TranscriptJobInput {
+  readonly kind?: TranscriptJobKind;
   readonly courseName: string;
   readonly courseSlug?: string;
   readonly term: string;
@@ -198,6 +204,7 @@ function canonicalJobObject(job: TranscriptJob): TranscriptJob {
   // when a caller supplied an object with a different insertion order.
   return {
     schemaVersion: job.schemaVersion,
+    kind: job.kind,
     lectureKey: job.lectureKey,
     courseSlug: job.courseSlug,
     courseName: job.courseName,
@@ -363,6 +370,14 @@ export function validateTranscriptJob(value: unknown): TranscriptJobValidationRe
       "rejected_invalid_schema",
       "schemaVersion must equal 1",
       "schemaVersion",
+    );
+  }
+
+  if (value.kind !== "lecture" && value.kind !== "discussion") {
+    return validationFailure(
+      "rejected_invalid_schema",
+      "kind must be lecture or discussion",
+      "kind",
     );
   }
 
@@ -646,6 +661,7 @@ export function createTranscriptJob(input: TranscriptJobInput): TranscriptJob {
 
   const job: TranscriptJob = {
     schemaVersion: TRANSCRIPT_JOB_SCHEMA_VERSION,
+    kind: input.kind ?? "lecture",
     lectureKey: deriveLectureKey(mapping.courseSlug, normalizedTerm, input.lectureNumber),
     courseSlug: mapping.courseSlug,
     courseName: mapping.courseName,
