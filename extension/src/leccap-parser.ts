@@ -735,7 +735,7 @@ async function resolveLectureDate(
   if (matches.length !== 1) {
     return reject(
       "rejected_ambiguous_metadata",
-      `the linked overview has ${matches.length} player-link matches; exactly one is required`,
+      `the linked overview has ${cards.length} recording cards and ${matches.length} player-link matches; exactly one is required`,
     );
   }
   const dateElement = queryOne(matches[0], source.dateSelector);
