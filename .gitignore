@@ -23,3 +23,6 @@ coverage/
 /closed.html
 /*.mhtml
 /raw-captures/
+
+# Unrelated local coursework artifact, not part of this project.
+/proj1.tar.gz
