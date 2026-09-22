@@ -259,7 +259,7 @@ export function createProductionContentDependencies(
     handoff: createRuntimeHandoff(),
     onStatus: (status) => {
       // Status-only diagnostics; never logs transcript text or page content.
-      console.debug("[lecture-transcripts] capture status:", status);
+      console.log("[lecture-transcripts] capture status:", status);
     },
   };
 }
