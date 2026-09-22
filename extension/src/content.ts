@@ -656,6 +656,7 @@ export function installContentRuntime(): ContentScriptController | null {
   if (typeof __STAGE0_SELECTORS__ === 'undefined') return null;
 
   contentRuntimeInstalled = true;
+  console.log("[lecture-transcripts] content runtime build=overview-iframe-1");
   return createContentScript(
     createProductionContentDependencies(__STAGE0_SELECTORS__),
   );
