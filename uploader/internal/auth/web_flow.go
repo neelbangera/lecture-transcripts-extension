@@ -537,7 +537,7 @@ func (m *Manager) requestDeviceCode(ctx context.Context) (*Challenge, error) {
 		DeviceCode:              response.DeviceCode,
 		UserCode:                response.UserCode,
 		VerificationURI:         response.VerificationURI,
-		VerificationURIComplete: response.VerificationURIComplete,
+		VerificationURIComplete: completeVerificationURI(response.VerificationURI, response.UserCode, response.VerificationURIComplete),
 		ExpiresAt:               m.now().Add(time.Duration(response.ExpiresIn) * time.Second),
 		Interval:                interval,
 	}
@@ -550,6 +550,27 @@ func (m *Manager) requestDeviceCode(ctx context.Context) (*Challenge, error) {
 	m.setChallenge(&challenge)
 	m.setState(protocol.AuthAuthorizing)
 	return &challenge, nil
+}
+
+// completeVerificationURI returns the server-provided
+// verification_uri_complete when present. GitHub currently omits it from the
+// device-code response, so a valid github.com verification URI is prefilled
+// with the user code; the popup can then authorize with one click.
+func completeVerificationURI(verificationURI, userCode, complete string) string {
+	if complete != "" {
+		return complete
+	}
+	if verificationURI == "" || userCode == "" {
+		return ""
+	}
+	parsed, err := url.Parse(verificationURI)
+	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || !strings.EqualFold(parsed.Hostname(), "github.com") {
+		return ""
+	}
+	query := parsed.Query()
+	query.Set("user_code", userCode)
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }
 
 func (m *Manager) failDeviceFlow() (protocol.AuthState, error) {

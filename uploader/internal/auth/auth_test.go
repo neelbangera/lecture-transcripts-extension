@@ -271,6 +271,29 @@ func TestBeginPersistsTransaction(t *testing.T) {
 	}
 }
 
+func TestBeginSynthesizesCompleteVerificationURI(t *testing.T) {
+	store := &fakeStore{}
+	server := newAuthServer(t)
+	server.deviceCodeBody = `{"device_code":"device-secret","user_code":"ABCD-1234","verification_uri":"https://github.com/login/device","expires_in":900,"interval":5}`
+	clock := newFakeClock()
+	verifier := &fakeVerifier{}
+	manager := testManager(t, store, server, verifier, clock)
+
+	challenge, err := manager.Begin(context.Background())
+	if err != nil {
+		t.Fatalf("Begin: %v", err)
+	}
+	if challenge == nil {
+		t.Fatal("expected a challenge for a new flow")
+	}
+	if want := "https://github.com/login/device?user_code=ABCD-1234"; challenge.VerificationURIComplete != want {
+		t.Fatalf("verification URI complete = %q, want %q", challenge.VerificationURIComplete, want)
+	}
+	if store.transaction == nil || store.transaction.VerificationURIComplete != challenge.VerificationURIComplete {
+		t.Fatal("synthesized complete URI must be persisted with the transaction")
+	}
+}
+
 func TestPollPendingSlowDownThenSuccess(t *testing.T) {
 	store := &fakeStore{}
 	server := newAuthServer(t)
