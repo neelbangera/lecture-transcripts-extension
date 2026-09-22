@@ -16,7 +16,7 @@ export const URL_POLL_INTERVAL_MS = 1000;
 
 declare const __STAGE0_SELECTORS__: SelectorFixture;
 
-export type ActivationSource = 'click' | 'already-expanded' | 'url-change';
+export type ActivationSource = 'click' | 'already-expanded' | 'url-change' | 'page-load';
 
 export type PageCaptureStatus =
   | 'idle'
@@ -601,15 +601,37 @@ export function createContentScript<Job>(
     pageWindow.setTimeout(() => startCapture('click'), 0);
   };
 
+  const autoActivate = (source: ActivationSource): void => {
+    if (disposed) return;
+    if (alreadyExpandedAndPopulated()) {
+      startCapture(source);
+      return;
+    }
+
+    // The transcript viewer is not rendered until the control is used, so a
+    // recognized lecture page activates capture by opening the transcript
+    // itself. The synthetic click also flows through the normal document
+    // listener, which keeps one activation path for user and automatic runs.
+    const button = findTranscriptButton(pageDocument, selectors);
+    if (!button || button.getAttribute('title') !== 'Show Transcript') return;
+    pageWindow.setTimeout(() => {
+      if (disposed) return;
+      const clickable = button as Partial<HTMLElement>;
+      if (typeof clickable.click === 'function') {
+        clickable.click();
+      }
+    }, 0);
+  };
+
   const onUrlChange = (): void => {
     const nextUrl = pageWindow.location.href;
     if (nextUrl === lastUrl) return;
     lastUrl = nextUrl;
     resetCapture('idle');
 
-    // A URL change is a reset, not a generic page-visit trigger.  Only a
-    // visible, open, populated transcript at the new URL can start a run.
-    if (alreadyExpandedAndPopulated()) startCapture('url-change');
+    // A URL change is a reset, then the same automatic activation rule as a
+    // fresh page load: only a recognized lecture page opens and captures.
+    autoActivate('url-change');
   };
 
   const onPopState = (): void => onUrlChange();
@@ -617,9 +639,9 @@ export function createContentScript<Job>(
   pageWindow.addEventListener('popstate', onPopState);
   urlPollId = pageWindow.setInterval(onUrlChange, URL_POLL_INTERVAL_MS);
 
-  // This check intentionally runs once.  A merely preloaded/empty or hidden
-  // transcript is not enough to authorize capture on a normal page visit.
-  if (alreadyExpandedAndPopulated()) startCapture('already-expanded');
+  // A recognized lecture page captures on load: an already-open transcript is
+  // captured directly, otherwise the transcript control is opened first.
+  autoActivate('page-load');
 
   return {
     dispose(): void {

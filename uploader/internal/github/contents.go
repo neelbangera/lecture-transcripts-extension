@@ -44,9 +44,9 @@ type PublishResult struct {
 	HTTPStatus *int
 }
 
-// CommitMessage is the exact create-commit message for a job.
-func CommitMessage(job protocol.TranscriptJob) string {
-	return fmt.Sprintf("Add %s (%s lecture %d)", job.LectureKey, job.CourseName, job.LectureNumber)
+// CommitMessage is the exact create-commit message for a job and its path.
+func CommitMessage(job protocol.TranscriptJob, path string) string {
+	return fmt.Sprintf("Add %s lecture %d (%s)", job.CourseName, job.LectureNumber, path)
 }
 
 var hashValuePattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -205,7 +205,7 @@ func (c *Client) Publish(ctx context.Context, path string, job protocol.Transcri
 
 	switch remote.Kind {
 	case protocol.RemoteMissing:
-		if _, createErr := c.CreateFile(ctx, path, content, CommitMessage(job)); createErr != nil {
+		if _, createErr := c.CreateFile(ctx, path, content, CommitMessage(job, path)); createErr != nil {
 			return c.resolveCreateFailure(ctx, path, job, createErr)
 		}
 		status := http.StatusCreated

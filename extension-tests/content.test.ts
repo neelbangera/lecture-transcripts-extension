@@ -205,9 +205,8 @@ afterEach(() => {
 });
 
 describe("content coordinator activation", () => {
-  it("submits nothing on an ordinary page visit", async () => {
-    const dom = makeDom(lectureHtml);
-    transcriptButton(dom).setAttribute("title", "Show Transcript");
+  it("submits nothing on a non-lecture page visit", async () => {
+    const dom = makeDom(nonLectureHtml);
     const { parser, buildJob } = fakeParser({});
     const handoff = vi.fn<Handoff>(async () => {});
     const controller = startCoordinator(dom, parser, handoff);
@@ -219,6 +218,29 @@ describe("content coordinator activation", () => {
     expect(buildJob).not.toHaveBeenCalled();
     expect(handoff).not.toHaveBeenCalled();
     expect(controller.getStatus()).toBe("idle");
+    controller.dispose();
+  });
+
+  it("auto-activates a recognized lecture page on load", async () => {
+    const dom = makeDom(lectureHtml);
+    const button = transcriptButton(dom);
+    button.setAttribute("title", "Show Transcript");
+    const { parser, buildJob } = fakeParser({});
+    const handoff = vi.fn<Handoff>(async () => {});
+    const statuses: PageCaptureStatus[] = [];
+    const controller = startCoordinator(dom, parser, handoff, statuses);
+
+    await vi.advanceTimersByTimeAsync(1);
+    button.setAttribute("title", "Hide Transcript");
+    const text = dom.window.document.querySelector(".transcript-text");
+    if (!text) throw new Error("fixture transcript text is missing");
+    text.textContent = READY_TRANSCRIPT;
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(STABILITY_DEBOUNCE_MS * 2);
+
+    expect(statuses).toContain("activated");
+    expect(buildJob).toHaveBeenCalledTimes(1);
+    expect(handoff).toHaveBeenCalledTimes(1);
     controller.dispose();
   });
 

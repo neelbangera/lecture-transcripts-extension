@@ -73,12 +73,22 @@ func TargetPath(courseSlug string, lectureNumber int) string {
 	return fmt.Sprintf("%s/lectures/%03d.md", courseSlug, lectureNumber)
 }
 
+// PlainOnlyPath is the path for a lecture that has no timestamped form: the
+// plain transcript lives directly under the course slug and no timestamped
+// file is written.
+func PlainOnlyPath(courseSlug string, lectureNumber int) string {
+	return fmt.Sprintf("%s/%03d.md", courseSlug, lectureNumber)
+}
+
 // TimestampedPath is the write-once timestamped-transcript path.
 func TimestampedPath(courseSlug string, lectureNumber int) string {
 	return fmt.Sprintf("%s/timestamped/%03d.md", courseSlug, lectureNumber)
 }
 
 func (j Job) TargetPath() string {
+	if strings.TrimSpace(j.Payload.TimestampedTranscript) == "" {
+		return PlainOnlyPath(j.Payload.CourseSlug, j.Payload.LectureNumber)
+	}
 	return TargetPath(j.Payload.CourseSlug, j.Payload.LectureNumber)
 }
 

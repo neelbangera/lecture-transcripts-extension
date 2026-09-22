@@ -411,6 +411,25 @@ func (p *Processor) processJob(ctx context.Context, job *queue.Job) error {
 		return p.scheduleRetry(job, protocol.ErrorInternal, nil, now)
 	}
 
+	if strings.TrimSpace(job.Payload.TimestampedTranscript) == "" {
+		if plainResult.Outcome == github.OutcomeCreated {
+			if err := p.store.MarkUploaded(job.ID, now); err != nil {
+				return err
+			}
+			p.logEvent(logging.EventJobUploaded, job.LectureKey)
+			return nil
+		}
+		remoteHash := job.ContentHash
+		if plainResult.Remote.ContentHash != nil && protocol.IsValidContentHash(*plainResult.Remote.ContentHash) {
+			remoteHash = *plainResult.Remote.ContentHash
+		}
+		if err := p.store.MarkUnchanged(job.ID, remoteHash, now); err != nil {
+			return err
+		}
+		p.logEvent(logging.EventJobUnchanged, job.LectureKey)
+		return nil
+	}
+
 	timestampedResult, err := p.publisher.Publish(ctx, job.TimestampedPath(), job.Payload, markdown.RenderTimestamped(job.Payload))
 	now = p.now()
 	if err != nil {

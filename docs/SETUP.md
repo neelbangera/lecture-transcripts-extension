@@ -224,13 +224,14 @@ its sidecars are `0600`.
 
 Then verify the real flow:
 
-1. Open a permitted Leccap lecture page and click **Show Transcript** (an
-   already-expanded, populated transcript also activates capture).
+1. Open a permitted Leccap lecture page. It captures automatically on load: the
+   content script opens the transcript control itself if it is closed.
 2. The popup shows the job in the uploader queue as `Queued for upload`, then
    `Uploaded` or `Already uploaded; unchanged`.
 3. The repository gains two files at
-   `<courseSlug>/lectures/<NNN>.md` and `<courseSlug>/timestamped/<NNN>.md`.
-4. Reopening the same transcript creates no new commit.
+   `<courseSlug>/lectures/<NNN>.md` and `<courseSlug>/timestamped/<NNN>.md`
+   (a lecture with no timestamped form writes only `<courseSlug>/<NNN>.md`).
+4. Reopening the same lecture creates no new commit.
 
 The per-sample render-time measurement is still an owner-side item; the recipe
 is in [STAGE_0_REPORT.md](STAGE_0_REPORT.md) and

@@ -903,3 +903,16 @@ func TestAcquireLockIsExclusiveAndReusable(t *testing.T) {
 		t.Fatal("empty lock path must fail")
 	}
 }
+
+func TestPlainOnlyTargetPath(t *testing.T) {
+	job := testJob(1)
+	job.TimestampedTranscript = ""
+	stored := Job{Payload: job}
+	if got, want := stored.TargetPath(), "eecs491/001.md"; got != want {
+		t.Fatalf("plain-only target path = %q, want %q", got, want)
+	}
+	withTimestamps := Job{Payload: testJob(2)}
+	if got, want := withTimestamps.TargetPath(), "eecs491/lectures/002.md"; got != want {
+		t.Fatalf("timestamped target path = %q, want %q", got, want)
+	}
+}

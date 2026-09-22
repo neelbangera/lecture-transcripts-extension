@@ -6,10 +6,12 @@ repository.
 
 The Phase 1 scope is deliberately narrow: one Chrome installation, one Mac,
 one authenticated Leccap session, one GitHub account, and one destination
-repository. Visiting a page does not upload anything; opening the transcript is
-the capture action. The extension sends only selected transcript text and
-validated lecture metadata to the local uploader. GitHub credentials stay in
-the uploader's macOS Keychain, and the uploader owns the durable retry queue.
+repository. A recognized Leccap lecture page captures when it loads or when its
+in-page URL changes: the content script opens the transcript control itself when
+needed, and a page that is not a recognized lecture page does nothing. The
+extension sends only selected transcript text and validated lecture metadata to
+the local uploader. GitHub credentials stay in the uploader's macOS Keychain,
+and the uploader owns the durable retry queue.
 
 ## Status
 

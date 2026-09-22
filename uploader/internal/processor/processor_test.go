@@ -1209,3 +1209,33 @@ func discardRequest(requestID string, jobID int64) protocol.Request {
 		Confirmation:    "discard",
 	}
 }
+
+func TestPlainOnlyPublishesSingleFile(t *testing.T) {
+	p, store, _, publisher, _ := newTestProcessor(t)
+	job := testJob(1)
+	job.TimestampedTranscript = ""
+	submitJob(t, p, "req-plain", job)
+
+	if _, err := p.drainOnce(context.Background()); err != nil {
+		t.Fatalf("drainOnce: %v", err)
+	}
+	stored, err := store.Get(1)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if stored.Status != protocol.StatusUploaded {
+		t.Fatalf("status = %s, want uploaded", stored.Status)
+	}
+	if publisher.createCalls != 1 {
+		t.Fatalf("create calls = %d, want 1", publisher.createCalls)
+	}
+	if _, ok := publisher.contents[queue.PlainOnlyPath(job.CourseSlug, job.LectureNumber)]; !ok {
+		t.Fatalf("plain-only content missing at %s", queue.PlainOnlyPath(job.CourseSlug, job.LectureNumber))
+	}
+	if _, ok := publisher.contents[queue.TimestampedPath(job.CourseSlug, job.LectureNumber)]; ok {
+		t.Fatal("plain-only job must not publish a timestamped file")
+	}
+	if stored.TargetPath() != queue.PlainOnlyPath(job.CourseSlug, job.LectureNumber) {
+		t.Fatalf("target path = %q", stored.TargetPath())
+	}
+}

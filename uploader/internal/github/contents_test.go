@@ -18,7 +18,7 @@ import (
 	"github.com/neelbangera/lecture-transcripts-extension/uploader/internal/protocol"
 )
 
-const testTargetPath = "courses/eecs491/2026-winter/lectures/006.md"
+const testTargetPath = "eecs491/lectures/006.md"
 
 func testJob(hash string) protocol.TranscriptJob {
 	return protocol.TranscriptJob{
@@ -197,7 +197,7 @@ func TestPublishCreatesWithoutSHA(t *testing.T) {
 	if _, ok := putBody["sha"]; ok {
 		t.Fatal("PUT must never include sha")
 	}
-	if got, want := putBody["message"], "Add eecs491/2026-winter/006 (EECS 491 lecture 6)"; got != want {
+	if got, want := putBody["message"], "Add EECS 491 lecture 6 (eecs491/lectures/006.md)"; got != want {
 		t.Fatalf("commit message = %q, want %q", got, want)
 	}
 	if got := putBody["branch"]; got != "main" {
@@ -670,7 +670,7 @@ func TestNewClientRejectsInsecureBaseURL(t *testing.T) {
 
 func TestCommitMessage(t *testing.T) {
 	job := testJob(strings.Repeat("a", 64))
-	if got, want := CommitMessage(job), "Add eecs491/2026-winter/006 (EECS 491 lecture 6)"; got != want {
+	if got, want := CommitMessage(job, testTargetPath), "Add EECS 491 lecture 6 (eecs491/lectures/006.md)"; got != want {
 		t.Fatalf("CommitMessage = %q, want %q", got, want)
 	}
 }
