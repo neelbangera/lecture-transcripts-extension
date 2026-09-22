@@ -207,6 +207,12 @@ export function createContentRuntimeParser(
           snapshot.stableSnapshotCount ?? DEFAULT_STABLE_SNAPSHOT_COUNT,
       });
       if (!parsed.supported) {
+        // Fixed parser reason text only; never page content or transcript text.
+        console.log(
+          "[lecture-transcripts] parser rejection:",
+          parsed.status,
+          parsed.reason,
+        );
         return { ok: false, status: parsed.status };
       }
       try {
@@ -223,6 +229,11 @@ export function createContentRuntimeParser(
         });
         return { ok: true, value: job };
       } catch (error) {
+        console.log(
+          "[lecture-transcripts] job rejection:",
+          rejectionStatusFromJobError(error),
+          error instanceof Error ? error.message : "unknown",
+        );
         return { ok: false, status: rejectionStatusFromJobError(error) };
       }
     },
