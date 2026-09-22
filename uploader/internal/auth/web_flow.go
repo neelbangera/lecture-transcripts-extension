@@ -324,6 +324,14 @@ func (m *Manager) pollLocked(ctx context.Context) (protocol.AuthState, error) {
 			challenge := challengeFromTransaction(updated)
 			m.setChallenge(&challenge)
 			return protocol.AuthAuthorizing, nil
+		case "installation_missing_access":
+			// The App is not installed on the configured repository, so the
+			// repository-restricted token cannot be issued. Point the owner at
+			// the installation instead of an endless reauthorization loop.
+			m.discardTransaction()
+			m.setChallenge(nil)
+			m.setState(protocol.AuthTargetRepositoryUnavailable)
+			return m.State(), ErrTargetRepositoryUnavailable
 		default:
 			return m.failDeviceFlow()
 		}

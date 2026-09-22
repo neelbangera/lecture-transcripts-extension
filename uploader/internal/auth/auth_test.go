@@ -388,6 +388,31 @@ func TestPollTerminalErrorDeletesTransaction(t *testing.T) {
 	}
 }
 
+func TestPollInstallationMissingMapsToTargetUnavailable(t *testing.T) {
+	store := &fakeStore{}
+	server := newAuthServer(t)
+	server.tokenBodies = []string{`{"error":"installation_missing_access"}`}
+	clock := newFakeClock()
+	manager := testManager(t, store, server, &fakeVerifier{}, clock)
+
+	if _, err := manager.Begin(context.Background()); err != nil {
+		t.Fatalf("Begin: %v", err)
+	}
+	state, err := manager.Poll(context.Background())
+	if !errors.Is(err, ErrTargetRepositoryUnavailable) {
+		t.Fatalf("poll error = %v, want ErrTargetRepositoryUnavailable", err)
+	}
+	if state != protocol.AuthTargetRepositoryUnavailable {
+		t.Fatalf("state = %s, want target_repository_unavailable", state)
+	}
+	if store.transaction != nil {
+		t.Fatal("installation failure must discard the transaction")
+	}
+	if store.credential != nil {
+		t.Fatal("installation failure must not store a credential")
+	}
+}
+
 func TestPollStopsAtServerExpiry(t *testing.T) {
 	store := &fakeStore{}
 	server := newAuthServer(t)
