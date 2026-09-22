@@ -257,5 +257,9 @@ export function createProductionContentDependencies(
       courseMappings: adaptCourseMappings(COURSE_MAPPINGS),
     }),
     handoff: createRuntimeHandoff(),
+    onStatus: (status) => {
+      // Status-only diagnostics; never logs transcript text or page content.
+      console.debug("[lecture-transcripts] capture status:", status);
+    },
   };
 }
