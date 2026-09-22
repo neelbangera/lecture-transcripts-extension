@@ -154,18 +154,22 @@ function withOverviewDiagnostics(fetcher: OverviewFetcher): OverviewFetcher {
       html = "";
     }
     const titleMatch = /<title>\s*([^<]{0,80}?)\s*<\/title>/i.exec(html);
-    console.log("[lecture-transcripts] overview fetch", {
-      url: redactPath(String(input)),
-      ok: response.ok,
-      status: typeof raw.status === "number" ? raw.status : null,
-      finalUrl: typeof raw.url === "string" ? redactPath(raw.url) : null,
-      bytes: html.length,
-      hasRecordingsId: html.includes('id="recordings"'),
-      hasRecordingCard: html.includes("recording card"),
-      hasSignIn: /weblogin|shibboleth|sign in|log in/i.test(html),
-      hasAppRoot: html.includes('id="root"'),
-      title: titleMatch ? titleMatch[1] : null,
-    });
+    const markers = {
+      recordingsId: html.includes('id="recordings"'),
+      recordingCard: html.includes('class="recording'),
+      signIn: /weblogin|shibboleth|sign in|log in/i.test(html),
+      unauthorized: /unauthor|forbidden|not authorized|permission|access denied/i.test(html),
+      expired: /expired/i.test(html),
+      errorHeading: /<h[12][^>]*>\s*(?:error|not found|oops|problem)/i.test(html),
+      appRoot: html.includes('id="root"'),
+    };
+    console.log(
+      `[lecture-transcripts] overview fetch url=${redactPath(String(input))}` +
+        ` status=${typeof raw.status === "number" ? raw.status : "?"}` +
+        ` bytes=${html.length}` +
+        ` title=${JSON.stringify(titleMatch ? titleMatch[1] : null)}` +
+        ` markers=${JSON.stringify(markers)}`,
+    );
     return { ok: response.ok, text: async () => html };
   };
 }
