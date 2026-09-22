@@ -228,8 +228,8 @@ Then verify the real flow:
    already-expanded, populated transcript also activates capture).
 2. The popup shows the job in the uploader queue as `Queued for upload`, then
    `Uploaded` or `Already uploaded; unchanged`.
-3. The repository gains one file at
-   `courses/<courseSlug>/<term>/lectures/<NNN>.md`.
+3. The repository gains two files at
+   `<courseSlug>/lectures/<NNN>.md` and `<courseSlug>/timestamped/<NNN>.md`.
 4. Reopening the same transcript creates no new commit.
 
 The per-sample render-time measurement is still an owner-side item; the recipe

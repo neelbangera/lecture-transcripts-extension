@@ -590,11 +590,17 @@ export function deriveLectureKey(
 /** Derive the write-once Markdown path for a validated lecture identity. */
 export function deriveStableLecturePath(
   courseSlug: string,
-  term: string,
   lectureNumber: number,
 ): string {
-  const lectureKey = deriveLectureKey(courseSlug, term, lectureNumber);
-  return `courses/${lectureKey.split("/")[0]}/${lectureKey.split("/")[1]}/lectures/${lectureKey.split("/")[2]}.md`;
+  return `${courseSlug}/lectures/${String(lectureNumber).padStart(3, "0")}.md`;
+}
+
+/** Derive the write-once timestamped-transcript path. */
+export function deriveTimestampedLecturePath(
+  courseSlug: string,
+  lectureNumber: number,
+): string {
+  return `${courseSlug}/timestamped/${String(lectureNumber).padStart(3, "0")}.md`;
 }
 
 /** Build, normalize, hash, canonicalize, and validate a wire-shaped job. */

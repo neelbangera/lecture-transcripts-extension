@@ -185,7 +185,9 @@ the local `contentHash`, and the remote `transcript_sha256` or a
 `remoteFileKind` such as `malformed`, `directory`, `symlink`, or `submodule`.
 
 A conflict means the target path already exists with different, malformed, or
-non-file content. The uploader never overwrites or deletes it. To resolve:
+non-file content. Each lecture publishes two files (`<slug>/lectures/<NNN>.md`
+and `<slug>/timestamped/<NNN>.md`); a conflict on either one blocks the job. The
+uploader never overwrites or deletes it. To resolve:
 
 1. Inspect the remote file at the recorded path in GitHub.
 2. Back it up if it matters, then delete it in the GitHub UI (or rename it out

@@ -133,23 +133,23 @@ Rules enforced by the code:
 
 - only `https` (the publish renderer additionally requires the exact host
   `leccap.engin.umich.edu`);
-- query and fragment are removed; they never reach published frontmatter or
+- query and fragment are removed; they never reach published metadata or
   logs;
 - userinfo, opaque URLs, non-default ports, and overlength values are rejected;
 - path segments matching `token`, `session`, `auth`, or `sid` cause the source
-  URL to be omitted from the published frontmatter rather than leaked;
+  URL to be omitted from the published metadata rather than leaked;
 - a rejected URL fails the job as `rejected_unsafe_url` before any metadata or
   overview lookup.
 
 ## Remote-hash trust
 
-The remote `transcript_sha256` frontmatter field is the authority for write-once
-comparison. The uploader parses it strictly: the frontmatter block must start at
-byte zero, contain exactly one unquoted or quoted 64-character lowercase hex
-`transcript_sha256` scalar, and end at the next `---` line. A missing,
-duplicated, malformed, or non-base64 response is classified as a malformed
-remote file and becomes a conflict; it is never trusted for a same-hash
-comparison.
+The remote `transcript_sha256` field in the bottom metadata block is the
+authority for write-once comparison. The uploader parses it strictly: the block
+must be delimited by `---` lines (bottom block for current files, legacy top
+block still accepted), contain exactly one unquoted or quoted 64-character
+lowercase hex `transcript_sha256` scalar. A missing, duplicated, malformed, or
+non-base64 response is classified as a malformed remote file and becomes a
+conflict; it is never trusted for a same-hash comparison.
 
 Accepted Phase 1 invariant: a manual edit to the file body that leaves
 `transcript_sha256` unchanged is classified as unchanged. The field is the
@@ -169,8 +169,9 @@ The uploader never sends an update request, never deletes a remote file, and
 never assumes conditional-create semantics. A same-hash remote file is
 `unchanged`. A different hash, a directory, a symlink, a submodule, or a
 malformed file is `permanent_conflict` and the remote content is left untouched.
-Only the configured machine-owned lecture path
-(`courses/<courseSlug>/<term>/lectures/<NNN>.md`) is ever written.
+Only the configured machine-owned lecture paths
+(`<courseSlug>/lectures/<NNN>.md` and `<courseSlug>/timestamped/<NNN>.md`) are
+ever written.
 
 ## Reset semantics
 

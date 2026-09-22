@@ -397,32 +397,48 @@ func (p *Processor) hasDueRetry(now time.Time) (bool, error) {
 
 func (p *Processor) processJob(ctx context.Context, job *queue.Job) error {
 	p.logEvent(logging.EventJobClaimed, job.LectureKey)
-	content := markdown.Render(job.Payload)
-	result, err := p.publisher.Publish(ctx, job.TargetPath(), job.Payload, content)
+
+	plainResult, err := p.publisher.Publish(ctx, job.TargetPath(), job.Payload, markdown.RenderPlain(job.Payload))
 	now := p.now()
 	if err != nil {
 		return p.handlePublishError(job, err, now)
 	}
-	switch result.Outcome {
-	case github.OutcomeCreated:
+	switch plainResult.Outcome {
+	case github.OutcomeCreated, github.OutcomeUnchanged:
+	case github.OutcomeConflict:
+		return p.markConflict(job, plainResult.Remote, plainResult.HTTPStatus, now)
+	default:
+		return p.scheduleRetry(job, protocol.ErrorInternal, nil, now)
+	}
+
+	timestampedResult, err := p.publisher.Publish(ctx, job.TimestampedPath(), job.Payload, markdown.RenderTimestamped(job.Payload))
+	now = p.now()
+	if err != nil {
+		return p.handlePublishError(job, err, now)
+	}
+	switch timestampedResult.Outcome {
+	case github.OutcomeCreated, github.OutcomeUnchanged:
+	case github.OutcomeConflict:
+		return p.markConflict(job, timestampedResult.Remote, timestampedResult.HTTPStatus, now)
+	default:
+		return p.scheduleRetry(job, protocol.ErrorInternal, nil, now)
+	}
+
+	if plainResult.Outcome == github.OutcomeCreated || timestampedResult.Outcome == github.OutcomeCreated {
 		if err := p.store.MarkUploaded(job.ID, now); err != nil {
 			return err
 		}
 		p.logEvent(logging.EventJobUploaded, job.LectureKey)
-	case github.OutcomeUnchanged:
-		remoteHash := job.ContentHash
-		if result.Remote.ContentHash != nil && protocol.IsValidContentHash(*result.Remote.ContentHash) {
-			remoteHash = *result.Remote.ContentHash
-		}
-		if err := p.store.MarkUnchanged(job.ID, remoteHash, now); err != nil {
-			return err
-		}
-		p.logEvent(logging.EventJobUnchanged, job.LectureKey)
-	case github.OutcomeConflict:
-		return p.markConflict(job, result.Remote, result.HTTPStatus, now)
-	default:
-		return p.scheduleRetry(job, protocol.ErrorInternal, nil, now)
+		return nil
 	}
+	remoteHash := job.ContentHash
+	if timestampedResult.Remote.ContentHash != nil && protocol.IsValidContentHash(*timestampedResult.Remote.ContentHash) {
+		remoteHash = *timestampedResult.Remote.ContentHash
+	}
+	if err := p.store.MarkUnchanged(job.ID, remoteHash, now); err != nil {
+		return err
+	}
+	p.logEvent(logging.EventJobUnchanged, job.LectureKey)
 	return nil
 }
 

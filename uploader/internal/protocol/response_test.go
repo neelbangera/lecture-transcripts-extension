@@ -18,7 +18,7 @@ func validTestJobSummary() JobSummary {
 		AttemptCount:        0,
 		NextAttemptAt:       nil,
 		UpdatedAt:           &updatedAt,
-		TargetPath:          "courses/eecs484/2026-fall/lectures/001.md",
+		TargetPath:          "eecs484/lectures/001.md",
 		LastErrorCategory:   nil,
 		LastErrorHTTPStatus: &httpStatus,
 		RemoteContentHash:   nil,

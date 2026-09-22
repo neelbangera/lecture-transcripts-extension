@@ -66,12 +66,24 @@ type Store struct {
 	path string
 }
 
-func TargetPath(courseSlug, term string, lectureNumber int) string {
-	return fmt.Sprintf("courses/%s/%s/lectures/%03d.md", courseSlug, term, lectureNumber)
+// TargetPath is the single write-once plain-transcript path. The term stays
+// part of the lecture identity and lectureKey but not of the repository path:
+// this repository holds one term only.
+func TargetPath(courseSlug string, lectureNumber int) string {
+	return fmt.Sprintf("%s/lectures/%03d.md", courseSlug, lectureNumber)
+}
+
+// TimestampedPath is the write-once timestamped-transcript path.
+func TimestampedPath(courseSlug string, lectureNumber int) string {
+	return fmt.Sprintf("%s/timestamped/%03d.md", courseSlug, lectureNumber)
 }
 
 func (j Job) TargetPath() string {
-	return TargetPath(j.Payload.CourseSlug, j.Payload.Term, j.Payload.LectureNumber)
+	return TargetPath(j.Payload.CourseSlug, j.Payload.LectureNumber)
+}
+
+func (j Job) TimestampedPath() string {
+	return TimestampedPath(j.Payload.CourseSlug, j.Payload.LectureNumber)
 }
 
 func Open(path string) (*Store, error) {

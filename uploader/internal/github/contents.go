@@ -51,29 +51,52 @@ func CommitMessage(job protocol.TranscriptJob) string {
 
 var hashValuePattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// ParseTranscriptHash extracts the single transcript_sha256 scalar from a
-// frontmatter block that begins at byte zero and ends at the next "---" line.
-// It returns false for a missing, duplicated, unquoted-invalid, or malformed
-// block so callers never trust an ambiguous remote file.
+// ParseTranscriptHash extracts the single transcript_sha256 scalar from the
+// metadata block. New files carry the block at the bottom of the document; the
+// legacy top block is still accepted so previously written files stay
+// idempotent. It returns false for a missing, duplicated, unquoted-invalid, or
+// malformed block so callers never trust an ambiguous remote file.
 func ParseTranscriptHash(content []byte) (string, bool) {
-	if len(content) == 0 || !strings.HasPrefix(string(content), "---") {
+	if len(content) == 0 {
 		return "", false
 	}
 	normalized := strings.ReplaceAll(string(content), "\r\n", "\n")
 	lines := strings.Split(normalized, "\n")
-	if strings.TrimRight(lines[0], " \t") != "---" {
+
+	if strings.TrimRight(lines[0], " \t") == "---" {
+		for i := 1; i < len(lines); i++ {
+			if strings.TrimRight(lines[i], " \t") == "---" {
+				return parseHashBlock(lines[1:i])
+			}
+		}
 		return "", false
 	}
+
+	end := len(lines)
+	for end > 0 && strings.TrimSpace(lines[end-1]) == "" {
+		end--
+	}
+	if end == 0 || strings.TrimRight(lines[end-1], " \t") != "---" {
+		return "", false
+	}
+	start := -1
+	for i := end - 2; i >= 0; i-- {
+		if strings.TrimRight(lines[i], " \t") == "---" {
+			start = i
+			break
+		}
+	}
+	if start < 0 {
+		return "", false
+	}
+	return parseHashBlock(lines[start+1 : end-1])
+}
+
+func parseHashBlock(lines []string) (string, bool) {
 	hash := ""
 	found := false
-	for i := 1; i < len(lines); i++ {
-		if strings.TrimSpace(lines[i]) == "---" {
-			if !found {
-				return "", false
-			}
-			return hash, true
-		}
-		value, ok := parseHashLine(lines[i])
+	for _, line := range lines {
+		value, ok := parseHashLine(line)
 		if !ok {
 			continue
 		}
@@ -83,7 +106,10 @@ func ParseTranscriptHash(content []byte) (string, bool) {
 		hash = value
 		found = true
 	}
-	return "", false
+	if !found {
+		return "", false
+	}
+	return hash, true
 }
 
 func parseHashLine(line string) (string, bool) {

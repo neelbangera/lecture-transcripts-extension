@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -17,9 +18,34 @@ var sensitiveSegments = map[string]struct{}{
 	"sid":     {},
 }
 
-func Render(job protocol.TranscriptJob) []byte {
+var timestampEntryPattern = regexp.MustCompile(`^\s*\[\d{1,2}:\d{2}(?::\d{2})?\]`)
+
+// RenderPlain renders the plain transcript document. The metadata block sits
+// at the bottom so the transcript reads first and remains self-contained.
+func RenderPlain(job protocol.TranscriptJob) []byte {
 	var builder strings.Builder
-	builder.WriteString("---\n")
+	builder.WriteString("## Transcript\n\n")
+	builder.WriteString(sectionBody(job.Transcript))
+	writeMetadata(&builder, job)
+	return []byte(builder.String())
+}
+
+// RenderTimestamped renders the timestamped transcript document with exactly
+// one line per timestamp entry, followed by the same metadata block.
+func RenderTimestamped(job protocol.TranscriptJob) []byte {
+	var builder strings.Builder
+	builder.WriteString("## Timestamped transcript\n\n")
+	if strings.TrimSpace(job.TimestampedTranscript) == "" {
+		builder.WriteString(NoTimestampedSource + "\n")
+	} else {
+		builder.WriteString(sectionBody(oneLinePerTimestamp(job.TimestampedTranscript)))
+	}
+	writeMetadata(&builder, job)
+	return []byte(builder.String())
+}
+
+func writeMetadata(builder *strings.Builder, job protocol.TranscriptJob) {
+	builder.WriteString("\n---\n")
 	builder.WriteString("course: " + yamlScalar(job.CourseName) + "\n")
 	builder.WriteString("term: " + yamlScalar(job.Term) + "\n")
 	builder.WriteString("lecture: " + strconv.Itoa(job.LectureNumber) + "\n")
@@ -29,16 +55,28 @@ func Render(job protocol.TranscriptJob) []byte {
 	}
 	builder.WriteString("captured_at: " + yamlScalar(job.CapturedAt) + "\n")
 	builder.WriteString("transcript_sha256: " + yamlScalar(job.ContentHash) + "\n")
-	builder.WriteString("---\n\n")
-	builder.WriteString("## Transcript\n\n")
-	builder.WriteString(sectionBody(job.Transcript))
-	builder.WriteString("\n## Timestamped transcript\n\n")
-	if strings.TrimSpace(job.TimestampedTranscript) == "" {
-		builder.WriteString(NoTimestampedSource + "\n")
-	} else {
-		builder.WriteString(sectionBody(job.TimestampedTranscript))
+	builder.WriteString("---\n")
+}
+
+// oneLinePerTimestamp joins caption continuation lines onto their timestamp
+// entry so every timestamped entry occupies exactly one line.
+func oneLinePerTimestamp(value string) string {
+	normalized := strings.ReplaceAll(value, "\r\n", "\n")
+	lines := strings.Split(normalized, "\n")
+	entries := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if timestampEntryPattern.MatchString(line) || len(entries) == 0 {
+			entries = append(entries, trimmed)
+			continue
+		}
+		last := len(entries) - 1
+		entries[last] = entries[last] + " " + trimmed
 	}
-	return []byte(builder.String())
+	return strings.Join(entries, "\n")
 }
 
 func PublishSourceURL(raw string) (string, bool) {

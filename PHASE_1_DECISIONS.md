@@ -162,7 +162,7 @@ Rejected as a deployment assumption. Sharing is permitted, but public visibility
 
 Selected: the repository may begin private. The job and output format must remain safe if the repository is later made public.
 
-Guardrail: sanitize metadata and logs even when the repository is private; omit a source URL from published frontmatter if it exposes private session details.
+Guardrail: sanitize metadata and logs even when the repository is private; omit a source URL from the published metadata block if it exposes private session details.
 
 ### 14. Write-once files instead of automatic updates
 
@@ -170,7 +170,7 @@ Considered: update an existing lecture file whenever a later capture produces di
 
 Rejected because automatic replacement could destroy a deliberate manual edit and because Phase 1 does not define a trustworthy correction workflow.
 
-Selected: create a lecture file once. If the same path already contains the same transcript hash, mark the job complete. If it contains different content, report a permanent conflict and leave the file untouched. The remote `transcript_sha256` frontmatter field is the authority for this comparison; a body-only manual edit that leaves the field unchanged is intentionally classified as unchanged in Phase 1.
+Selected: create a lecture file once. If the same path already contains the same transcript hash, mark the job complete. If it contains different content, report a permanent conflict and leave the file untouched. The remote `transcript_sha256` metadata field is the authority for this comparison; a body-only manual edit that leaves the field unchanged is intentionally classified as unchanged in Phase 1.
 
 Guardrail: the uploader must never overwrite a machine-owned lecture path automatically in Phase 1.
 
@@ -255,13 +255,14 @@ The following were previously open while the design was being explored and are n
 - Conflict resolution is visible and manual: inspect or back up the remote file, optionally delete it in GitHub UI, then retry. The uploader never deletes or overwrites remote files.
 - Remote creation uses preflight GET plus no-sha create; the design does not claim a transactional conditional-create operation.
 - Spring and Summer are separate term values; a yearless unambiguous date may use the validated term year, while ambiguous numeric dates and literal Spring/Summer labels fail closed.
-- Source URLs are canonicalized by the extension and authoritatively re-canonicalized by the uploader; shared vectors define the result, and query/fragment values never reach published frontmatter or logs.
+- Source URLs are canonicalized by the extension and authoritatively re-canonicalized by the uploader; shared vectors define the result, and query/fragment values never reach published metadata or logs.
 - The Native Messaging contract is versioned, request-correlated, status-paginated, explicit about duplicate terminal rows, and explicit about whether the host is working, waiting, authorizing, or safe for an alarm-owned port to close. `rejected_handoff_full` remains extension-local.
 
 ## Remaining open discovery facts
 
 - The exact Leccap selectors, completion indicator, metadata fields, timestamp format, loading region, and SPA behavior were recorded on 2026-09-20 from two representative authenticated lecture pages and the course overview; they live in `extension-tests/fixtures/lecture-page.selectors.json` and `docs/STAGE_0_REPORT.md`. The recording date is sourced from the linked overview via on-demand fetch with exact player-link correlation, per the selected `lectureDateSource` policy. Because the observed shape has no in-container loading/error region or explicit complete marker, the plan's completion contract was deliberately revised to a compound rule (open-state control title + populated rows + two identical snapshots).
 - Live use on 2026-09-22 showed the linked overview answering a bare `fetch` with a reduced 200 page (correct title, no recording list) even with the session included, while the same URL renders the full server-side list as a document navigation. The recorded on-demand lookup is therefore performed with `credentials: include`, a document-like `Accept` header, and `cache: no-store`; when the response still lacks the recording list and is not a sign-in page, the runtime renders the same linked overview in a hidden same-origin iframe and runs the existing player-link correlation against that rendered DOM. The linked page and correlation rule are unchanged; only the transport gains this fallback.
+- On 2026-09-22 the owner selected a two-file, term-free layout for the personal repository: the plain transcript at `<courseSlug>/lectures/<NNN>.md` and the timestamped transcript at `<courseSlug>/timestamped/<NNN>.md`. Each document carries the same metadata block (course, term, lecture, date, optional source_url, captured_at, transcript_sha256) at the bottom, and the timestamped document renders exactly one line per timestamp entry. The term remains part of the lecture identity and lectureKey but not of the repository path because the repository holds one term. The hash framing and normalization are unchanged, so previously captured content stays hash-identical; the uploader publishes the plain file first and the timestamped file second, and a retry completes a partially created pair. Legacy combined files were deleted by the owner and recaptured.
 - The complete supported course/term mapping is recorded in `extension-tests/fixtures/course-mapping.json` as the current personal allowlist (EECS 484 + Fall 2026, the only observed course/term); the EECS 491 Winter 2026 example remains illustrative only. Adding a course requires a verified page observation and a new entry; unmapped labels fail closed.
 - The real transcript, serialized-job, Native Messaging, and status-page measurements are recorded in `extension-tests/fixtures/transcript-size-report.json` and sit far below the byte caps. The per-sample activation-to-second-stable-snapshot render time remains a live measurement (recipe in `docs/STAGE_0_REPORT.md`); both live observations showed the populated transcript appearing immediately after activation. The documented byte caps and 30-second observation budget are safety limits; if a supported sample does not fit, implementation is blocked and the plan must be deliberately revised.
 - The real GitHub App client ID, numeric RepositoryID, installation, initialized-main-branch state, target-repository sanity check, and branch are machine-local provisioning inputs. The Chrome extension ID is a separate Stage 7 install input obtained after the extension is loaded. Both must be verified, not guessed or committed.

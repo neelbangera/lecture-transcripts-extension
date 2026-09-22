@@ -51,8 +51,8 @@ describe("TranscriptJob", () => {
     expect(job.term).toBe("2026-fall");
     expect(job.lectureKey).toBe("eecs484/2026-fall/001");
     expect(deriveLectureKey("eecs484", "Fall 2026", 6)).toBe("eecs484/2026-fall/006");
-    expect(deriveStableLecturePath("eecs484", "2026-fall", 6)).toBe(
-      "courses/eecs484/2026-fall/lectures/006.md",
+    expect(deriveStableLecturePath("eecs484", 6)).toBe(
+      "eecs484/lectures/006.md",
     );
   });
 

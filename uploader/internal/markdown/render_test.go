@@ -26,7 +26,7 @@ func goldenJob() protocol.TranscriptJob {
 	}
 }
 
-const goldenRendered = `---
+const goldenMetadata = `---
 course: 'EECS 491'
 term: '2026-winter'
 lecture: 6
@@ -35,46 +35,55 @@ source_url: 'https://leccap.engin.umich.edu/lecture/123'
 captured_at: '2026-02-12T18:03:22Z'
 transcript_sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 ---
+`
 
-## Transcript
+const goldenPlain = `## Transcript
 
 Hello world.
 
-## Timestamped transcript
+` + goldenMetadata
+
+const goldenTimestamped = `## Timestamped transcript
 
 [00:01] Hello world.
-`
 
-func TestRenderGoldenBytes(t *testing.T) {
-	got := string(Render(goldenJob()))
-	if got != goldenRendered {
-		t.Fatalf("rendered markdown mismatch\n--- got ---\n%s\n--- want ---\n%s", got, goldenRendered)
+` + goldenMetadata
+
+func TestRenderPlainGoldenBytes(t *testing.T) {
+	if got := string(RenderPlain(goldenJob())); got != goldenPlain {
+		t.Fatalf("plain markdown mismatch\n--- got ---\n%s\n--- want ---\n%s", got, goldenPlain)
 	}
 }
 
-func TestRenderWithoutTimestampedSource(t *testing.T) {
+func TestRenderTimestampedGoldenBytes(t *testing.T) {
+	if got := string(RenderTimestamped(goldenJob())); got != goldenTimestamped {
+		t.Fatalf("timestamped markdown mismatch\n--- got ---\n%s\n--- want ---\n%s", got, goldenTimestamped)
+	}
+}
+
+func TestRenderTimestampedOneLinePerEntry(t *testing.T) {
+	job := goldenJob()
+	job.TimestampedTranscript = "[00:01] first part\nsecond part\n[00:02] next entry\n[00:03] third"
+	want := "[00:01] first part second part\n[00:02] next entry\n[00:03] third"
+	if got := oneLinePerTimestamp(job.TimestampedTranscript); got != want {
+		t.Fatalf("oneLinePerTimestamp = %q, want %q", got, want)
+	}
+	rendered := string(RenderTimestamped(job))
+	if !strings.Contains(rendered, want+"\n") {
+		t.Fatalf("rendered timestamped body not one line per entry:\n%s", rendered)
+	}
+}
+
+func TestRenderTimestampedWithoutSource(t *testing.T) {
 	job := goldenJob()
 	job.TimestampedTranscript = ""
-	want := `---
-course: 'EECS 491'
-term: '2026-winter'
-lecture: 6
-date: '2026-02-12'
-source_url: 'https://leccap.engin.umich.edu/lecture/123'
-captured_at: '2026-02-12T18:03:22Z'
-transcript_sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
----
-
-## Transcript
-
-Hello world.
-
-## Timestamped transcript
+	want := `## Timestamped transcript
 
 _No timestamped source; see Transcript._
-`
-	if got := string(Render(job)); got != want {
-		t.Fatalf("rendered markdown mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
+
+` + goldenMetadata
+	if got := string(RenderTimestamped(job)); got != want {
+		t.Fatalf("timestamped markdown mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}
 	if NoTimestampedSource != "_No timestamped source; see Transcript._" {
 		t.Fatalf("NoTimestampedSource = %q", NoTimestampedSource)
@@ -84,46 +93,53 @@ _No timestamped source; see Transcript._
 func TestRenderOmitsUnsafeSourceURL(t *testing.T) {
 	job := goldenJob()
 	job.SourceURL = "https://leccap.engin.umich.edu/lecture/token/123?session=secret#frag"
-	got := string(Render(job))
-	if strings.Contains(got, "source_url:") {
-		t.Fatalf("unsafe source URL must be omitted:\n%s", got)
-	}
-	if strings.Contains(got, "token") || strings.Contains(got, "session") || strings.Contains(got, "secret") {
-		t.Fatalf("source URL data leaked into markdown:\n%s", got)
+	for _, got := range []string{string(RenderPlain(job)), string(RenderTimestamped(job))} {
+		if strings.Contains(got, "source_url:") {
+			t.Fatalf("unsafe source URL must be omitted:\n%s", got)
+		}
+		if strings.Contains(got, "token") || strings.Contains(got, "session") || strings.Contains(got, "secret") {
+			t.Fatalf("source URL data leaked into markdown:\n%s", got)
+		}
 	}
 }
 
-func TestRenderSanitizesFrontmatterMetadata(t *testing.T) {
+func TestRenderSanitizesMetadata(t *testing.T) {
 	job := goldenJob()
 	job.CourseName = "EECS \"491\" it's"
-	job.Term = "2026-winter"
-	got := string(Render(job))
-	if !strings.Contains(got, "course: 'EECS \"491\" it''s'\n") {
+	if got := string(RenderPlain(job)); !strings.Contains(got, "course: 'EECS \"491\" it''s'\n") {
 		t.Fatalf("single quotes must be doubled:\n%s", got)
 	}
 
 	job = goldenJob()
 	job.CourseName = "EECS\n491\r\nWinter"
-	got = string(Render(job))
+	got := string(RenderPlain(job))
 	if !strings.Contains(got, "course: 'EECS 491 Winter'\n") {
-		t.Fatalf("newlines must not break frontmatter structure:\n%s", got)
+		t.Fatalf("newlines must not break metadata structure:\n%s", got)
 	}
-	frontmatter := strings.SplitN(strings.TrimPrefix(got, "---\n"), "\n---\n", 2)[0]
-	if len(strings.Split(frontmatter, "\n")) != 7 {
-		t.Fatalf("frontmatter line count changed: %q", frontmatter)
+	parts := strings.Split(got, "\n---\n")
+	fields := parts[len(parts)-2]
+	if len(strings.Split(fields, "\n")) != 7 {
+		t.Fatalf("metadata field count changed: %q", fields)
 	}
 }
 
 func TestRenderIsDeterministic(t *testing.T) {
 	job := goldenJob()
-	first := Render(job)
+	first := RenderPlain(job)
 	for i := 0; i < 5; i++ {
-		if got := Render(job); string(got) != string(first) {
-			t.Fatalf("render %d differs", i)
+		if got := RenderPlain(job); string(got) != string(first) {
+			t.Fatalf("plain render %d differs", i)
 		}
 	}
-	if !strings.HasSuffix(string(first), "\n") || strings.HasSuffix(string(first), "\n\n") {
-		t.Fatalf("rendered output must end in exactly one newline: %q", string(first[len(first)-3:]))
+	if !strings.HasSuffix(string(first), "---\n") || strings.HasSuffix(string(first), "\n\n") {
+		t.Fatalf("plain output must end with the metadata block: %q", string(first[len(first)-5:]))
+	}
+
+	firstTimestamped := RenderTimestamped(job)
+	for i := 0; i < 5; i++ {
+		if got := RenderTimestamped(job); string(got) != string(firstTimestamped) {
+			t.Fatalf("timestamped render %d differs", i)
+		}
 	}
 }
 
@@ -131,18 +147,18 @@ func TestRenderNormalizesSectionTrailingNewlines(t *testing.T) {
 	job := goldenJob()
 	job.Transcript = "Hello world.\n\n\n"
 	job.TimestampedTranscript = "[00:01] Hello world.\r\n\r\n"
-	got := string(Render(job))
-	if !strings.Contains(got, "Hello world.\n\n## Timestamped transcript") {
+	if got := string(RenderPlain(job)); !strings.HasPrefix(got, "## Transcript\n\nHello world.\n\n---\n") {
 		t.Fatalf("plain transcript trailing newlines not normalized:\n%q", got)
 	}
+	got := string(RenderTimestamped(job))
 	if strings.Contains(got, "\r") {
 		t.Fatalf("carriage returns must be trimmed from section bodies:\n%q", got)
 	}
-	if strings.Count(got, "\n\n\n") != 0 {
+	if strings.Contains(got, "\n\n\n") {
 		t.Fatalf("rendered output must not contain triple newlines:\n%q", got)
 	}
-	if !strings.HasSuffix(got, "[00:01] Hello world.\n") {
-		t.Fatalf("rendered output must end with the timestamped body:\n%q", got)
+	if !strings.HasPrefix(got, "## Timestamped transcript\n\n[00:01] Hello world.\n\n---\n") {
+		t.Fatalf("timestamped body not normalized:\n%q", got)
 	}
 }
 

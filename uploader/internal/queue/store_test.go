@@ -223,8 +223,11 @@ func TestEnqueuePersistsCanonicalJobBeforeAck(t *testing.T) {
 	if !stored.CreatedAt.Equal(baseTime) || !stored.UpdatedAt.Equal(baseTime) {
 		t.Fatalf("timestamps = %s/%s", stored.CreatedAt, stored.UpdatedAt)
 	}
-	if stored.TargetPath() != "courses/eecs491/2026-winter/lectures/006.md" {
+	if stored.TargetPath() != "eecs491/lectures/006.md" {
 		t.Fatalf("target path = %q", stored.TargetPath())
+	}
+	if stored.TimestampedPath() != "eecs491/timestamped/006.md" {
+		t.Fatalf("timestamped path = %q", stored.TimestampedPath())
 	}
 	jobs, bytes, err := store.Usage()
 	if err != nil {
@@ -705,7 +708,7 @@ func TestStatusPagePagination(t *testing.T) {
 	if next == nil || *next != 4 {
 		t.Fatalf("page 1 cursor = %v", next)
 	}
-	if page[0].TargetPath != "courses/eecs491/2026-winter/lectures/005.md" || page[0].Status != protocol.StatusQueued {
+	if page[0].TargetPath != "eecs491/lectures/005.md" || page[0].Status != protocol.StatusQueued {
 		t.Fatalf("page 1 summary = %+v", page[0])
 	}
 	if page[0].UpdatedAt == nil || page[0].NextAttemptAt != nil {

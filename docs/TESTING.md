@@ -74,8 +74,8 @@ behavior as covered only by the owner's real-machine checks below.
 | `internal/logging` | Restricted log directory/file modes, three-file rotation at the cap, allowlisted structured fields, sensitive-value redaction, source sanitization. |
 | `internal/retry` | Schedule contract `5s,30s,2m,10m,1h`, ±20% jitter bounds, capped index after the last attempt, reset-to-zero behavior, statelessness across restarts. |
 | `internal/auth` | Device transaction persistence/resume/expiry, pending and `slow_down` polling, terminal errors, refresh near expiry, forced refresh after 401, credential-left-untouched on failed refresh, both-records reset, repository verifier checks, unsupported-platform failure. |
-| `internal/github` | Create-only PUT without `sha`, unchanged revisit, conflict on different hash, malformed file, directory, and symlink, race resolution to unchanged/conflict/classified error, non-created response rejection, HTTP classification, strict frontmatter hash parsing. |
-| `internal/markdown` | Deterministic golden bytes, frontmatter sanitization, unsafe source-URL omission, missing-timestamped-source placeholder. |
+| `internal/github` | Create-only PUT without `sha`, unchanged revisit, conflict on different hash, malformed file, directory, and symlink, race resolution to unchanged/conflict/classified error, non-created response rejection, HTTP classification, strict bottom-metadata hash parsing (legacy top block accepted). |
+| `internal/markdown` | Deterministic golden bytes for both documents, bottom-metadata sanitization, one line per timestamp entry, unsafe source-URL omission, missing-timestamped-source placeholder. |
 
 All of these use fake HTTP clients, fake credential stores, test clocks, and
 temporary directories. They never touch the real Keychain, the real GitHub API,
