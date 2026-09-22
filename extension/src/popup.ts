@@ -133,7 +133,7 @@ function renderJob(job: JobSummary): HTMLLIElement {
       : job.remoteFileKind
         ? `remote ${job.remoteFileKind}`
         : "";
-  meta.textContent = [job.targetPath, `local hash ${job.contentHash}`, remote].filter(Boolean).join(" · ");
+  meta.textContent = [job.targetPath, remote].filter(Boolean).join(" · ");
   item.append(title, meta);
 
   const canRetry = job.status === "retryable_error" || job.status === "permanent_conflict" || job.status === "rejected_permission";
@@ -195,8 +195,8 @@ function render(snapshot: ExtensionSnapshot, append = false): void {
   versions.textContent = `Extension ${status?.extensionVersion ?? "—"} · Uploader ${status?.uploaderVersion ?? "—"}`;
   pendingCount.textContent = String(snapshot.pendingHandoffs);
   pendingCopy.textContent = snapshot.pendingHandoffs > 0
-    ? "Waiting for a definitive uploader acknowledgement."
-    : "No unacknowledged captures.";
+    ? "Captured, not yet acknowledged by the uploader. The outbox replays automatically."
+    : "Every capture has been acknowledged by the uploader.";
   lastOutcome.textContent = snapshot.lastOutcome
     ? `${statusLabel(snapshot.lastOutcome.status)}${snapshot.lastOutcome.lectureKey ? ` · ${snapshot.lastOutcome.lectureKey}` : ""}`
     : "";
