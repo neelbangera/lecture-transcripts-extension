@@ -129,6 +129,47 @@ function pageOverviewFetcher(document: Document): OverviewFetcher | undefined {
   return (input, init) => view.fetch(input, init);
 }
 
+function redactPath(value: string): string {
+  try {
+    const url = new URL(value);
+    const path = url.pathname.replace(/[0-9a-f]{6,}|\d{3,}/gi, "<id>");
+    return `${url.host}${path}`;
+  } catch {
+    return "<unparseable-url>";
+  }
+}
+
+/**
+ * Temporary, sanitized fetch diagnostics: URL path with identifiers redacted,
+ * status, size, and page-shape marker booleans. Never logs page content.
+ */
+function withOverviewDiagnostics(fetcher: OverviewFetcher): OverviewFetcher {
+  return async (input, init) => {
+    const response = await fetcher(input, init);
+    const raw = response as { status?: number; url?: string };
+    let html = "";
+    try {
+      html = await response.text();
+    } catch {
+      html = "";
+    }
+    const titleMatch = /<title>\s*([^<]{0,80}?)\s*<\/title>/i.exec(html);
+    console.log("[lecture-transcripts] overview fetch", {
+      url: redactPath(String(input)),
+      ok: response.ok,
+      status: typeof raw.status === "number" ? raw.status : null,
+      finalUrl: typeof raw.url === "string" ? redactPath(raw.url) : null,
+      bytes: html.length,
+      hasRecordingsId: html.includes('id="recordings"'),
+      hasRecordingCard: html.includes("recording card"),
+      hasSignIn: /weblogin|shibboleth|sign in|log in/i.test(html),
+      hasAppRoot: html.includes('id="root"'),
+      title: titleMatch ? titleMatch[1] : null,
+    });
+    return { ok: response.ok, text: async () => html };
+  };
+}
+
 function rejectionStatusFromJobError(error: unknown): ParserRejectionStatus {
   if (error instanceof TranscriptJobValidationError) {
     switch (error.code) {
@@ -199,10 +240,13 @@ export function createContentRuntimeParser(
       snapshot: NormalizedTranscriptSnapshot,
       capturedAt: string,
     ): Promise<ParserResult<TranscriptJob>> {
+      const pageFetcher = pageOverviewFetcher(document);
       const parsed = await parseLecturePage(document, {
         selectors: fixture,
         courseMappings,
-        fetchOverview: options.fetchOverview ?? pageOverviewFetcher(document),
+        fetchOverview:
+          options.fetchOverview ??
+          (pageFetcher ? withOverviewDiagnostics(pageFetcher) : undefined),
         stableSnapshotCount:
           snapshot.stableSnapshotCount ?? DEFAULT_STABLE_SNAPSHOT_COUNT,
       });
