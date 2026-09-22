@@ -581,7 +581,7 @@ describe("content runtime parser adapter", () => {
     if (!result.ok) return;
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe(OVERVIEW_URL);
-    expect(calls[0].init).toMatchObject({ credentials: "same-origin" });
+    expect(calls[0].init).toMatchObject({ credentials: "include" });
     expect(result.value).toMatchObject({
       courseName: expected.courseName,
       courseSlug: expected.courseSlug,

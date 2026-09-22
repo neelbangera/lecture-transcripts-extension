@@ -682,7 +682,10 @@ async function resolveLectureDate(
 
   let response: OverviewResponse;
   try {
-    response = await fetcher(overviewUrl, { credentials: "same-origin" });
+    // "include" is required here: a content-script fetch is not treated as
+    // same-origin with the page for credential purposes, so "same-origin"
+    // silently drops the Leccap session and the server redirects to SSO.
+    response = await fetcher(overviewUrl, { credentials: "include" });
   } catch {
     return reject(
       "rejected_ambiguous_metadata",
@@ -733,9 +736,12 @@ async function resolveLectureDate(
     return typeof href === "string" && canonicalizeLeccapUrl(href, overviewUrl) === currentPlayerUrl;
   });
   if (matches.length !== 1) {
+    const signInPage = /weblogin|shibboleth|sign in|log in/i.test(overviewHtml);
     return reject(
       "rejected_ambiguous_metadata",
-      `the linked overview has ${cards.length} recording cards and ${matches.length} player-link matches; exactly one is required`,
+      signInPage
+        ? "the linked overview fetch returned a sign-in page; the Leccap session is not available to the extension"
+        : `the linked overview has ${cards.length} recording cards and ${matches.length} player-link matches; exactly one is required`,
     );
   }
   const dateElement = queryOne(matches[0], source.dateSelector);

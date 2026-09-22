@@ -100,7 +100,7 @@ describe("Leccap parser against the Stage 0 packet", () => {
     expect(result).toMatchObject({ supported: true, lectureDate: "2026-09-01" });
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe(overviewUrl);
-    expect(calls[0].init).toMatchObject({ credentials: "same-origin" });
+    expect(calls[0].init).toMatchObject({ credentials: "include" });
   });
 
   it("rejects zero and multiple overview player-link matches", async () => {
@@ -143,6 +143,18 @@ describe("Leccap parser against the Stage 0 packet", () => {
       supported: false,
       status: "rejected_ambiguous_metadata",
     });
+  });
+
+  it("reports an unauthenticated overview fetch instead of zero matches", async () => {
+    const signInFetcher = fixtureFetcher(
+      "<!doctype html><html><body><h1>Sign in to continue</h1></body></html>",
+    );
+    const result = await parseFixture("lecture-page.html", lectureUrl, signInFetcher);
+    expect(result).toMatchObject({
+      supported: false,
+      status: "rejected_ambiguous_metadata",
+    });
+    expect((result as { reason: string }).reason).toContain("sign-in page");
   });
 
   it("uses only the numeric recording-title prefix, never the overview badge", async () => {
