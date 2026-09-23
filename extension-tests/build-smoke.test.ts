@@ -119,5 +119,12 @@ describe("built extension smoke test", () => {
       "utf8",
     );
     expect(backgroundBundle).toContain("capture_job");
+
+    const optionsBundle = readFileSync(join(outputRoot, "options.js"), "utf8");
+    expect(optionsBundle).toContain("autoCapture");
+    expect(optionsBundle).toContain("notificationsEnabled");
+
+    const popupBundle = readFileSync(join(outputRoot, "popup.js"), "utf8");
+    expect(popupBundle).toContain("openOptionsPage");
   }, 120_000);
 });

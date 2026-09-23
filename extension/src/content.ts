@@ -9,6 +9,7 @@
 
 import { createProductionContentDependencies } from "./content-runtime";
 import type { SelectorFixture } from "./leccap-parser";
+import { loadAutoCapture } from "./settings-storage";
 
 export const STABILITY_DEBOUNCE_MS = 1500;
 export const OBSERVATION_TIMEOUT_MS = 30_000;
@@ -108,6 +109,12 @@ export interface ContentScriptDependencies<Job> {
    */
   handoff(job: Job): HandoffResult | void | Promise<HandoffResult | void>;
   onStatus?: (status: PageCaptureStatus) => void;
+  /**
+   * Whether a recognized lecture page may open and capture a transcript on
+   * page load or in-page URL change.  Defaults to true; when false, only a
+   * manual Show Transcript click starts a capture.
+   */
+  autoActivateOnLoad?: boolean;
   now?: () => number;
   document?: Document;
   window?: Window;
@@ -319,8 +326,9 @@ function callStatus(
  * Installs the content-script coordinator in the current Leccap document.
  *
  * Normal page visits only install listeners.  A capture run is created only
- * by an opening transcript-control click or by an already-visible,
- * already-expanded, populated transcript observed at startup/URL change.
+ * by an opening transcript-control click or, when `autoActivateOnLoad` is
+ * true, by an already-visible, already-expanded, populated transcript
+ * observed at startup/URL change.
  */
 export function createContentScript<Job>(
   dependencies: ContentScriptDependencies<Job>,
@@ -329,6 +337,7 @@ export function createContentScript<Job>(
   const pageWindow = dependencies.window ?? window;
   const selectors = dependencies.selectors;
   const now = dependencies.now ?? (() => Date.now());
+  const autoActivateOnLoad = dependencies.autoActivateOnLoad ?? true;
 
   let lastUrl = pageWindow.location.href;
   let status: PageCaptureStatus = 'idle';
@@ -676,7 +685,10 @@ export function createContentScript<Job>(
 
     // A URL change is a reset, then the same automatic activation rule as a
     // fresh page load: only a recognized lecture page opens and captures.
-    autoActivate('url-change');
+    // Manual activation remains available when automatic capture is off.
+    if (autoActivateOnLoad) {
+      autoActivate('url-change');
+    }
   };
 
   const onPopState = (): void => onUrlChange();
@@ -686,7 +698,11 @@ export function createContentScript<Job>(
 
   // A recognized lecture page captures on load: an already-open transcript is
   // captured directly, otherwise the transcript control is opened first.
-  autoActivate('page-load');
+  // When automatic capture is off, an already-open transcript is left alone
+  // and only a manual Show Transcript click starts a capture.
+  if (autoActivateOnLoad) {
+    autoActivate('page-load');
+  }
 
   return {
     dispose(): void {
@@ -715,9 +731,11 @@ let contentRuntimeInstalled = false;
 /**
  * Install the production capture pipeline once per page context. The Stage 0
  * selectors are embedded by the build step; under Vitest the placeholder is
- * undefined and this returns null without touching the page.
+ * undefined and this returns null without touching the page.  The stored
+ * `autoCapture` setting is read before the coordinator is installed so it can
+ * never auto-activate against the user's choice.
  */
-export function installContentRuntime(): ContentScriptController | null {
+export async function installContentRuntime(): Promise<ContentScriptController | null> {
   if (contentRuntimeInstalled) return null;
   if (typeof document === 'undefined' || typeof chrome === 'undefined') {
     return null;
@@ -725,10 +743,13 @@ export function installContentRuntime(): ContentScriptController | null {
   if (typeof __STAGE0_SELECTORS__ === 'undefined') return null;
 
   contentRuntimeInstalled = true;
+  const autoActivateOnLoad = await loadAutoCapture();
   console.log("[lecture-transcripts] content runtime build=overview-iframe-1");
   return createContentScript(
-    createProductionContentDependencies(__STAGE0_SELECTORS__),
+    createProductionContentDependencies(__STAGE0_SELECTORS__, {
+      autoActivateOnLoad,
+    }),
   );
 }
 
-installContentRuntime();
+void installContentRuntime();

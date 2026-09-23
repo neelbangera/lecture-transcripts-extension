@@ -14,6 +14,7 @@ import {
   OverflowNoticeFullError,
   type PendingHandoff,
 } from "./extension-storage";
+import { loadNotificationsEnabled } from "./settings-storage";
 import {
   errorLabel,
   statusLabel,
@@ -102,6 +103,8 @@ export interface BackgroundCoordinatorOptions {
   notifications?: NotificationsLike;
   extensionVersion?: string;
   now?: () => number;
+  /** Overrides the storage-backed `notificationsEnabled` read (tests). */
+  loadNotificationsEnabled?: () => Promise<boolean>;
 }
 
 function chromeApi(): ChromeLike | undefined {
@@ -214,6 +217,8 @@ export class BackgroundCoordinator {
     this.alarms = options.alarms ?? chromeApi()?.alarms;
     this.notifications = options.notifications ?? chromeApi()?.notifications;
     this.now = options.now ?? Date.now;
+    this.readNotificationsEnabled =
+      options.loadNotificationsEnabled ?? (() => loadNotificationsEnabled());
     this.client.onStatus((status) => {
       void this.handleStatus(status, true);
     });
@@ -230,6 +235,7 @@ export class BackgroundCoordinator {
   private readonly alarms: AlarmsLike | undefined;
   private readonly notifications: NotificationsLike | undefined;
   private readonly now: () => number;
+  private readonly readNotificationsEnabled: () => Promise<boolean>;
   private readonly notifiedTerminal = new Set<string>();
 
   async start(): Promise<void> {
@@ -440,7 +446,7 @@ export class BackgroundCoordinator {
     if (persist) {
       const previous = (await this.storage.snapshot()).uploader;
       await this.storage.setUploaderStatus(status);
-      this.notifyTerminalTransitions(previous, status);
+      await this.notifyTerminalTransitions(previous, status);
     }
     this.closeAlarmPortIfIdle();
   }
@@ -523,24 +529,35 @@ export class BackgroundCoordinator {
       message: statusLabel(status),
       action,
     });
-    this.notifyTerminal(job.lectureKey, job.contentHash, status);
+    await this.notifyTerminal(job.lectureKey, job.contentHash, status);
   }
 
-  private notifyTerminalTransitions(previous: UploaderStatus | null, next: UploaderStatus): void {
+  private async notifyTerminalTransitions(previous: UploaderStatus | null, next: UploaderStatus): Promise<void> {
     const prior = new Map<string, string>();
     for (const job of previous?.jobs ?? []) {
       prior.set(`${job.lectureKey}|${job.contentHash}`, job.status);
     }
     for (const job of next.jobs) {
       if (prior.get(`${job.lectureKey}|${job.contentHash}`) === job.status) continue;
-      this.notifyTerminal(job.lectureKey, job.contentHash, job.status);
+      await this.notifyTerminal(job.lectureKey, job.contentHash, job.status);
     }
   }
 
-  private notifyTerminal(lectureKey: string, contentHash: string | null, status: string): void {
+  private async notificationsAreEnabled(): Promise<boolean> {
+    try {
+      return await this.readNotificationsEnabled();
+    } catch {
+      // A settings read is best-effort: an unreadable store must not suppress
+      // an otherwise valid terminal notification.
+      return true;
+    }
+  }
+
+  private async notifyTerminal(lectureKey: string, contentHash: string | null, status: string): Promise<void> {
     const title = terminalNotificationTitle(status);
     const notifications = this.notifications;
     if (!title || !notifications) return;
+    if (!(await this.notificationsAreEnabled())) return;
     const key = `${lectureKey}|${contentHash ?? ""}|${status}`;
     if (this.notifiedTerminal.has(key)) return;
     this.notifiedTerminal.add(key);

@@ -420,8 +420,14 @@ export function toPageSelectors(fixture: SelectorFixture): PageSelectors {
   };
 }
 
+export interface ProductionContentDependenciesOptions {
+  /** Forwarded to the coordinator; false disables load/URL-change capture. */
+  autoActivateOnLoad?: boolean;
+}
+
 export function createProductionContentDependencies(
   fixture: SelectorFixture,
+  options: ProductionContentDependenciesOptions = {},
 ): ContentScriptDependencies<TranscriptJob> {
   return {
     selectors: toPageSelectors(fixture),
@@ -433,5 +439,6 @@ export function createProductionContentDependencies(
       // Status-only diagnostics; never logs transcript text or page content.
       console.log("[lecture-transcripts] capture status:", status);
     },
+    autoActivateOnLoad: options.autoActivateOnLoad ?? true,
   };
 }
