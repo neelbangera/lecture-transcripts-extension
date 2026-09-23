@@ -1057,6 +1057,28 @@ describe("BackgroundCoordinator popup commands", () => {
     expect(response.status).toBe("discarded");
   });
 
+  it("routes each discard of a clear-uploaded sweep in order", async () => {
+    const { coordinator, client } = makeHarness();
+    client.discardResponse = commandResult({
+      operation: "discard",
+      result: "accepted",
+      status: "discarded",
+    });
+
+    const first = await coordinator.handleMessage(
+      { type: "popup_discard", jobId: 9 },
+      POPUP_SENDER,
+    );
+    const second = await coordinator.handleMessage(
+      { type: "popup_discard", jobId: 10 },
+      POPUP_SENDER,
+    );
+
+    expect(client.discardCalls).toEqual([9, 10]);
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+  });
+
   it("reports a rejected discard with its protocol status", async () => {
     const { coordinator, client } = makeHarness();
     client.discardResponse = commandResult({

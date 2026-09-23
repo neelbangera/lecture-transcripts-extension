@@ -1,5 +1,12 @@
 import type { BackgroundResponse, ExtensionMessage } from "./background";
 import {
+  canDiscardJob,
+  canRetryJob,
+  clearableJobs,
+  clearUploadedConfirmText,
+  discardConfirmText,
+} from "./job-actions";
+import {
   statusLabel,
   type ExtensionSnapshot,
   type JobSummary,
@@ -36,6 +43,7 @@ const overflowCount = element<HTMLSpanElement>("overflow-count");
 const overflowList = element<HTMLUListElement>("overflow-list");
 const queueCount = element<HTMLSpanElement>("queue-count");
 const jobList = element<HTMLUListElement>("job-list");
+const clearUploadedButton = element<HTMLButtonElement>("clear-uploaded-button");
 const loadMoreButton = element<HTMLButtonElement>("load-more-button");
 const versions = element<HTMLSpanElement>("versions");
 
@@ -60,6 +68,7 @@ function setBusy(value: boolean): void {
   connectButton.disabled = value;
   resetButton.disabled = value;
   refreshButton.disabled = value;
+  clearUploadedButton.disabled = value;
   loadMoreButton.disabled = value;
 }
 
@@ -136,8 +145,8 @@ function renderJob(job: JobSummary): HTMLLIElement {
   meta.textContent = [job.targetPath, remote].filter(Boolean).join(" · ");
   item.append(title, meta);
 
-  const canRetry = job.status === "retryable_error" || job.status === "permanent_conflict" || job.status === "rejected_permission";
-  const canDiscard = job.status === "permanent_conflict" || job.status.startsWith("rejected_");
+  const canRetry = canRetryJob(job.status);
+  const canDiscard = canDiscardJob(job.status);
   if (canRetry || canDiscard) {
     const actions = document.createElement("div");
     actions.className = "job-actions";
@@ -185,6 +194,7 @@ function renderJobs(status: UploaderStatus | null, append = false): void {
   }
   const total = status ? Object.values(status.counts).reduce((sum, count) => sum + count, 0) : loadedJobs.length;
   queueCount.textContent = String(total);
+  clearUploadedButton.classList.toggle("hidden", clearableJobs(loadedJobs).length === 0);
   loadMoreButton.classList.toggle("hidden", nextBeforeJobId === null);
 }
 
@@ -270,7 +280,7 @@ async function retryJob(job: JobSummary): Promise<void> {
 }
 
 async function discardJob(job: JobSummary): Promise<void> {
-  if (loading || !window.confirm(`Discard the local ${job.lectureKey} row? This never deletes a GitHub file.`)) return;
+  if (loading || !window.confirm(discardConfirmText(job))) return;
   setBusy(true);
   try {
     const response = await send({ type: "popup_discard", jobId: job.jobId });
@@ -281,8 +291,30 @@ async function discardJob(job: JobSummary): Promise<void> {
   }
 }
 
+async function clearUploaded(): Promise<void> {
+  if (loading) return;
+  const targets = clearableJobs(loadedJobs);
+  if (targets.length === 0) return;
+  if (!window.confirm(clearUploadedConfirmText(targets.length))) return;
+  setBusy(true);
+  let failures = 0;
+  try {
+    for (const job of targets) {
+      const response = await send({ type: "popup_discard", jobId: job.jobId });
+      if (!response.ok) failures += 1;
+    }
+  } finally {
+    setBusy(false);
+  }
+  await refresh();
+  if (failures > 0) {
+    lastOutcome.textContent = `${failures} uploaded ${failures === 1 ? "row was" : "rows were"} not cleared.`;
+  }
+}
+
 connectButton.addEventListener("click", () => void connect());
 resetButton.addEventListener("click", () => void reset());
 refreshButton.addEventListener("click", () => void refresh());
+clearUploadedButton.addEventListener("click", () => void clearUploaded());
 loadMoreButton.addEventListener("click", () => void loadMore());
 void refresh();
