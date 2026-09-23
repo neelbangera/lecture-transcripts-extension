@@ -95,7 +95,7 @@ The packet is valid only when every required field has an observed or explicitly
 
 ### Required provisioning packet
 
-The personal installation requires a machine-local provisioning file at `~/Library/Application Support/LectureTranscripts/config.json`. It is an input to the implementation and is never committed. Its required fields are `githubAppClientId`, numeric `repositoryId`, `owner`, `repo`, and `branch`. The file must be validated at startup and the uploader must fail closed when it is absent or incomplete. The extension ID is not a Stage 0 config value: Stage 7 obtains the ID from the actually loaded extension and passes it explicitly to the host-manifest installer.
+The personal installation requires a machine-local provisioning file at `~/Library/Application Support/LectureTranscripts/config.json`. It is an input to the implementation and is never committed. Its required fields are `githubAppClientId`, numeric `repositoryId`, `owner`, `repo`, and `branch`. The optional boolean `writeTimestamped` (absent means true) selects whether the uploader publishes the timestamped transcript alongside the plain file; when it is false the uploader writes only the plain file. The file must be validated at startup and the uploader must fail closed when it is absent or incomplete. The extension ID is not a Stage 0 config value: Stage 7 obtains the ID from the actually loaded extension and passes it explicitly to the host-manifest installer.
 
 The provisioning report must confirm that GitHub Device Flow is enabled for the App, the App is installed only on the target repository, the Contents permission is read/write, and the selected branch is exactly `main`. The actual client ID and repository ID must not be invented, embedded in source, or replaced with a fake value. Unit tests use explicit test configuration; integration tests require the real machine-local configuration. Stage 7 separately records the loaded extension ID and the exact rendered allowed origin; if it is unavailable, installation stops.
 
@@ -108,11 +108,12 @@ The machine-local configuration has this exact shape; the values shown as prose 
   "repositoryId": 0,
   "owner": "neelbangera",
   "repo": "lecture-transcripts",
-  "branch": "main"
+  "branch": "main",
+  "writeTimestamped": true
 }
 ```
 
-`repositoryId` must be a positive integer, `githubAppClientId` must be the real public client ID for the selected App, `owner` must be `neelbangera`, `repo` must be `lecture-transcripts`, and `branch` must be exactly `main`. The loader rejects unknown fields, missing fields, zero values, and mismatched target values. Paths, byte limits, and retry intervals come from the contracts in this plan rather than from mutable config fields.
+`repositoryId` must be a positive integer, `githubAppClientId` must be the real public client ID for the selected App, `owner` must be `neelbangera`, `repo` must be `lecture-transcripts`, and `branch` must be exactly `main`. `writeTimestamped` is optional and must be a JSON boolean when present: absent means true, and false publishes the plain transcript file only and skips the timestamped render and PUT entirely. The toggle never changes the job payload, its content hash, or the plain file's write-once identity, so enabling it later lets the next capture see the plain file unchanged and create the missing timestamped file. The loader rejects unknown fields, missing required fields, non-boolean `writeTimestamped` values, zero values, and mismatched target values. Paths, byte limits, and retry intervals come from the contracts in this plan rather than from mutable config fields.
 
 ### What a first-pass agent may and may not decide
 

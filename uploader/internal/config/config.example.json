@@ -4,5 +4,6 @@
   "repositoryId": 0,
   "owner": "REPLACE_WITH_REPOSITORY_OWNER",
   "repo": "REPLACE_WITH_REPOSITORY_NAME",
-  "branch": "REPLACE_WITH_BRANCH_NAME"
+  "branch": "REPLACE_WITH_BRANCH_NAME",
+  "writeTimestamped": true
 }

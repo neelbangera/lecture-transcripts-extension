@@ -206,27 +206,39 @@ func (f *fakePublisher) Publish(_ context.Context, path string, job protocol.Tra
 	}, nil
 }
 
-func newTestProcessor(t *testing.T) (*Processor, *queue.Store, *fakeAuth, *fakePublisher, *testClock) {
+func openTestStore(t *testing.T) *queue.Store {
 	t.Helper()
 	store, err := queue.Open(filepath.Join(t.TempDir(), "LectureTranscripts", "queue.sqlite3"))
 	if err != nil {
 		t.Fatalf("queue.Open: %v", err)
 	}
 	t.Cleanup(func() { store.Close() })
+	return store
+}
 
-	clock := &testClock{now: baseTime}
-	authn := newFakeAuth(protocol.AuthConnected)
-	publisher := newFakePublisher()
+func newProcessorFor(t *testing.T, store *queue.Store, authn *fakeAuth, publisher *fakePublisher, clock *testClock, writeTimestamped *bool) *Processor {
+	t.Helper()
 	processor, err := New(Config{
-		Store:     store,
-		Auth:      authn,
-		Publisher: publisher,
-		Backoff:   retry.NewWithSource(func() float64 { return 0.5 }),
-		Now:       clock.Now,
+		Store:            store,
+		Auth:             authn,
+		Publisher:        publisher,
+		Backoff:          retry.NewWithSource(func() float64 { return 0.5 }),
+		Now:              clock.Now,
+		WriteTimestamped: writeTimestamped,
 	})
 	if err != nil {
 		t.Fatalf("processor.New: %v", err)
 	}
+	return processor
+}
+
+func newTestProcessor(t *testing.T) (*Processor, *queue.Store, *fakeAuth, *fakePublisher, *testClock) {
+	t.Helper()
+	store := openTestStore(t)
+	clock := &testClock{now: baseTime}
+	authn := newFakeAuth(protocol.AuthConnected)
+	publisher := newFakePublisher()
+	processor := newProcessorFor(t, store, authn, publisher, clock, nil)
 	return processor, store, authn, publisher, clock
 }
 
@@ -250,6 +262,8 @@ func statusRequest(requestID string, before *int64, limit *int) protocol.Request
 }
 
 func intPtr(value int) *int { return &value }
+
+func boolPtr(value bool) *bool { return &value }
 
 func assertValidResponse(t *testing.T, response any) {
 	t.Helper()
@@ -1238,6 +1252,74 @@ func TestPlainOnlyPublishesSingleFile(t *testing.T) {
 	}
 	if stored.TargetPath() != queue.TargetPath(job.Kind, job.CourseSlug, job.LectureNumber) {
 		t.Fatalf("target path = %q", stored.TargetPath())
+	}
+}
+
+func TestWriteTimestampedDisabledPublishesPlainOnly(t *testing.T) {
+	ctx := context.Background()
+	job := testJob(1)
+	publisher := newFakePublisher()
+	clock := &testClock{now: baseTime}
+	plainPath := queue.TargetPath(job.Kind, job.CourseSlug, job.LectureNumber)
+	timestampedPath := queue.TimestampedPath(job.Kind, job.CourseSlug, job.LectureNumber)
+
+	disabledStore := openTestStore(t)
+	disabled := newProcessorFor(t, disabledStore, newFakeAuth(protocol.AuthConnected), publisher, clock, boolPtr(false))
+	submitJob(t, disabled, "req-toggle-off", job)
+	if _, err := disabled.drainOnce(ctx); err != nil {
+		t.Fatalf("drainOnce disabled: %v", err)
+	}
+	stored, err := disabledStore.Get(1)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if stored.Status != protocol.StatusUploaded {
+		t.Fatalf("status = %s, want uploaded", stored.Status)
+	}
+	if publisher.createCalls != 1 {
+		t.Fatalf("create calls = %d, want 1", publisher.createCalls)
+	}
+	if publisher.publishCalls != 1 {
+		t.Fatalf("publish calls = %d, want 1 (no timestamped PUT)", publisher.publishCalls)
+	}
+	plainContent, ok := publisher.contents[plainPath]
+	if !ok {
+		t.Fatalf("plain content missing at %s", plainPath)
+	}
+	if _, ok := publisher.contents[timestampedPath]; ok {
+		t.Fatalf("disabled toggle must not publish a timestamped file at %s", timestampedPath)
+	}
+	if _, ok := publisher.remote[timestampedPath]; ok {
+		t.Fatalf("disabled toggle must not touch the timestamped remote path %s", timestampedPath)
+	}
+
+	// A later capture after the toggle is enabled sees the plain file
+	// unchanged and creates only the missing timestamped file.
+	enabledStore := openTestStore(t)
+	enabled := newProcessorFor(t, enabledStore, newFakeAuth(protocol.AuthConnected), publisher, clock, boolPtr(true))
+	submitJob(t, enabled, "req-toggle-on", job)
+	if _, err := enabled.drainOnce(ctx); err != nil {
+		t.Fatalf("drainOnce enabled: %v", err)
+	}
+	stored, err = enabledStore.Get(1)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if stored.Status != protocol.StatusUploaded {
+		t.Fatalf("status = %s, want uploaded", stored.Status)
+	}
+	if publisher.createCalls != 2 {
+		t.Fatalf("create calls = %d, want 2 (only the missing timestamped file)", publisher.createCalls)
+	}
+	plainAfter, ok := publisher.contents[plainPath]
+	if !ok || !bytes.Equal(plainContent, plainAfter) {
+		t.Fatal("plain file content changed when the toggle was enabled")
+	}
+	if _, ok := publisher.contents[timestampedPath]; !ok {
+		t.Fatalf("enabled toggle must create the missing timestamped file at %s", timestampedPath)
+	}
+	if stored.TargetPath() != plainPath {
+		t.Fatalf("target path = %q, want %q", stored.TargetPath(), plainPath)
 	}
 }
 

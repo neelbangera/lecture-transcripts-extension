@@ -68,6 +68,11 @@ type Config struct {
 	// RetryPollInterval bounds how long a waiting_for_backoff drain sleeps
 	// before checking whether a durable retry became due.
 	RetryPollInterval time.Duration
+
+	// WriteTimestamped controls whether the timestamped transcript is
+	// published alongside the plain file.  nil means enabled, matching an
+	// absent writeTimestamped field in the machine-local config.
+	WriteTimestamped *bool
 }
 
 // Processor serially claims queued jobs, publishes them write-once, and
@@ -82,6 +87,8 @@ type Processor struct {
 	version   string
 	now       func() time.Time
 	lease     time.Duration
+
+	writeTimestamped bool
 
 	retryPollInterval time.Duration
 
@@ -109,6 +116,10 @@ func New(cfg Config) (*Processor, error) {
 	if cfg.Publisher == nil {
 		return nil, errors.New("processor: publisher is required")
 	}
+	writeTimestamped := true
+	if cfg.WriteTimestamped != nil {
+		writeTimestamped = *cfg.WriteTimestamped
+	}
 	processor := &Processor{
 		store:             cfg.Store,
 		auth:              cfg.Auth,
@@ -118,6 +129,7 @@ func New(cfg Config) (*Processor, error) {
 		version:           cfg.Version,
 		now:               cfg.Now,
 		lease:             cfg.Lease,
+		writeTimestamped:  writeTimestamped,
 		retryPollInterval: cfg.RetryPollInterval,
 		wake:              make(chan struct{}, 1),
 	}
@@ -411,7 +423,12 @@ func (p *Processor) processJob(ctx context.Context, job *queue.Job) error {
 		return p.scheduleRetry(job, protocol.ErrorInternal, nil, now)
 	}
 
-	if strings.TrimSpace(job.Payload.TimestampedTranscript) == "" {
+	// A disabled toggle and a job with no timestamped form both stop after the
+	// plain file: no timestamped render or PUT happens, and the durable
+	// outcome comes from the plain result alone.  The job payload and its
+	// content hash are untouched, so enabling the toggle later completes the
+	// missing timestamped file while the plain file stays unchanged.
+	if !p.writeTimestamped || strings.TrimSpace(job.Payload.TimestampedTranscript) == "" {
 		if plainResult.Outcome == github.OutcomeCreated {
 			if err := p.store.MarkUploaded(job.ID, now); err != nil {
 				return err

@@ -118,7 +118,8 @@ these fields:
   "repositoryId": <numeric-repository-id>,
   "owner": "neelbangera",
   "repo": "lecture-transcripts",
-  "branch": "main"
+  "branch": "main",
+  "writeTimestamped": true
 }
 ```
 
@@ -128,6 +129,14 @@ verbatim. The loader rejects unknown fields, missing fields, multiple JSON
 values, a zero or negative `repositoryId`, a missing or placeholder
 `githubAppClientId`, and any `owner`, `repo`, or `branch` other than the three
 values above.
+
+`writeTimestamped` is optional and defaults to `true` when absent. Set it to
+`false` to publish only the plain transcript file and skip the timestamped file
+entirely. The toggle changes only what the uploader writes: the job payload and
+its content hash are unchanged, and the existing plain file stays untouched. If
+you enable it again later, the next capture sees the plain file unchanged and
+creates the missing timestamped file. A present value must be a JSON boolean;
+`null`, strings, and numbers are rejected at load.
 
 This file is machine-local and is never committed. It contains no secret (the
 client ID is public and the repository ID is not sensitive), but it is still an

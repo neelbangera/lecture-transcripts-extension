@@ -42,6 +42,33 @@ func TestLoadValidConfig(t *testing.T) {
 	}
 }
 
+func configWithWriteTimestamped(value string) string {
+	return strings.Replace(validConfigJSON, `"branch": "main"`, `"branch": "main",`+"\n  "+`"writeTimestamped": `+value, 1)
+}
+
+func TestWriteTimestampedConfig(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		want    bool
+	}{
+		{"absent defaults to true", validConfigJSON, true},
+		{"explicit true", configWithWriteTimestamped("true"), true},
+		{"explicit false", configWithWriteTimestamped("false"), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := LoadFrom(writeConfig(t, tc.content))
+			if err != nil {
+				t.Fatalf("LoadFrom: %v", err)
+			}
+			if cfg.WriteTimestamped != tc.want {
+				t.Fatalf("WriteTimestamped = %v, want %v", cfg.WriteTimestamped, tc.want)
+			}
+		})
+	}
+}
+
 func TestLoadRejectsInvalidConfig(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -61,6 +88,9 @@ func TestLoadRejectsInvalidConfig(t *testing.T) {
 		{"wrong repo", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"other","branch":"main"}`},
 		{"wrong branch", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"lecture-transcripts","branch":"dev"}`},
 		{"unknown field", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"lecture-transcripts","branch":"main","token":"secret"}`},
+		{"string writeTimestamped", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"lecture-transcripts","branch":"main","writeTimestamped":"false"}`},
+		{"numeric writeTimestamped", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"lecture-transcripts","branch":"main","writeTimestamped":0}`},
+		{"null writeTimestamped", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"lecture-transcripts","branch":"main","writeTimestamped":null}`},
 		{"trailing value", validConfigJSON + ` {}`},
 	}
 	for _, tc := range cases {
@@ -87,7 +117,7 @@ func TestExampleConfigIsNonfunctional(t *testing.T) {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		t.Fatalf("example is not JSON: %v", err)
 	}
-	wantKeys := []string{"schemaVersion", "githubAppClientId", "repositoryId", "owner", "repo", "branch"}
+	wantKeys := []string{"schemaVersion", "githubAppClientId", "repositoryId", "owner", "repo", "branch", "writeTimestamped"}
 	if len(raw) != len(wantKeys) {
 		t.Fatalf("example has %d keys, want %d", len(raw), len(wantKeys))
 	}
@@ -98,10 +128,13 @@ func TestExampleConfigIsNonfunctional(t *testing.T) {
 	}
 	for key := range raw {
 		switch key {
-		case "schemaVersion", "githubAppClientId", "repositoryId", "owner", "repo", "branch":
+		case "schemaVersion", "githubAppClientId", "repositoryId", "owner", "repo", "branch", "writeTimestamped":
 		default:
 			t.Fatalf("example contains unexpected key %q", key)
 		}
+	}
+	if value, ok := raw["writeTimestamped"].(bool); !ok || !value {
+		t.Fatalf("example writeTimestamped = %#v, want true", raw["writeTimestamped"])
 	}
 
 	cfg, err := decode(data)
