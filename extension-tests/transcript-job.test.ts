@@ -10,6 +10,7 @@ import {
   createTranscriptJob,
   deriveLectureKey,
   deriveStableLecturePath,
+  deriveTimestampedLecturePath,
   sanitizeSourceUrlForPublish,
   serializeTranscriptJob,
   sourceUrlInfo,
@@ -51,8 +52,17 @@ describe("TranscriptJob", () => {
     expect(job.term).toBe("2026-fall");
     expect(job.lectureKey).toBe("eecs484/2026-fall/001");
     expect(deriveLectureKey("eecs484", "Fall 2026", 6)).toBe("eecs484/2026-fall/006");
-    expect(deriveStableLecturePath("eecs484", 6)).toBe(
-      "eecs484/lectures/006.md",
+    expect(deriveStableLecturePath("lecture", "eecs484", 6)).toBe(
+      "eecs484/006.md",
+    );
+    expect(deriveStableLecturePath("discussion", "eecs484", 6)).toBe(
+      "eecs484/discussions/006.md",
+    );
+    expect(deriveTimestampedLecturePath("lecture", "eecs484", 6)).toBe(
+      "eecs484/timestamped/006.md",
+    );
+    expect(deriveTimestampedLecturePath("discussion", "eecs484", 6)).toBe(
+      "eecs484/discussions/timestamped/006.md",
     );
   });
 

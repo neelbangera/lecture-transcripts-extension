@@ -599,13 +599,30 @@ func (p *Processor) handleRetry(ctx context.Context, request protocol.Request) (
 	}
 
 	if job.Status == protocol.StatusPermanentConflict {
-		remote, inspectErr := p.publisher.InspectFile(ctx, job.TargetPath())
-		if inspectErr != nil {
-			category := commandErrorCategory(inspectErr)
-			return rejectedCommand(request.RequestID, "retry", &jobID, &job.Status, category), nil
+		// A retry re-inspects every path the job owns: a same-hash file is
+		// fine, but any missing path or any differing/malformed file must be
+		// resolved by the owner before the job can be retried.
+		paths := []string{job.TargetPath()}
+		if p.writeTimestamped && strings.TrimSpace(job.Payload.TimestampedTranscript) != "" {
+			paths = append(paths, job.TimestampedPath())
 		}
-		if remote.Kind != protocol.RemoteMissing {
-			return rejectedCommand(request.RequestID, "retry", &jobID, &job.Status, protocol.ErrorIneligibleCommand), nil
+		for _, path := range paths {
+			remote, inspectErr := p.publisher.InspectFile(ctx, path)
+			if inspectErr != nil {
+				category := commandErrorCategory(inspectErr)
+				return rejectedCommand(request.RequestID, "retry", &jobID, &job.Status, category), nil
+			}
+			switch remote.Kind {
+			case protocol.RemoteMissing:
+				continue
+			case protocol.RemoteFile:
+				if remote.ContentHash != nil && *remote.ContentHash == job.Payload.ContentHash {
+					continue
+				}
+				return rejectedCommand(request.RequestID, "retry", &jobID, &job.Status, protocol.ErrorIneligibleCommand), nil
+			default:
+				return rejectedCommand(request.RequestID, "retry", &jobID, &job.Status, protocol.ErrorIneligibleCommand), nil
+			}
 		}
 	}
 

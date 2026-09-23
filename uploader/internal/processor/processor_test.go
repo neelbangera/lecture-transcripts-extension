@@ -762,7 +762,8 @@ func TestRetryCommandEligibility(t *testing.T) {
 		t.Fatalf("MarkPermanentConflict: %v", err)
 	}
 	path := queue.TargetPath(conflict.Kind, conflict.CourseSlug, conflict.LectureNumber)
-	publisher.remote[path] = fakeRemote{kind: protocol.RemoteFile, hash: &conflict.ContentHash}
+	differentHash := testHash("retry-different")
+	publisher.remote[path] = fakeRemote{kind: protocol.RemoteFile, hash: &differentHash}
 	response, err = p.HandleRequest(ctx, retryRequest("retry-conflict", claimed.ID))
 	if err != nil {
 		t.Fatalf("HandleRequest(conflict retry): %v", err)
@@ -783,6 +784,48 @@ func TestRetryCommandEligibility(t *testing.T) {
 	assertValidResponse(t, result)
 	if result.Result != "accepted" || result.Status == nil || *result.Status != string(protocol.StatusQueued) {
 		t.Fatalf("removed conflict retry = %+v", result)
+	}
+}
+
+func TestRetryConflictChecksTimestampedPath(t *testing.T) {
+	p, store, _, publisher, _ := newTestProcessor(t)
+	ctx := context.Background()
+
+	job := testJob(3)
+	submitJob(t, p, "req-ts", job)
+	claimed, err := store.ClaimNext(baseTime)
+	if err != nil || claimed == nil {
+		t.Fatalf("ClaimNext: %v, %v", claimed, err)
+	}
+	if err := store.MarkPermanentConflict(claimed.ID, string(protocol.ErrorInternal), nil, nil, string(protocol.RemoteMissing), baseTime); err != nil {
+		t.Fatalf("MarkPermanentConflict: %v", err)
+	}
+
+	plainPath := queue.TargetPath(job.Kind, job.CourseSlug, job.LectureNumber)
+	timestampedPath := queue.TimestampedPath(job.Kind, job.CourseSlug, job.LectureNumber)
+	publisher.remote[plainPath] = fakeRemote{kind: protocol.RemoteFile, hash: &job.ContentHash}
+	different := testHash("ts-different")
+	publisher.remote[timestampedPath] = fakeRemote{kind: protocol.RemoteFile, hash: &different}
+
+	response, err := p.HandleRequest(ctx, retryRequest("retry-ts", claimed.ID))
+	if err != nil {
+		t.Fatalf("HandleRequest(timestamped conflict): %v", err)
+	}
+	result := response.(protocol.CommandResult)
+	assertValidResponse(t, result)
+	if result.Result != "rejected" || result.ErrorCategory == nil || *result.ErrorCategory != protocol.ErrorIneligibleCommand {
+		t.Fatalf("timestamped conflict retry = %+v", result)
+	}
+
+	delete(publisher.remote, timestampedPath)
+	response, err = p.HandleRequest(ctx, retryRequest("retry-ts-2", claimed.ID))
+	if err != nil {
+		t.Fatalf("HandleRequest(timestamped cleared): %v", err)
+	}
+	result = response.(protocol.CommandResult)
+	assertValidResponse(t, result)
+	if result.Result != "accepted" || result.Status == nil || *result.Status != string(protocol.StatusQueued) {
+		t.Fatalf("cleared timestamped retry = %+v", result)
 	}
 }
 

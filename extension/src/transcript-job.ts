@@ -602,20 +602,28 @@ export function deriveLectureKey(
   return `${courseSlug}/${normalizedTerm}/${String(lectureNumber).padStart(3, "0")}`;
 }
 
-/** Derive the write-once Markdown path for a validated lecture identity. */
+/** Derive the write-once plain Markdown path for a validated identity. */
 export function deriveStableLecturePath(
+  kind: TranscriptJobKind,
   courseSlug: string,
   lectureNumber: number,
 ): string {
-  return `${courseSlug}/lectures/${String(lectureNumber).padStart(3, "0")}.md`;
+  const file = `${String(lectureNumber).padStart(3, "0")}.md`;
+  return kind === "discussion"
+    ? `${courseSlug}/discussions/${file}`
+    : `${courseSlug}/${file}`;
 }
 
 /** Derive the write-once timestamped-transcript path. */
 export function deriveTimestampedLecturePath(
+  kind: TranscriptJobKind,
   courseSlug: string,
   lectureNumber: number,
 ): string {
-  return `${courseSlug}/timestamped/${String(lectureNumber).padStart(3, "0")}.md`;
+  const file = `${String(lectureNumber).padStart(3, "0")}.md`;
+  return kind === "discussion"
+    ? `${courseSlug}/discussions/timestamped/${file}`
+    : `${courseSlug}/timestamped/${file}`;
 }
 
 /** Build, normalize, hash, canonicalize, and validate a wire-shaped job. */
