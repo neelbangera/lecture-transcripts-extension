@@ -48,8 +48,8 @@ npm run build
 ```
 
 `npm run build` writes the loadable unpacked extension to `dist/extension/`
-(`background.js`, `content.js`, `popup.js`, `manifest.json`, `popup.html`,
-`popup.css`).
+(`background.js`, `content.js`, `popup.js`, `options.js`, `manifest.json`,
+`popup.html`, `popup.css`, `options.html`, `options.css`).
 
 Run the Go uploader tests from the module directory:
 
@@ -72,12 +72,34 @@ sh scripts/tests/run.sh
 3. Choose **Load unpacked** and select the `dist/extension/` directory.
 4. Copy the 32-character extension ID Chrome shows on the card. This is the
    `<loaded-extension-id>` used by the host installer.
-5. Pin the extension and open its popup once to confirm it renders.
+5. Pin the extension and open its popup once to confirm it renders. The popup's
+   **Settings** button opens the extension's options page; the same page is
+   available from the extension card's **Extension options** in
+   `chrome://extensions`.
 
 For an unpacked extension Chrome derives the ID from the directory path. Keep
 the checkout path fixed; moving or reloading from a different path changes the
 ID and requires reinstalling the Native Messaging host (see
 [Extension-ID drift](#extension-id-drift)).
+
+## Extension settings
+
+Open the popup and choose **Settings**, or open **Extension options** from the
+extension card in `chrome://extensions`. The page holds the capture behavior
+toggles and the course allowlist:
+
+- **Automatic capture** (default on): when off, the content script does not open
+  or capture a transcript on page load or on an in-page URL change, and an
+  already-open transcript is left alone. Click **Show Transcript** to capture
+  manually.
+- **Desktop notifications** (default on): when off, the service worker creates
+  no desktop notifications for upload outcomes.
+- **Course allowlist**: the validated course/term pairs that may be captured.
+  Saves are validated before they reach `chrome.storage.local`; an empty or
+  invalid stored list falls back to the built-in allowlist.
+
+Both toggles are stored in `chrome.storage.local` and are read before the
+behavior they gate, so no extension reload is needed after changing them.
 
 ## Create the destination repository and GitHub App
 
