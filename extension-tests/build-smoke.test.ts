@@ -13,9 +13,33 @@ const unresolvedPlaceholderPattern = /(?<!<define:)__STAGE0_SELECTORS__/;
 
 interface ExtensionManifest {
   background: { service_worker: string };
-  action: { default_popup: string };
+  action: {
+    default_popup: string;
+    default_icon?: string | Record<string, string>;
+  };
   options_ui: { page: string; open_in_tab: boolean };
   content_scripts: Array<{ js: string[] }>;
+  icons?: Record<string, string>;
+  permissions?: string[];
+}
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+function manifestReferencedFiles(manifest: ExtensionManifest): string[] {
+  const referenced = [
+    manifest.background.service_worker,
+    manifest.action.default_popup,
+    manifest.options_ui.page,
+    ...manifest.content_scripts.flatMap((entry) => entry.js),
+    ...Object.values(manifest.icons ?? {}),
+  ];
+  const defaultIcon = manifest.action.default_icon;
+  if (typeof defaultIcon === "string") {
+    referenced.push(defaultIcon);
+  } else if (defaultIcon) {
+    referenced.push(...Object.values(defaultIcon));
+  }
+  return referenced;
 }
 
 function runExtensionBuild(): void {
@@ -47,15 +71,14 @@ describe("built extension smoke test", () => {
       readFileSync(join(outputRoot, "manifest.json"), "utf8"),
     ) as ExtensionManifest;
     expect(manifest.options_ui.open_in_tab).toBe(true);
-    const referenced = [
-      manifest.background.service_worker,
-      manifest.action.default_popup,
-      manifest.options_ui.page,
-      ...manifest.content_scripts.flatMap((entry) => entry.js),
-    ];
+    expect(manifest.permissions).toContain("notifications");
+    const referenced = manifestReferencedFiles(manifest);
     for (const file of referenced) {
       expect(existsSync(join(outputRoot, file)), `missing ${file}`).toBe(true);
     }
+
+    const icon = readFileSync(join(outputRoot, "icons", "icon128.png"));
+    expect(icon.subarray(0, 8)).toEqual(PNG_SIGNATURE);
 
     for (const htmlFile of [
       manifest.action.default_popup,

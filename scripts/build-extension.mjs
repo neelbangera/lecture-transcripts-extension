@@ -6,7 +6,7 @@
  * reads a fixture path at runtime.
  */
 
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -114,6 +114,14 @@ if (typeof manifest.version !== "string" || manifest.version.length === 0) {
 }
 manifest.version = packageJson.version;
 
+for (const file of ["icons/icon128.png"]) {
+  try {
+    await readFile(join(extensionRoot, file));
+  } catch {
+    fail(`missing extension/${file}`);
+  }
+}
+
 await rm(outputRoot, { recursive: true, force: true });
 await mkdir(outputRoot, { recursive: true });
 
@@ -126,6 +134,7 @@ for (const file of ["popup.html", "popup.css", "options.html", "options.css"]) {
   const contents = await readFile(join(extensionRoot, file), "utf8");
   await writeFile(join(outputRoot, file), contents);
 }
+await cp(join(extensionRoot, "icons"), join(outputRoot, "icons"), { recursive: true });
 await writeFile(join(outputRoot, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
 console.log(`build-extension: wrote ${outputRoot}`);
