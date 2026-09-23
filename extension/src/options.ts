@@ -260,6 +260,16 @@ function setBusy(value: boolean): void {
   refreshSaveState();
 }
 
+function invalidControl(
+  card: ParentNode,
+  field: string,
+): HTMLElement | null {
+  if (field === "supportedTerms") {
+    return card.querySelector<HTMLElement>("[data-term-select]");
+  }
+  return fieldInput(card, field);
+}
+
 function renderIssues(issues: readonly CourseMappingIssue[]): void {
   errorList.replaceChildren();
   errorList.classList.toggle("hidden", issues.length === 0);
@@ -267,8 +277,10 @@ function renderIssues(issues: readonly CourseMappingIssue[]): void {
   for (const card of courseList.querySelectorAll<HTMLFieldSetElement>(
     "fieldset[data-course]",
   )) {
-    for (const input of card.querySelectorAll<HTMLInputElement>("[data-field]")) {
-      input.removeAttribute("aria-invalid");
+    for (const control of card.querySelectorAll<HTMLElement>(
+      "[data-field], [data-term-select]",
+    )) {
+      control.removeAttribute("aria-invalid");
     }
   }
 
@@ -281,8 +293,8 @@ function renderIssues(issues: readonly CourseMappingIssue[]): void {
       const card = courseList.querySelectorAll<HTMLFieldSetElement>(
         "fieldset[data-course]",
       )[issue.index];
-      const input = card ? fieldInput(card, issue.field) : null;
-      input?.setAttribute("aria-invalid", "true");
+      const control = card ? invalidControl(card, issue.field) : null;
+      control?.setAttribute("aria-invalid", "true");
     }
   }
 }

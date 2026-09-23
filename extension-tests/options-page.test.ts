@@ -305,4 +305,23 @@ describe("options page dirty state", () => {
       STORED_COURSE,
     ]);
   });
+
+  it("marks the term select when supported terms are missing", async () => {
+    await mountOptionsPage();
+    element<HTMLButtonElement>("add-course").click();
+    saveButton().click();
+    await settle();
+    const added = courseCards()[1];
+    expect(
+      added.querySelector("[data-term-select]")?.getAttribute("aria-invalid"),
+    ).toBe("true");
+    expect(
+      field(added, "pageCourseText").getAttribute("aria-invalid"),
+    ).toBe("true");
+    expect(
+      courseCards()[0]
+        .querySelector("[data-term-select]")
+        ?.getAttribute("aria-invalid"),
+    ).toBeNull();
+  });
 });

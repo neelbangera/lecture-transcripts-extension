@@ -1,17 +1,3 @@
-:root {
-  --success: #1a7f37;
-  --danger: #d1242f;
-  --danger-bg: rgba(209, 36, 47, 0.08);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --success: #3fb950;
-    --danger: #ff7b72;
-    --danger-bg: rgba(248, 81, 73, 0.15);
-  }
-}
-
 .options-page {
   width: auto;
   min-height: 100vh;
@@ -51,6 +37,15 @@
 }
 
 .settings-section h2 {
+  margin-top: 0;
+}
+
+.settings-section .notice {
+  margin-top: 10px;
+}
+
+.settings-section .notice:empty {
+  min-height: 0;
   margin-top: 0;
 }
 
@@ -138,7 +133,8 @@
   outline-offset: 1px;
 }
 
-.field input[aria-invalid="true"] {
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"] {
   border-color: var(--danger);
   outline-color: var(--danger);
 }
@@ -185,21 +181,8 @@
   margin-top: 12px;
 }
 
-.notice-success {
-  color: var(--success);
-  font-weight: 600;
-}
-
 .notice-info {
   color: var(--muted);
-}
-
-.notice-warn {
-  color: var(--notice);
-}
-
-.notice-error {
-  color: var(--danger);
 }
 
 .field-label {
@@ -290,6 +273,11 @@
 
 .allowlist-section .notice {
   margin-top: 8px;
+}
+
+.allowlist-section .notice:empty {
+  min-height: 0;
+  margin-top: 0;
 }
 
 .course-list-empty {
