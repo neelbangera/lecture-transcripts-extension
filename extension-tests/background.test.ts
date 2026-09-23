@@ -23,6 +23,8 @@ import {
 import {
   EMPTY_COUNTS,
   type DrainState,
+  type JobSummary,
+  type QueueStatus,
   type UploaderStatus,
 } from "../extension/src/status";
 import { createTranscriptJob } from "../extension/src/transcript-job";
@@ -116,6 +118,28 @@ function commandResult(
   };
 }
 
+function summaryFor(
+  job: NativeTranscriptJob,
+  jobStatus: QueueStatus,
+  overrides: Partial<JobSummary> = {},
+): JobSummary {
+  return {
+    jobId: 1,
+    lectureKey: job.lectureKey,
+    contentHash: job.contentHash,
+    status: jobStatus,
+    attemptCount: 0,
+    nextAttemptAt: null,
+    updatedAt: "2026-09-20T11:30:00Z",
+    targetPath: "eecs484/2026-fall/001.md",
+    lastErrorCategory: null,
+    lastErrorHttpStatus: null,
+    remoteContentHash: null,
+    remoteFileKind: null,
+    ...overrides,
+  };
+}
+
 class MemoryStorageArea implements StorageAreaLike {
   readonly values = new Map<string, unknown>();
   readonly operations: string[] = [];
@@ -197,6 +221,21 @@ class FakeAlarms {
 
   async create(name: string, info: { periodInMinutes: number }): Promise<void> {
     this.createCalls.push({ name, info });
+  }
+}
+
+class FakeNotifications {
+  readonly createCalls: Array<{
+    id: string;
+    options: { type: string; iconUrl: string; title: string; message: string };
+  }> = [];
+
+  async create(
+    id: string,
+    options: { type: "basic"; iconUrl: string; title: string; message: string },
+  ): Promise<string> {
+    this.createCalls.push({ id, options });
+    return id;
   }
 }
 
@@ -322,6 +361,7 @@ interface Harness {
   client: FakeNativeMessagingClient;
   runtime: FakeRuntime;
   alarms: FakeAlarms;
+  notifications: FakeNotifications;
   coordinator: BackgroundCoordinator;
   advance(ms: number): void;
 }
@@ -331,12 +371,14 @@ function makeHarness(area: MemoryStorageArea = new MemoryStorageArea()): Harness
   const client = new FakeNativeMessagingClient();
   const runtime = new FakeRuntime();
   const alarms = new FakeAlarms();
+  const notifications = new FakeNotifications();
   let now = NOW_MS;
   const coordinator = new BackgroundCoordinator({
     client: client as unknown as NativeMessagingClient,
     storage,
     runtime,
     alarms,
+    notifications,
     extensionVersion: "0.1.0",
     now: () => now,
   });
@@ -346,6 +388,7 @@ function makeHarness(area: MemoryStorageArea = new MemoryStorageArea()): Harness
     client,
     runtime,
     alarms,
+    notifications,
     coordinator,
     advance: (ms: number) => {
       now += ms;
@@ -1097,6 +1140,119 @@ describe("BackgroundCoordinator popup commands", () => {
     expect(response.ok).toBe(false);
     expect(response.status).toBe("rejected_permission");
     expect(response.message).toBe("Rejected — GitHub permission denied");
+  });
+});
+
+describe("BackgroundCoordinator terminal notifications", () => {
+  it("notifies once when a status page reports a newly uploaded job", async () => {
+    const { coordinator, client, notifications } = makeHarness();
+    const job = jobFor(1);
+    client.statusPage = status({ jobs: [summaryFor(job, "uploaded")] });
+
+    await coordinator.handleAlarm({ name: DRAIN_ALARM_NAME });
+
+    expect(notifications.createCalls).toHaveLength(1);
+    const call = notifications.createCalls[0];
+    expect(call.options.type).toBe("basic");
+    expect(call.options.iconUrl).toBe("icons/icon128.png");
+    expect(call.options.title).toBe("Lecture uploaded");
+    expect(call.options.message).toContain(job.lectureKey);
+    expect(call.options.message).toContain("Uploaded");
+    expect(call.options.message).not.toContain(TRANSCRIPT);
+
+    await coordinator.handleAlarm({ name: DRAIN_ALARM_NAME });
+    expect(notifications.createCalls).toHaveLength(1);
+  });
+
+  it("notifies for an unchanged job without leaking transcript text", async () => {
+    const { coordinator, client, notifications } = makeHarness();
+    const job = jobFor(2);
+    client.statusPage = status({ jobs: [summaryFor(job, "unchanged")] });
+
+    await coordinator.handleAlarm({ name: DRAIN_ALARM_NAME });
+
+    expect(notifications.createCalls).toHaveLength(1);
+    expect(notifications.createCalls[0].options.title).toBe("Lecture uploaded");
+    expect(notifications.createCalls[0].options.message).toContain(
+      "Already uploaded; unchanged",
+    );
+    expect(notifications.createCalls[0].options.message).not.toContain(TRANSCRIPT);
+  });
+
+  it("uses the upload-failed title for a permanent conflict", async () => {
+    const { coordinator, client, notifications } = makeHarness();
+    const job = jobFor(3);
+    client.statusPage = status({ jobs: [summaryFor(job, "permanent_conflict")] });
+
+    await coordinator.handleAlarm({ name: DRAIN_ALARM_NAME });
+
+    expect(notifications.createCalls).toHaveLength(1);
+    expect(notifications.createCalls[0].options.title).toBe("Upload failed");
+    expect(notifications.createCalls[0].options.message).toContain(job.lectureKey);
+    expect(notifications.createCalls[0].options.message).toContain(
+      "Conflict — manual review needed",
+    );
+    expect(notifications.createCalls[0].options.message).not.toContain(TRANSCRIPT);
+  });
+
+  it("notifies for a rejected capture outcome", async () => {
+    const { coordinator, client, notifications } = makeHarness();
+    const job = jobFor(4);
+    client.submitResponses = [ackFor(job, "rejected_queue_full")];
+
+    await coordinator.handleMessage(
+      { type: "capture_job", job },
+      CONTENT_SENDER,
+    );
+
+    expect(notifications.createCalls).toHaveLength(1);
+    expect(notifications.createCalls[0].options.title).toBe("Upload failed");
+    expect(notifications.createCalls[0].options.message).toContain(job.lectureKey);
+    expect(notifications.createCalls[0].options.message).toContain(
+      "Rejected — uploader queue is full",
+    );
+    expect(notifications.createCalls[0].options.message).not.toContain(TRANSCRIPT);
+  });
+
+  it("never notifies for queued, uploading, or waiting_for_uploader states", async () => {
+    const { coordinator, client, notifications } = makeHarness();
+    const job = jobFor(5);
+    client.statusPage = status({
+      drainState: "waiting_for_backoff",
+      jobs: [summaryFor(job, "queued"), summaryFor(job, "uploading", { jobId: 2 })],
+    });
+
+    await coordinator.handleAlarm({ name: DRAIN_ALARM_NAME });
+    expect(notifications.createCalls).toEqual([]);
+
+    client.hostAvailable = false;
+    const response = await coordinator.handleMessage(
+      { type: "capture_job", job },
+      CONTENT_SENDER,
+    );
+    expect(response.status).toBe("waiting_for_uploader");
+    expect(notifications.createCalls).toEqual([]);
+  });
+
+  it("stays silent when chrome.notifications is unavailable", async () => {
+    const storage = new ExtensionStorage(new MemoryStorageArea());
+    const client = new FakeNativeMessagingClient();
+    const runtime = new FakeRuntime();
+    const alarms = new FakeAlarms();
+    const coordinator = new BackgroundCoordinator({
+      client: client as unknown as NativeMessagingClient,
+      storage,
+      runtime,
+      alarms,
+      extensionVersion: "0.1.0",
+      now: () => NOW_MS,
+    });
+    const job = jobFor(6);
+    client.statusPage = status({ jobs: [summaryFor(job, "uploaded")] });
+
+    await expect(
+      coordinator.handleAlarm({ name: DRAIN_ALARM_NAME }),
+    ).resolves.toBeUndefined();
   });
 });
 

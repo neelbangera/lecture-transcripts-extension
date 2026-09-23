@@ -60,9 +60,21 @@ interface AlarmsLike {
   onAlarm?: EventLike<(alarm: AlarmLike) => void>;
 }
 
+interface NotificationOptionsLike {
+  type: "basic";
+  iconUrl: string;
+  title: string;
+  message: string;
+}
+
+interface NotificationsLike {
+  create(id: string, options: NotificationOptionsLike): Promise<string> | void;
+}
+
 interface ChromeLike {
   runtime?: RuntimeLike;
   alarms?: AlarmsLike;
+  notifications?: NotificationsLike;
 }
 
 export type ExtensionMessage =
@@ -87,6 +99,7 @@ export interface BackgroundCoordinatorOptions {
   storage?: ExtensionStorage;
   runtime?: RuntimeLike;
   alarms?: AlarmsLike;
+  notifications?: NotificationsLike;
   extensionVersion?: string;
   now?: () => number;
 }
@@ -174,6 +187,17 @@ function isSubmitRejection(status: SubmitAckStatus): status is Exclude<SubmitAck
   return status !== "queued" && status !== "already_queued";
 }
 
+function terminalNotificationTitle(status: string): string | null {
+  if (status === "uploaded" || status === "unchanged") return "Lecture uploaded";
+  if (status === "permanent_conflict" || status.startsWith("rejected_")) return "Upload failed";
+  return null;
+}
+
+function notificationId(lectureKey: string): string {
+  const safe = lectureKey.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 96);
+  return `lecture-transcripts-${safe}`;
+}
+
 export class BackgroundCoordinator {
   private started = false;
   private drainRunning: Promise<void> | null = null;
@@ -188,6 +212,7 @@ export class BackgroundCoordinator {
     this.runtime = options.runtime ?? runtimeApi();
     this.extensionVersion = options.extensionVersion ?? this.readExtensionVersion();
     this.alarms = options.alarms ?? chromeApi()?.alarms;
+    this.notifications = options.notifications ?? chromeApi()?.notifications;
     this.now = options.now ?? Date.now;
     this.client.onStatus((status) => {
       void this.handleStatus(status, true);
@@ -203,7 +228,9 @@ export class BackgroundCoordinator {
   private readonly storage: ExtensionStorage;
   private readonly runtime: RuntimeLike | undefined;
   private readonly alarms: AlarmsLike | undefined;
+  private readonly notifications: NotificationsLike | undefined;
   private readonly now: () => number;
+  private readonly notifiedTerminal = new Set<string>();
 
   async start(): Promise<void> {
     if (this.started) return;
@@ -410,7 +437,11 @@ export class BackgroundCoordinator {
 
   private async handleStatus(status: UploaderStatus, persist: boolean): Promise<void> {
     this.lastDrainState = status.drainState;
-    if (persist) await this.storage.setUploaderStatus(status);
+    if (persist) {
+      const previous = (await this.storage.snapshot()).uploader;
+      await this.storage.setUploaderStatus(status);
+      this.notifyTerminalTransitions(previous, status);
+    }
     this.closeAlarmPortIfIdle();
   }
 
@@ -492,6 +523,40 @@ export class BackgroundCoordinator {
       message: statusLabel(status),
       action,
     });
+    this.notifyTerminal(job.lectureKey, job.contentHash, status);
+  }
+
+  private notifyTerminalTransitions(previous: UploaderStatus | null, next: UploaderStatus): void {
+    const prior = new Map<string, string>();
+    for (const job of previous?.jobs ?? []) {
+      prior.set(`${job.lectureKey}|${job.contentHash}`, job.status);
+    }
+    for (const job of next.jobs) {
+      if (prior.get(`${job.lectureKey}|${job.contentHash}`) === job.status) continue;
+      this.notifyTerminal(job.lectureKey, job.contentHash, job.status);
+    }
+  }
+
+  private notifyTerminal(lectureKey: string, contentHash: string | null, status: string): void {
+    const title = terminalNotificationTitle(status);
+    const notifications = this.notifications;
+    if (!title || !notifications) return;
+    const key = `${lectureKey}|${contentHash ?? ""}|${status}`;
+    if (this.notifiedTerminal.has(key)) return;
+    this.notifiedTerminal.add(key);
+    try {
+      const result = notifications.create(notificationId(lectureKey), {
+        type: "basic",
+        iconUrl: "icons/icon128.png",
+        title,
+        message: `${statusLabel(status)} · ${lectureKey}`,
+      });
+      if (result && typeof (result as Promise<unknown>).catch === "function") {
+        void (result as Promise<unknown>).catch(() => undefined);
+      }
+    } catch {
+      this.notifiedTerminal.delete(key);
+    }
   }
 
   private markInteractive(): void {
