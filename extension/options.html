@@ -44,10 +44,14 @@
       </section>
 
       <section aria-labelledby="allowlist-heading">
-        <h2 id="allowlist-heading">Course allowlist</h2>
+        <div class="section-heading">
+          <h2 id="allowlist-heading">Course allowlist</h2>
+          <button id="add-course" class="button secondary" type="button">+ Add course</button>
+        </div>
         <p class="muted">
-          Captures are limited to these course/term pairs. Terms use the
-          normalized form <code>YYYY-winter</code>, <code>YYYY-spring</code>,
+          Captures are limited to these course/term pairs. Add each supported
+          term from the dropdown; terms use the normalized form
+          <code>YYYY-winter</code>, <code>YYYY-spring</code>,
           <code>YYYY-summer</code>, or <code>YYYY-fall</code>.
         </p>
 
@@ -56,11 +60,10 @@
 
         <section id="course-list" class="course-list" aria-label="Courses"></section>
 
-        <section class="actions" aria-label="Course actions">
-          <button id="add-course" class="button secondary" type="button">Add course</button>
-          <button id="save-courses" class="button primary" type="button">Save</button>
+        <div class="actions actions-end" aria-label="Course actions">
           <button id="reload-courses" class="button secondary" type="button">Reload</button>
-        </section>
+          <button id="save-courses" class="button primary" type="button" disabled>Save</button>
+        </div>
 
         <p class="muted">
           Optional preferred discussion section: three digits, for example

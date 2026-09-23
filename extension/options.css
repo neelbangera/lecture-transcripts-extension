@@ -138,3 +138,99 @@
 .remove-course {
   justify-self: start;
 }
+
+.options-page .section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.options-page .section-heading h2 {
+  margin: 0;
+}
+
+.actions-end {
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.notice-success {
+  color: #1a7f37;
+  font-weight: 600;
+}
+
+.notice-warn {
+  color: var(--notice);
+}
+
+.notice-error {
+  color: #d1242f;
+}
+
+.field-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field select {
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--job-bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 8px;
+}
+
+.field select:focus {
+  outline: 2px solid var(--primary-bg);
+  outline-offset: 1px;
+}
+
+.field-terms {
+  grid-column: 1 / -1;
+}
+
+.term-row {
+  display: flex;
+  gap: 8px;
+}
+
+.term-row select {
+  flex: 1;
+}
+
+.term-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.term-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 3px 6px 3px 10px;
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  font-size: 12px;
+}
+
+.chip-remove {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.chip-remove:hover {
+  color: #d1242f;
+}

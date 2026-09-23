@@ -33,6 +33,27 @@ const autoCaptureToggle = element<HTMLInputElement>("auto-capture-toggle");
 const notificationsToggle = element<HTMLInputElement>("notifications-toggle");
 const settingsStatus = element<HTMLParagraphElement>("settings-status");
 
+const SEASONS = ["winter", "spring", "summer", "fall"] as const;
+const SUCCESS_MESSAGE_MS = 3000;
+
+let dirty = false;
+let busy = false;
+let statusTimer: number | null = null;
+
+function termOptions(existing: readonly string[] = []): string[] {
+  const currentYear = new Date().getFullYear();
+  const options: string[] = [];
+  for (let year = currentYear - 1; year <= currentYear + 2; year += 1) {
+    for (const season of SEASONS) {
+      options.push(`${year}-${season}`);
+    }
+  }
+  for (const term of existing) {
+    if (!options.includes(term)) options.push(term);
+  }
+  return options.sort();
+}
+
 const COURSE_TEMPLATE = `
   <legend>Course</legend>
   <div class="field-grid">
@@ -45,15 +66,64 @@ const COURSE_TEMPLATE = `
     <label class="field">Course slug
       <input data-field="courseSlug" type="text" autocomplete="off" spellcheck="false" placeholder="eecs484" />
     </label>
-    <label class="field">Supported terms (comma-separated)
-      <input data-field="supportedTerms" type="text" autocomplete="off" spellcheck="false" placeholder="2026-fall, 2027-winter" />
-    </label>
     <label class="field">Preferred discussion section (optional)
       <input data-field="preferredDiscussionSection" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="012" />
     </label>
   </div>
+  <div class="field field-terms">
+    <span class="field-label">Supported terms</span>
+    <div class="term-row">
+      <select data-term-select aria-label="Choose a supported term"></select>
+      <button class="button secondary add-term" type="button">Add term</button>
+    </div>
+    <ul class="term-chips" data-term-chips aria-label="Selected terms"></ul>
+  </div>
   <button class="button secondary remove-course" type="button">Remove course</button>
 `;
+
+function termChips(card: ParentNode): HTMLUListElement | null {
+  return card.querySelector<HTMLUListElement>("[data-term-chips]");
+}
+
+function selectedTerms(card: ParentNode): string[] {
+  const chips = termChips(card);
+  if (!chips) return [];
+  return Array.from(chips.querySelectorAll<HTMLLIElement>("[data-term]"))
+    .map((chip) => chip.dataset.term ?? "")
+    .filter(Boolean);
+}
+
+function renderTerms(card: ParentNode, terms: readonly string[]): void {
+  const chips = termChips(card);
+  if (!chips) return;
+  chips.replaceChildren();
+  for (const term of terms) {
+    const chip = document.createElement("li");
+    chip.className = "term-chip";
+    chip.dataset.term = term;
+    chip.append(document.createTextNode(term));
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "chip-remove";
+    remove.setAttribute("aria-label", `Remove term ${term}`);
+    remove.textContent = "×";
+    remove.addEventListener("click", () => {
+      chip.remove();
+      markDirty();
+    });
+    chip.append(remove);
+    chips.append(chip);
+  }
+}
+
+function addTerm(card: ParentNode): void {
+  const select = card.querySelector<HTMLSelectElement>("[data-term-select]");
+  const term = select?.value ?? "";
+  if (!term || selectedTerms(card).includes(term)) return;
+  renderTerms(card, [...selectedTerms(card), term].sort());
+  markDirty();
+}
 
 function createCourseCard(course?: CourseConfig): HTMLFieldSetElement {
   const card = document.createElement("fieldset");
@@ -61,11 +131,23 @@ function createCourseCard(course?: CourseConfig): HTMLFieldSetElement {
   card.dataset.course = "";
   card.innerHTML = COURSE_TEMPLATE;
 
+  const select = card.querySelector<HTMLSelectElement>("[data-term-select]");
+  if (select) {
+    select.replaceChildren(
+      ...termOptions(course?.supportedTerms).map((term) => {
+        const option = document.createElement("option");
+        option.value = term;
+        option.textContent = term;
+        return option;
+      }),
+    );
+  }
+  renderTerms(card, course?.supportedTerms ?? []);
+
   if (course) {
     setFieldValue(card, "pageCourseText", course.pageCourseText);
     setFieldValue(card, "courseName", course.courseName);
     setFieldValue(card, "courseSlug", course.courseSlug);
-    setFieldValue(card, "supportedTerms", course.supportedTerms.join(", "));
     setFieldValue(
       card,
       "preferredDiscussionSection",
@@ -73,10 +155,14 @@ function createCourseCard(course?: CourseConfig): HTMLFieldSetElement {
     );
   }
 
+  card.querySelector(".add-term")?.addEventListener("click", () => {
+    addTerm(card);
+  });
   card.querySelector(".remove-course")?.addEventListener("click", () => {
     card.remove();
-    setStatus("Unsaved changes. Select Save to persist them.");
+    markDirty();
   });
+  card.addEventListener("input", () => markDirty());
   return card;
 }
 
@@ -103,16 +189,46 @@ function readCourses(): unknown[] {
     pageCourseText: fieldInput(card, "pageCourseText")?.value ?? "",
     courseName: fieldInput(card, "courseName")?.value ?? "",
     courseSlug: fieldInput(card, "courseSlug")?.value ?? "",
-    supportedTerms: (fieldInput(card, "supportedTerms")?.value ?? "")
-      .split(/[,\s]+/u)
-      .filter(Boolean),
+    supportedTerms: selectedTerms(card),
     preferredDiscussionSection:
       (fieldInput(card, "preferredDiscussionSection")?.value ?? "").trim() || null,
   }));
 }
 
-function setStatus(message: string): void {
+type StatusVariant = "info" | "success" | "warn" | "error";
+
+function setStatus(message: string, variant: StatusVariant = "info"): void {
+  if (statusTimer !== null) {
+    window.clearTimeout(statusTimer);
+    statusTimer = null;
+  }
   statusLine.textContent = message;
+  statusLine.classList.remove("notice-success", "notice-warn", "notice-error");
+  if (variant !== "info") statusLine.classList.add(`notice-${variant}`);
+  if (variant === "success") {
+    statusTimer = window.setTimeout(() => {
+      statusTimer = null;
+      statusLine.textContent = "";
+      statusLine.classList.remove("notice-success");
+    }, SUCCESS_MESSAGE_MS);
+  }
+}
+
+function refreshSaveState(): void {
+  saveButton.disabled = busy || !dirty;
+}
+
+function markDirty(): void {
+  dirty = true;
+  refreshSaveState();
+  setStatus("Unsaved changes. Select Save to persist them.", "warn");
+}
+
+function setBusy(value: boolean): void {
+  busy = value;
+  addButton.disabled = value;
+  reloadButton.disabled = value;
+  refreshSaveState();
 }
 
 function renderIssues(issues: readonly CourseMappingIssue[]): void {
@@ -142,28 +258,22 @@ function renderIssues(issues: readonly CourseMappingIssue[]): void {
   }
 }
 
-function setBusy(value: boolean): void {
-  addButton.disabled = value;
-  saveButton.disabled = value;
-  reloadButton.disabled = value;
-}
-
 async function save(): Promise<void> {
   setBusy(true);
   try {
     const validation = validateCourseMappings(readCourses());
     if (!validation.ok) {
       renderIssues(validation.issues);
-      setStatus("Not saved: fix the listed problems first.");
+      setStatus("Not saved: fix the listed problems first.", "error");
       return;
     }
 
     const saved = await saveCourseMappings(validation.mappings);
     renderIssues([]);
+    dirty = false;
     setStatus(
-      saved.length === 1
-        ? "Saved 1 course mapping."
-        : `Saved ${saved.length} course mappings.`,
+      saved.length === 1 ? "Saved ✓ (1 course)" : `Saved ✓ (${saved.length} courses)`,
+      "success",
     );
   } catch (error) {
     renderIssues([]);
@@ -171,9 +281,11 @@ async function save(): Promise<void> {
       error instanceof Error
         ? `Not saved: ${error.message}`
         : "Not saved: storage is unavailable.",
+      "error",
     );
   } finally {
     setBusy(false);
+    refreshSaveState();
   }
 }
 
@@ -183,6 +295,7 @@ async function reload(): Promise<void> {
     const courses = await loadCourseMappings();
     renderCourses(courses);
     renderIssues([]);
+    dirty = false;
     setStatus(
       courses.length === 1
         ? "Loaded 1 course mapping."
@@ -190,6 +303,7 @@ async function reload(): Promise<void> {
     );
   } finally {
     setBusy(false);
+    refreshSaveState();
   }
 }
 
@@ -208,8 +322,23 @@ function applySettings(settings: {
   notificationsToggle.checked = settings.notificationsEnabled;
 }
 
-function setSettingsStatus(message: string): void {
+let settingsStatusTimer: number | null = null;
+
+function setSettingsStatus(message: string, success = false): void {
+  if (settingsStatusTimer !== null) {
+    window.clearTimeout(settingsStatusTimer);
+    settingsStatusTimer = null;
+  }
   settingsStatus.textContent = message;
+  settingsStatus.classList.toggle("notice-success", success);
+  settingsStatus.classList.toggle("notice-error", !success && message !== "");
+  if (success) {
+    settingsStatusTimer = window.setTimeout(() => {
+      settingsStatusTimer = null;
+      settingsStatus.textContent = "";
+      settingsStatus.classList.remove("notice-success");
+    }, SUCCESS_MESSAGE_MS);
+  }
 }
 
 async function loadSettingsToggles(): Promise<void> {
@@ -222,7 +351,7 @@ async function saveSettingsToggles(): Promise<void> {
   notificationsToggle.disabled = true;
   try {
     await saveSettings(desired);
-    setSettingsStatus("Saved settings.");
+    setSettingsStatus("Saved ✓", true);
   } catch (error) {
     setSettingsStatus(
       error instanceof Error
@@ -238,7 +367,7 @@ async function saveSettingsToggles(): Promise<void> {
 
 addButton.addEventListener("click", () => {
   courseList.append(createCourseCard());
-  setStatus("Unsaved changes. Select Save to persist them.");
+  markDirty();
 });
 saveButton.addEventListener("click", () => void save());
 reloadButton.addEventListener("click", () => void reload());
