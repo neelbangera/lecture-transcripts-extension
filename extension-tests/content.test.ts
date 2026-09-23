@@ -21,6 +21,7 @@ import {
 import {
   CAPTURE_JOB_MESSAGE_TYPE,
   createContentRuntimeParser,
+  createProductionContentDependencies,
   createRuntimeHandoff,
   isBackgroundResponse,
   needsOverviewRender,
@@ -140,6 +141,7 @@ function startCoordinator(
     job: TranscriptJob,
   ) => void | HandoffResult | Promise<void | HandoffResult> = () => ({}),
   statuses: PageCaptureStatus[] = [],
+  autoActivateOnLoad = true,
 ): ContentScriptController {
   stubDomGlobals(dom);
   return createContentScript<TranscriptJob>({
@@ -150,6 +152,7 @@ function startCoordinator(
     now: () => Date.now(),
     document: dom.window.document,
     window: makeTestWindow(dom),
+    autoActivateOnLoad,
   });
 }
 
@@ -408,6 +411,60 @@ describe("content coordinator activation", () => {
 
     expect(buildJob).toHaveBeenCalledTimes(1);
     expect(handoff).toHaveBeenCalledTimes(1);
+    controller.dispose();
+  });
+
+  it("does not auto-activate on load or URL change when auto-activation is off", async () => {
+    // The fixture page starts with an already-open, populated transcript, so
+    // even the direct-capture path must stay idle when the toggle is off.
+    const dom = makeDom(lectureHtml);
+    const { parser, buildJob } = fakeParser({});
+    const handoff = vi.fn<Handoff>(async () => {});
+    const controller = startCoordinator(dom, parser, handoff, [], false);
+
+    await vi.advanceTimersByTimeAsync(
+      OBSERVATION_TIMEOUT_MS + URL_POLL_INTERVAL_MS,
+    );
+    expect(buildJob).not.toHaveBeenCalled();
+    expect(handoff).not.toHaveBeenCalled();
+    expect(controller.getStatus()).toBe("idle");
+
+    dom.window.history.pushState({}, "", `${LECTURE_URL}-two`);
+    await vi.advanceTimersByTimeAsync(
+      URL_POLL_INTERVAL_MS + STABILITY_DEBOUNCE_MS * 2,
+    );
+    expect(buildJob).not.toHaveBeenCalled();
+    expect(handoff).not.toHaveBeenCalled();
+    expect(controller.getStatus()).toBe("idle");
+    controller.dispose();
+  });
+
+  it("still captures a manual Show Transcript click when auto-activation is off", async () => {
+    const dom = makeDom(lectureHtml);
+    const button = transcriptButton(dom);
+    button.setAttribute("title", "Show Transcript");
+    const { parser, buildJob } = fakeParser({});
+    const handoff = vi.fn<Handoff>(async () => {});
+    const statuses: PageCaptureStatus[] = [];
+    const controller = startCoordinator(dom, parser, handoff, statuses, false);
+
+    await vi.advanceTimersByTimeAsync(AUTO_ACTIVATE_RETRY_MS * 2);
+    expect(handoff).not.toHaveBeenCalled();
+
+    button.dispatchEvent(
+      new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+    button.setAttribute("title", "Hide Transcript");
+    const text = dom.window.document.querySelector(".transcript-text");
+    if (!text) throw new Error("fixture transcript text is missing");
+    text.textContent = READY_TRANSCRIPT;
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(STABILITY_DEBOUNCE_MS * 2);
+
+    expect(buildJob).toHaveBeenCalledTimes(1);
+    expect(handoff).toHaveBeenCalledTimes(1);
+    expect(statuses).toContain("activated");
+    expect(controller.getStatus()).toBe("handoff_pending");
     controller.dispose();
   });
 
@@ -965,11 +1022,11 @@ describe("chrome runtime handoff adapter", () => {
 });
 
 describe("production bootstrap", () => {
-  it("does not install the runtime outside a Chrome page context", () => {
-    expect(installContentRuntime()).toBeNull();
+  it("does not install the runtime outside a Chrome page context", async () => {
+    await expect(installContentRuntime()).resolves.toBeNull();
   });
 
-  it("installs once when the page globals and Stage 0 selectors are present", () => {
+  it("reads the stored auto-capture setting and installs once", async () => {
     const dom = makeDom(lectureHtml);
     stubDomGlobals(dom);
     const sendMessage = vi.fn(
@@ -977,16 +1034,36 @@ describe("production bootstrap", () => {
         callback({ ok: true, status: "queued" });
       },
     );
+    const getCalls: Array<string | string[] | null | undefined> = [];
+    const area = {
+      async get(keys?: string | string[] | null): Promise<Record<string, unknown>> {
+        getCalls.push(keys);
+        return { autoCapture: false };
+      },
+      async set(): Promise<void> {},
+    };
     const globals = globalThis as Record<string, unknown>;
     globals.document = dom.window.document;
     globals.window = dom.window;
-    globals.chrome = { runtime: { sendMessage } };
+    globals.chrome = { runtime: { sendMessage }, storage: { local: area } };
     globals.__STAGE0_SELECTORS__ = selectorsFixture;
 
-    const controller = installContentRuntime();
+    const controller = await installContentRuntime();
     expect(controller).not.toBeNull();
-    expect(installContentRuntime()).toBeNull();
+    expect(getCalls).toEqual([["autoCapture", "notificationsEnabled"]]);
+    await expect(installContentRuntime()).resolves.toBeNull();
     controller?.dispose();
+  });
+
+  it("passes the auto-capture toggle through production dependencies", () => {
+    expect(
+      createProductionContentDependencies(selectorsFixture).autoActivateOnLoad,
+    ).toBe(true);
+    expect(
+      createProductionContentDependencies(selectorsFixture, {
+        autoActivateOnLoad: false,
+      }).autoActivateOnLoad,
+    ).toBe(false);
   });
 });
 

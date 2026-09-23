@@ -1254,6 +1254,36 @@ describe("BackgroundCoordinator terminal notifications", () => {
       coordinator.handleAlarm({ name: DRAIN_ALARM_NAME }),
     ).resolves.toBeUndefined();
   });
+
+  it("skips notifications when notificationsEnabled is false", async () => {
+    const storage = new ExtensionStorage(new MemoryStorageArea());
+    const client = new FakeNativeMessagingClient();
+    const runtime = new FakeRuntime();
+    const alarms = new FakeAlarms();
+    const notifications = new FakeNotifications();
+    const coordinator = new BackgroundCoordinator({
+      client: client as unknown as NativeMessagingClient,
+      storage,
+      runtime,
+      alarms,
+      notifications,
+      extensionVersion: "0.1.0",
+      now: () => NOW_MS,
+      loadNotificationsEnabled: async () => false,
+    });
+    const job = jobFor(7);
+    client.statusPage = status({ jobs: [summaryFor(job, "uploaded")] });
+
+    await coordinator.handleAlarm({ name: DRAIN_ALARM_NAME });
+    expect(notifications.createCalls).toEqual([]);
+
+    client.submitResponses = [ackFor(job, "rejected_queue_full")];
+    await coordinator.handleMessage(
+      { type: "capture_job", job },
+      CONTENT_SENDER,
+    );
+    expect(notifications.createCalls).toEqual([]);
+  });
 });
 
 describe("BackgroundCoordinator startup wiring", () => {

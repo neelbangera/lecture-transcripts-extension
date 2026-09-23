@@ -17,10 +17,52 @@
   font-size: 22px;
 }
 
+.options-page h2 {
+  font-size: 15px;
+  margin-top: 20px;
+}
+
 .options-page .muted {
   max-width: 640px;
   line-height: 1.5;
   margin-top: 4px;
+}
+
+.settings-section {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+}
+
+.settings-section h2 {
+  margin-top: 0;
+}
+
+.toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+.toggle input {
+  margin: 2px 0 0;
+  accent-color: var(--primary-bg);
+}
+
+.toggle-copy {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.toggle-copy .muted {
+  margin-top: 0;
+  font-size: 12px;
 }
 
 .options-page code {

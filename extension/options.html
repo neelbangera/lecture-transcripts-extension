@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lecture Transcripts — Course allowlist</title>
+    <title>Lecture Transcripts — Settings</title>
     <link rel="stylesheet" href="popup.css" />
     <link rel="stylesheet" href="options.css" />
   </head>
@@ -11,31 +11,63 @@
     <main class="panel">
       <header class="header">
         <div>
-          <h1>Course allowlist</h1>
+          <h1>Lecture Transcripts settings</h1>
           <p class="muted">
-            Captures are limited to these course/term pairs. Terms use the
-            normalized form <code>YYYY-winter</code>, <code>YYYY-spring</code>,
-            <code>YYYY-summer</code>, or <code>YYYY-fall</code>.
+            Capture behavior and the course allowlist for this extension.
           </p>
         </div>
       </header>
 
-      <p id="options-status" class="notice" aria-live="polite"></p>
-      <ul id="options-errors" class="error-list hidden" aria-live="assertive"></ul>
-
-      <section id="course-list" class="course-list" aria-label="Courses"></section>
-
-      <section class="actions" aria-label="Course actions">
-        <button id="add-course" class="button secondary" type="button">Add course</button>
-        <button id="save-courses" class="button primary" type="button">Save</button>
-        <button id="reload-courses" class="button secondary" type="button">Reload</button>
+      <section class="settings-section" aria-labelledby="settings-heading">
+        <h2 id="settings-heading">Settings</h2>
+        <label class="toggle">
+          <input id="auto-capture-toggle" type="checkbox" />
+          <span class="toggle-copy">
+            <strong>Automatic capture</strong>
+            <span class="muted">
+              Open and capture recognized lecture pages on load and on in-page
+              URL change. When off, click <em>Show Transcript</em> to capture
+              manually.
+            </span>
+          </span>
+        </label>
+        <label class="toggle">
+          <input id="notifications-toggle" type="checkbox" />
+          <span class="toggle-copy">
+            <strong>Desktop notifications</strong>
+            <span class="muted">
+              Show a desktop notification when an upload finishes or fails.
+            </span>
+          </span>
+        </label>
+        <p id="settings-status" class="notice" aria-live="polite"></p>
       </section>
 
-      <p class="muted">
-        Optional preferred discussion section: three digits, for example
-        <code>012</code>. When set, discussion recordings from any other section
-        are skipped and never handed off. Leave empty to capture every section.
-      </p>
+      <section aria-labelledby="allowlist-heading">
+        <h2 id="allowlist-heading">Course allowlist</h2>
+        <p class="muted">
+          Captures are limited to these course/term pairs. Terms use the
+          normalized form <code>YYYY-winter</code>, <code>YYYY-spring</code>,
+          <code>YYYY-summer</code>, or <code>YYYY-fall</code>.
+        </p>
+
+        <p id="options-status" class="notice" aria-live="polite"></p>
+        <ul id="options-errors" class="error-list hidden" aria-live="assertive"></ul>
+
+        <section id="course-list" class="course-list" aria-label="Courses"></section>
+
+        <section class="actions" aria-label="Course actions">
+          <button id="add-course" class="button secondary" type="button">Add course</button>
+          <button id="save-courses" class="button primary" type="button">Save</button>
+          <button id="reload-courses" class="button secondary" type="button">Reload</button>
+        </section>
+
+        <p class="muted">
+          Optional preferred discussion section: three digits, for example
+          <code>012</code>. When set, discussion recordings from any other section
+          are skipped and never handed off. Leave empty to capture every section.
+        </p>
+      </section>
     </main>
     <script type="module" src="options.js"></script>
   </body>
