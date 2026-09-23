@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lecture Transcripts — Course allowlist</title>
+    <link rel="stylesheet" href="popup.css" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body class="options-page">
+    <main class="panel">
+      <header class="header">
+        <div>
+          <h1>Course allowlist</h1>
+          <p class="muted">
+            Captures are limited to these course/term pairs. Terms use the
+            normalized form <code>YYYY-winter</code>, <code>YYYY-spring</code>,
+            <code>YYYY-summer</code>, or <code>YYYY-fall</code>.
+          </p>
+        </div>
+      </header>
+
+      <p id="options-status" class="notice" aria-live="polite"></p>
+      <ul id="options-errors" class="error-list hidden" aria-live="assertive"></ul>
+
+      <section id="course-list" class="course-list" aria-label="Courses"></section>
+
+      <section class="actions" aria-label="Course actions">
+        <button id="add-course" class="button secondary" type="button">Add course</button>
+        <button id="save-courses" class="button primary" type="button">Save</button>
+        <button id="reload-courses" class="button secondary" type="button">Reload</button>
+      </section>
+
+      <p class="muted">
+        Optional preferred discussion section: three digits, for example
+        <code>012</code>. When set, discussion recordings from any other section
+        are skipped and never handed off. Leave empty to capture every section.
+      </p>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

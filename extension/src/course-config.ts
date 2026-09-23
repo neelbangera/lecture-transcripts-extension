@@ -10,6 +10,12 @@ export interface CourseConfig {
   readonly courseName: string;
   readonly courseSlug: string;
   readonly supportedTerms: readonly string[];
+  /**
+   * Optional preferred discussion section (three digits, e.g. "012").
+   * Absent/null means every discussion section is captured.  Stored course
+   * mappings may set it; the built-in Stage 0 allowlist does not.
+   */
+  readonly preferredDiscussionSection?: string | null;
 }
 
 export interface ParsedTerm {

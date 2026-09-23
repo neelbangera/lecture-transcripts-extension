@@ -26,6 +26,7 @@ export type PageCaptureStatus =
   | 'ready'
   | 'handoff_pending'
   | 'not_ready'
+  | 'skipped_section'
   | 'rejected_missing_identity'
   | 'rejected_ambiguous_metadata'
   | 'rejected_oversized'
@@ -61,6 +62,7 @@ export interface NormalizedTranscriptSnapshot {
 
 export type ParserRejectionStatus =
   | 'not_ready'
+  | 'skipped_section'
   | 'rejected_missing_identity'
   | 'rejected_ambiguous_metadata'
   | 'rejected_oversized'
@@ -134,6 +136,7 @@ interface CaptureRun {
 }
 
 const TERMINAL_PARSER_REJECTIONS = new Set<ParserRejectionStatus>([
+  'skipped_section',
   'rejected_missing_identity',
   'rejected_ambiguous_metadata',
   'rejected_oversized',

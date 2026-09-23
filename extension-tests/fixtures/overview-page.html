@@ -7,11 +7,17 @@
   rec-date). Sanitized: real recording route IDs are replaced with
   r/sanitizedNN; titles keep their observed numeric-prefix shape. The badge
   text 'Lecture - 001' is intentionally identical on every lecture card, as
-  observed: it is a category label, never a lecture number.
+  observed: it is a category label, never a lecture number. The
+  discussion-category card carries the observed section badge shape
+  'Discussion - 012'; the badge is a section label, never an identity.
 
   Card 3 is the observed no-numeric-prefix case ('Lecture recorded on
   9/17/2026'): a player page opened from it must fail closed as
   rejected_ambiguous_metadata. See no-number-lecture-page.html.
+
+  Card 4 is the observed discussion-category case: the player page title
+  carries the 'Discussion N' prefix and the correlated card badge carries the
+  discussion section. See leccap-parser.test.ts.
 -->
 <html lang="en">
   <head>
@@ -44,6 +50,15 @@
           <div class="flex-grow-1">
             <div class="rec-title"><span>Lecture recorded on 9/17/2026</span><span class="badge rounded-pill text-bg-warning ms-2">Lecture - 001</span></div>
             <div class="rec-meta d-flex align-items-center gap-2"><span class="rec-date">9/17/2026 &#8226; 4:29 PM</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="recording card mb-3">
+        <div class="card-header d-flex gap-3 align-items-center">
+          <div class="play-link"><a aria-label="Play Discussion 2, [REDACTED]" class="btn btn-primary" href="https://leccap.engin.umich.edu/leccap/player/r/sanitized21" target="false">Play</a></div>
+          <div class="flex-grow-1">
+            <div class="rec-title"><span>Discussion 2, [REDACTED]</span><span class="badge rounded-pill text-bg-warning ms-2">Discussion - 012</span></div>
+            <div class="rec-meta d-flex align-items-center gap-2"><span class="rec-date">9/8/2026 &#8226; 4:29 PM</span></div>
           </div>
         </div>
       </div>

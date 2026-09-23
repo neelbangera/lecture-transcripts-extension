@@ -59,11 +59,17 @@ const expected = JSON.parse(
 ) as Record<string, unknown>;
 
 const LECTURE_URL = "https://leccap.engin.umich.edu/leccap/player/r/sanitized01";
+const DISCUSSION_URL =
+  "https://leccap.engin.umich.edu/leccap/player/r/sanitized21";
 const OVERVIEW_URL =
   "https://leccap.engin.umich.edu/leccap/site/sanitizedoverview";
 const CAPTURED_AT = "2026-09-20T12:00:00Z";
 const READY_TRANSCRIPT =
   "A sufficiently long stable transcript body for the capture coordinator test.";
+const discussionHtml = lectureHtml.replace(
+  '<span class="content-header-recording-title">01 Intro, [REDACTED]</span>',
+  '<span class="content-header-recording-title">Discussion 2, [REDACTED]</span>',
+);
 
 const pageSelectors = toPageSelectors(selectorsFixture);
 
@@ -316,6 +322,33 @@ describe("content coordinator activation", () => {
     controller.dispose();
   });
 
+  it("ends as skipped_section without a handoff and closes the transcript it opened", async () => {
+    const dom = makeDom(lectureHtml);
+    const button = transcriptButton(dom);
+    button.setAttribute("title", "Show Transcript");
+    const clickSpy = vi.spyOn(button, "click");
+    const { parser } = fakeParser({
+      buildJob: async () => ({ ok: false, status: "skipped_section" }),
+    });
+    const handoff = vi.fn<Handoff>(async () => {});
+    const statuses: PageCaptureStatus[] = [];
+    const controller = startCoordinator(dom, parser, handoff, statuses);
+
+    await vi.advanceTimersByTimeAsync(1);
+    button.setAttribute("title", "Hide Transcript");
+    const text = dom.window.document.querySelector(".transcript-text");
+    if (!text) throw new Error("fixture transcript text is missing");
+    text.textContent = READY_TRANSCRIPT;
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(STABILITY_DEBOUNCE_MS * 2);
+
+    expect(controller.getStatus()).toBe("skipped_section");
+    expect(statuses).toContain("skipped_section");
+    expect(handoff).not.toHaveBeenCalled();
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+    controller.dispose();
+  });
+
   it("starts exactly one capture from a Show Transcript click", async () => {
     const dom = makeDom(lectureHtml);
     const button = transcriptButton(dom);
@@ -432,6 +465,7 @@ describe("content coordinator activation", () => {
   });
 
   const rejectionStatuses: ParserRejectionStatus[] = [
+    "skipped_section",
     "rejected_missing_identity",
     "rejected_ambiguous_metadata",
     "rejected_oversized",
@@ -579,6 +613,33 @@ describe("content runtime parser adapter", () => {
     });
   }
 
+  function discussionMappings(
+    preferredDiscussionSection: string | null,
+  ): CourseMapping[] {
+    return [
+      {
+        pageCourseText: "EECS 484",
+        courseName: "EECS 484",
+        courseSlug: "eecs484",
+        supportedTerms: ["2026-fall"],
+        preferredDiscussionSection,
+      },
+    ];
+  }
+
+  async function discussionBuildJob(
+    parser: ReturnType<typeof createContentRuntimeParser>,
+  ) {
+    const dom = makeDom(discussionHtml, DISCUSSION_URL);
+    const snapshot = await parser.snapshot(dom.window.document, pageSelectors);
+    if (!snapshot.ok) throw new Error("fixture snapshot failed");
+    return parser.buildJob(
+      dom.window.document,
+      { ...snapshot.value, stableSnapshotCount: 2 },
+      CAPTURED_AT,
+    );
+  }
+
   it("extracts only the transcript container forms and hashes them", async () => {
     const dom = makeDom(lectureHtml);
     const result = await runtimeParser().snapshot(
@@ -706,6 +767,74 @@ describe("content runtime parser adapter", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.capturedAt).toBe(CAPTURED_AT);
+  });
+
+  it("skips a discussion whose section is not the preferred section", async () => {
+    const parser = createContentRuntimeParser({
+      selectors: selectorsFixture,
+      courseMappings: discussionMappings("003"),
+      fetchOverview: async () => ({ ok: true, text: async () => overviewHtml }),
+    });
+
+    const result = await discussionBuildJob(parser);
+
+    expect(result).toMatchObject({ ok: false, status: "skipped_section" });
+  });
+
+  it("captures a discussion whose section matches the preferred section", async () => {
+    const parser = createContentRuntimeParser({
+      selectors: selectorsFixture,
+      courseMappings: discussionMappings("012"),
+      fetchOverview: async () => ({ ok: true, text: async () => overviewHtml }),
+    });
+
+    const result = await discussionBuildJob(parser);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toMatchObject({
+      kind: "discussion",
+      lectureNumber: 2,
+      lectureDate: "2026-09-08",
+    });
+  });
+
+  it("captures every discussion section when no preference is stored", async () => {
+    const parser = createContentRuntimeParser({
+      selectors: selectorsFixture,
+      courseMappings: discussionMappings(null),
+      fetchOverview: async () => ({ ok: true, text: async () => overviewHtml }),
+    });
+
+    const result = await discussionBuildJob(parser);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toMatchObject({ kind: "discussion" });
+  });
+
+  it("loads mappings asynchronously when none are embedded", async () => {
+    const dom = makeDom(lectureHtml);
+    let loads = 0;
+    const parser = createContentRuntimeParser({
+      selectors: selectorsFixture,
+      loadCourseMappings: async () => {
+        loads += 1;
+        return courseFixture.courseMappings;
+      },
+      fetchOverview: async () => ({ ok: true, text: async () => overviewHtml }),
+    });
+
+    const snapshot = await parser.snapshot(dom.window.document, pageSelectors);
+    if (!snapshot.ok) throw new Error("fixture snapshot failed");
+    const result = await parser.buildJob(
+      dom.window.document,
+      { ...snapshot.value, stableSnapshotCount: 2 },
+      CAPTURED_AT,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(loads).toBe(1);
   });
 
   it("maps real parser rejections to content statuses", async () => {

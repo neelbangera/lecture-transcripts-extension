@@ -120,8 +120,9 @@ await mkdir(outputRoot, { recursive: true });
 await buildBundle("content.ts", "iife");
 await buildBundle("background.ts", "esm");
 await buildBundle("popup.ts", "esm");
+await buildBundle("options.ts", "esm");
 
-for (const file of ["popup.html", "popup.css"]) {
+for (const file of ["popup.html", "popup.css", "options.html", "options.css"]) {
   const contents = await readFile(join(extensionRoot, file), "utf8");
   await writeFile(join(outputRoot, file), contents);
 }

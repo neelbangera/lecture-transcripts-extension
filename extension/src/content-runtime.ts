@@ -8,7 +8,8 @@ import type {
   ParserRejectionStatus,
   ParserResult,
 } from "./content";
-import { COURSE_MAPPINGS, type CourseConfig } from "./course-config";
+import type { CourseConfig } from "./course-config";
+import { loadCourseMappings } from "./course-storage";
 import {
   extractTranscriptSnapshot,
   hashTranscriptForms,
@@ -39,6 +40,7 @@ export function adaptCourseMappings(
     courseName: config.courseName,
     courseSlug: config.courseSlug,
     supportedTerms: [...config.supportedTerms],
+    preferredDiscussionSection: config.preferredDiscussionSection ?? null,
   }));
 }
 
@@ -275,16 +277,24 @@ function rejectionStatusFromJobError(error: unknown): ParserRejectionStatus {
 
 export interface ContentRuntimeParserOptions {
   selectors: SelectorFixture;
+  /**
+   * Explicit mappings win (tests and embedded configs).  When omitted, the
+   * adapter loads the stored allowlist asynchronously in buildJob and falls
+   * back to the built-in COURSE_MAPPINGS.
+   */
   courseMappings?: readonly CourseMapping[];
+  loadCourseMappings?: () => Promise<readonly CourseMapping[]>;
   fetchOverview?: OverviewFetcher;
+}
+
+async function defaultCourseMappings(): Promise<readonly CourseMapping[]> {
+  return adaptCourseMappings(await loadCourseMappings());
 }
 
 export function createContentRuntimeParser(
   options: ContentRuntimeParserOptions,
 ): ContentScriptParser<TranscriptJob> {
   const fixture = options.selectors;
-  const courseMappings =
-    options.courseMappings ?? adaptCourseMappings(COURSE_MAPPINGS);
 
   return {
     async snapshot(
@@ -327,6 +337,11 @@ export function createContentRuntimeParser(
       snapshot: NormalizedTranscriptSnapshot,
       capturedAt: string,
     ): Promise<ParserResult<TranscriptJob>> {
+      // The stored allowlist is loaded asynchronously before parsing so the
+      // production runtime can pick up options-page edits without a reload.
+      const courseMappings =
+        options.courseMappings ??
+        (await (options.loadCourseMappings ?? defaultCourseMappings)());
       const pageFetcher = pageOverviewFetcher(document);
       const parsed = await parseLecturePage(document, {
         selectors: fixture,
@@ -345,6 +360,21 @@ export function createContentRuntimeParser(
           parsed.reason,
         );
         return { ok: false, status: parsed.status };
+      }
+      if (parsed.kind === "discussion") {
+        const preferred =
+          courseMappings.find(
+            (mapping) => mapping.courseSlug === parsed.courseSlug,
+          )?.preferredDiscussionSection ?? null;
+        if (preferred !== null && preferred !== "" && parsed.discussionSection !== preferred) {
+          // Status-only diagnostic; the section value is never logged.
+          console.log(
+            "[lecture-transcripts] parser rejection:",
+            "skipped_section",
+            "the discussion section is not the preferred section",
+          );
+          return { ok: false, status: "skipped_section" };
+        }
       }
       try {
         const job = createTranscriptJob({
@@ -395,10 +425,9 @@ export function createProductionContentDependencies(
 ): ContentScriptDependencies<TranscriptJob> {
   return {
     selectors: toPageSelectors(fixture),
-    parser: createContentRuntimeParser({
-      selectors: fixture,
-      courseMappings: adaptCourseMappings(COURSE_MAPPINGS),
-    }),
+    // No explicit mappings: buildJob loads the stored allowlist and falls
+    // back to the built-in COURSE_MAPPINGS when storage is empty/invalid.
+    parser: createContentRuntimeParser({ selectors: fixture }),
     handoff: createRuntimeHandoff(),
     onStatus: (status) => {
       // Status-only diagnostics; never logs transcript text or page content.

@@ -197,6 +197,7 @@ const LABELS: Record<string, string> = {
   rejected_invalid_schema: "Rejected — invalid job schema",
   rejected_permission: "Rejected — GitHub permission denied",
   not_ready: "Transcript is not ready yet",
+  skipped_section: "Skipped — not the preferred discussion section",
   waiting_for_uploader: "Waiting for local uploader",
   not_connected: "GitHub is not connected",
   authorizing: "Finish GitHub authorization",
