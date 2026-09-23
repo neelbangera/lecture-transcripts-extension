@@ -1,5 +1,7 @@
 # Go Protocol Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Make the Go protocol implementation an exact, defensive counterpart to the TypeScript Native Messaging client and JSON schemas.

@@ -1,5 +1,7 @@
 # Uploader Internal Packages Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Provide the isolated components used by the Native Messaging host without allowing protocol, persistence, credentials, or remote API concerns to blur together.

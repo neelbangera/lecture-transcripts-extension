@@ -49,7 +49,7 @@ Detailed raw observations are in
 | Source-URL safety | Pass | Player URLs are path-only (`https://leccap.engin.umich.edu/leccap/player/r/<id>`); canonicalization keeps the path, drops query/fragment. Path segments contain no token/session/auth/sid whole-segment match, so `source_url` is published. |
 | Sensitive-data handling | Pass | Raw captures (`/open.html`, `/closed.html`, the MHTML) contain authenticated-page markers (including an inline user identifier), recording/site route IDs, media and WebVTT URLs. They are gitignored via the new root `.gitignore` and must never be committed or pasted into prompts. Committed fixtures are sanitized ([REDACTED] names, `r/sanitizedNN` route IDs, no media URLs). |
 | Byte-cap proof | Pass | All measured maxima are strictly below the approved caps — see the size table below. |
-| Course inventory | Pass for current set | `EECS 484` + `2026-fall` is the only course/term observed on permitted pages; `course-mapping.json` contains exactly that entry. Adding a course later = new verified observation + new mapping entry; unmapped labels fail closed. |
+| Course inventory | Pass for current set | `EECS 484` + `2026-fall` is the only course/term observed during Stage 0; `course-mapping.json` later gained `EECS 491` + `2026-fall` on 2026-09-23 at the owner's request for discussion capture. Adding a course = new verified observation + new mapping entry; unmapped labels fail closed. |
 
 ## Measured size report (summary)
 

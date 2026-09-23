@@ -1,5 +1,7 @@
 # Repository Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 Status: partial implementation; the capture-side TypeScript and Native Messaging contract exist, but the extension bundle and most of the Go uploader are not complete.
 
 This is the entry point for an implementation agent. Read this file first, then read the `IMPLEMENTATION.md` in the directory being changed. The normative product and wire contracts remain in `TECHNICAL_PLAN.md`; these directory plans explain how to finish the current tree without inventing a second design.

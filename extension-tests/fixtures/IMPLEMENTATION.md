@@ -1,5 +1,7 @@
 # Fixture Packet Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Keep the Stage 0 evidence packet sanitized, measurable, and directly consumable by parser tests and the production build.

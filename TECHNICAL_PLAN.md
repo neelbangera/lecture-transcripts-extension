@@ -221,7 +221,7 @@ seed vector 5: changing timestampedTranscript from empty to a supplied timestamp
 Ordered steps (order is normative):
 
 ```text
-1. Unicode NFC normalize (TS: String.normalize('NFC'), Go: golang.org/x/text/unicode/norm.NFC)
+1. Unicode NFC normalize (TS: String.normalize('NFC')). Go does not re-normalize or re-hash transcript forms in Phase 1: the uploader trusts the validated canonical fields and the TypeScript-computed `contentHash`, and cross-language agreement is locked by the shared canonical fixture and vectors (see the decision log).
 2. CRLF/CR -> LF
 3. For each line: detect timestamp prefix with NORMATIVE regex ^\s*[\[(]?\d{1,2}:\d{2}(?::\d{2})?[\]\)]?\s*(?:[-–—|]\s*)? — if matched, split into [prefix, rest]; strip trailing [ \t] from prefix detection area only, preserve prefix digits verbatim.
 4. Then for rest (or whole line if no timestamp): strip trailing [ \t], collapse [ \t]{2,} to single space.
@@ -279,7 +279,7 @@ The following contracts remove choices that would otherwise be reconstructed dif
 ### Toolchain baseline
 
 - The extension is Chrome Manifest V3, TypeScript, Node.js 22 LTS, npm, esbuild, Vitest, and `@types/chrome`. These are the only JavaScript dependencies; no frontend framework is needed or permitted for Phase 1.
-- The uploader uses Go 1.24.x, the standard library, `modernc.org/sqlite`, and `golang.org/x/text/unicode/norm` for the required NFC normalization. These are the only Go dependencies. SQLite remains pure Go, but the Darwin Keychain adapter calls `Security.framework` through cgo; the supported Mac build therefore requires `CGO_ENABLED=1` and the Xcode Command Line Tools. A non-Darwin build is unsupported and must fail rather than silently producing a nonfunctional host. The first pass must not introduce a web server, ORM, or additional runtime service.
+- The uploader uses Go 1.24.x, the standard library, and `modernc.org/sqlite`. These are the only Go dependencies; normalization and hashing are TypeScript-authoritative in Phase 1. SQLite remains pure Go, but the Darwin Keychain adapter calls `Security.framework` through cgo; the supported Mac build therefore requires `CGO_ENABLED=1` and the Xcode Command Line Tools. A non-Darwin build is unsupported and must fail rather than silently producing a nonfunctional host. The first pass must not introduce a web server, ORM, or additional runtime service.
 - The Native Messaging contract has `protocolVersion=1`. The extension build version comes from `package.json`; the uploader build version is injected at build time. Every status response exposes both versions so the popup can distinguish a protocol mismatch (fail closed) from a build-version mismatch (visible warning).
 - `package-lock.json` and `go.sum` record exact resolved dependency versions. Patch-version resolution is allowed only within this baseline; it is not permission to change the runtime architecture or behavior.
 - The browser and uploader test suites must run offline. Network tests use a fake GitHub server; no test requires the owner’s real token.
@@ -451,7 +451,7 @@ For byte measurements and Native Messaging, canonical JSON uses the property ord
 
 ### Canonical SQLite queue schema
 
-`uploader/internal/queue/schema.sql` is copied from this DDL and applied as migration version 1. SQLite stores all timestamps as UTC RFC3339 text. The queue never stores an access token or refresh token.
+`uploader/internal/queue/schema.sql` is the current DDL and is applied as migration version 2. SQLite stores all timestamps as UTC RFC3339 text. The queue never stores an access token or refresh token.
 
 ```sql
 PRAGMA foreign_keys = ON;
@@ -464,6 +464,7 @@ CREATE TABLE schema_migrations (
 
 CREATE TABLE jobs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL DEFAULT 'lecture',
   lecture_key TEXT NOT NULL,
   content_hash TEXT NOT NULL,
   job_json TEXT NOT NULL,
@@ -477,21 +478,22 @@ CREATE TABLE jobs (
   last_error_http_status INTEGER,
   remote_content_hash TEXT,
   remote_file_kind TEXT,
-  UNIQUE (lecture_key, content_hash),
+  UNIQUE (kind, lecture_key, content_hash),
   CHECK (attempt_count >= 0),
-  CHECK (length(content_hash) = 64)
+  CHECK (length(content_hash) = 64),
+  CHECK (kind IN ('lecture', 'discussion'))
 );
 
 CREATE INDEX jobs_ready_idx
   ON jobs (status, next_attempt_at, created_at);
 
 CREATE INDEX jobs_lecture_idx
-  ON jobs (lecture_key, created_at);
+  ON jobs (kind, lecture_key, created_at);
 
-INSERT INTO schema_migrations(version) VALUES (1);
+INSERT INTO schema_migrations(version) VALUES (2);
 ```
 
-The store validates the status vocabulary in Go, uses a transaction for every state transition, and treats `(lecture_key, content_hash)` as the deduplication key. A later migration must be additive and must never rewrite or delete a durable job without an explicit user-requested reset.
+Migration 1 is the original table without `kind`; opening a version-1 database rebuilds the table to version 2 and backfills `kind='lecture'` for existing rows (row ids and payloads preserved). The store validates the status vocabulary in Go, uses a transaction for every state transition, and treats `(kind, lecture_key, content_hash)` as the lecture deduplication key; discussions deduplicate on `(kind, lecture_key)` alone so the first captured section wins. A later migration must preserve every durable job and must never delete one without an explicit user-requested reset.
 
 ### Canonical status vocabulary
 
@@ -674,7 +676,7 @@ This is the implementation sequence. Each stage has a concrete output and a stop
 7. Define the complete supported course mapping in `extension-tests/fixtures/course-mapping.json` before creating parser configuration. It must contain one object per distinct observed page course label; that object's `supportedTerms` list must enumerate every supported course/term combination for that label and must not be empty. Each accepted pair produces one stable `courseSlug` and one stable `lectureKey` for every supported page. Use the Identity rules above: `courseSlug ^[a-z0-9]+$`, `term YYYY-{winter|spring|summer|fall}`, `lectureKey <slug>/<term>/<NNN>`. The EECS 491 Winter 2026 entry is only an example; it cannot stand in for the full personal course set. Stage 2 copies this exact mapping into `extension/src/course-config.ts`. Missing or ambiguous course/term/number fails closed.
 8. Measure at least two representative permitted lecture pages, including the largest observed transcript/job among the supported pages, and write the actual UTF-8 byte counts to `extension-tests/fixtures/transcript-size-report.json`. The current caps are approved safety caps only after the report proves that every supported sample fits: TranscriptJob serialized JSON max 972800 bytes (950*1024, leaving headroom below the 1,048,576-byte application frame cap), each transcript field max 460800 bytes (450*1024), sourceUrl max 2048 bytes after canonicalization, and all other string fields max 256 characters. For each sample, `nativeMessageBytes` is the largest compact UTF-8 `submit_job` request containing that sample, including the envelope but excluding the four-byte frame prefix; the report must also record the largest status page payload observed in the same fixture suite. If a permitted supported sample reaches or exceeds a cap, Stage 0 fails and this plan must be revised before implementation; do not silently raise the cap or reject the valid sample. The extension performs a fast pre-check and the uploader performs the authoritative check, both reporting `rejected_oversized`. The application rejects a Native Messaging frame over 1,048,576 bytes in either direction; this is a conservative product cap, not a claim that Chrome uses the same limit in both directions. SQLite queue max 100MB / 500 jobs: after each uploaded or unchanged job, delete the oldest uploaded or unchanged jobs older than 7 days until under limits. `queued`, `uploading`, `retryable_error`, `permanent_conflict`, and `rejected` jobs are never auto-deleted. If a new queued job would exceed either limit, reject it as `rejected_queue_full` without dropping an existing job. Create the database directory as 0700 and the database, WAL, and SHM files as 0600. For single-instance ownership, open `queue.lock` with `O_RDWR|O_CREAT` and acquire an advisory `flock LOCK_EX|LOCK_NB`; keep the file descriptor open for the process lifetime. Do not use `O_EXCL`, and treat a leftover lock file as harmless after a crash. A second process exits `already_running`. Multi-profile concurrent writers remain out of scope. No truncate/chunk in Phase 1. Also measure `renderTimeMs` from activation until the second matching stable snapshot and record it per sample, along with `observedMaxRenderTimeMs` and `approvedLimits.maxRenderTimeMs=30000`; if any supported sample reaches 30000ms or times out, Stage 0 fails and this plan must be revised before implementation.
 9. Select the exact GitHub web authorization mechanism. Selected: GitHub App Device Authorization Flow (RFC 8628) owned by the local uploader. Provisioning: the owner creates one GitHub App, enables device flow, grants only repository Contents read/write permission, and installs it only on `neelbangera/lecture-transcripts`. The App client ID and numeric RepositoryID are runtime inputs in the machine-local config file described in the readiness gate; they are not copied into `config.go`, committed to source, or replaced with placeholders in `SETUP.md`. There is no client secret or App private key in the extension or uploader. The uploader requests a device code with the App client ID, shows `user_code` and `verification_uri` (and uses `verification_uri_complete` when GitHub supplies it), and polls the token endpoint no faster than the interval returned by GitHub; after `slow_down` it uses the newly returned interval. The device-flow expiration comes from the server-provided `expires_in`, not a hardcoded duration. The token request includes the configured numeric `repository_id` to further restrict the user access token; no repository ID is returned by the device-code response. The in-flight device transaction is stored in Keychain as a separate short-lived record, so a host restart resumes the same unexpired device code; an expired or terminal transaction is deleted and a new flow starts. The uploader stores the access token, refresh token when provided, and expiry metadata in macOS Keychain; refreshing replaces the token pair atomically. Revoked or expired credentials surface `reauthorization_required`. The extension receives only the exact auth states in the Native Messaging contract. Do not silently fall back to an OAuth App or a broad repo scope.
-10. Verify the destination repository and App installation during Stage 0. The intended target is `owner=neelbangera`, `repo=lecture-transcripts`, `branch=main`, GitHub App permission `Contents: read and write`, and the numeric RepositoryID for that exact repository. The repository must already have at least one commit on `main` (for example, create a README through the GitHub UI); the uploader never initializes an empty repository. No other repository or path may be written. The uploader omits custom committer and author objects so GitHub uses the authenticated user identity. `<slug>/README.md` is never auto-created or updated in Phase 1; only `<slug>/lectures/<NNN>.md` and `<slug>/timestamped/<NNN>.md` may be created. During connect, the uploader performs `GET /repos/{owner}/{repo}` with the newly authorized credential and verifies the numeric ID and full name, then performs `GET /repos/{owner}/{repo}/contents?ref=main` and requires a successful response to prove the selected branch is initialized and Contents permission is usable. A 403 or 404 on either sanity request fails connect as `target_repository_unavailable`, clears the just-authorized credential, and tells the user to authorize the account that can access the configured repository; it is not allowed to degrade into a later upload failure.
+10. Verify the destination repository and App installation during Stage 0. The intended target is `owner=neelbangera`, `repo=lecture-transcripts`, `branch=main`, GitHub App permission `Contents: read and write`, and the numeric RepositoryID for that exact repository. The repository must already have at least one commit on `main` (for example, create a README through the GitHub UI); the uploader never initializes an empty repository. No other repository or path may be written. The uploader omits custom committer and author objects so GitHub uses the authenticated user identity. `<slug>/README.md` is never auto-created or updated in Phase 1; only `<slug>/<NNN>.md`, `<slug>/timestamped/<NNN>.md`, `<slug>/discussions/<NNN>.md`, and `<slug>/discussions/timestamped/<NNN>.md` may be created. During connect, the uploader performs `GET /repos/{owner}/{repo}` with the newly authorized credential and verifies the numeric ID and full name, then performs `GET /repos/{owner}/{repo}/contents?ref=main` and requires a successful response to prove the selected branch is initialized and Contents permission is usable. A 403 or 404 on either sanity request fails connect as `target_repository_unavailable`, clears the just-authorized credential, and tells the user to authorize the account that can access the configured repository; it is not allowed to degrade into a later upload failure.
 
 Stage 0 is complete only when the required Stage 0 packet exists, a human can point to the exact DOM evidence for activation, extraction, metadata, and completion, the representative size measurements are recorded, and the provisioning report verifies the real App installation and repository ID. Naming the auth flow alone is insufficient. DOM selectors and observed page facts must be recorded in `extension-tests/fixtures/lecture-page.selectors.json` with the schema below. Keep parser output expectations separate in `lecture-page.expected.json` so test configuration cannot be mistaken for production data. The JSON shown next is a shape/template, not a valid completed fixture; every example value must be replaced by observed evidence before the gate can pass:
 
@@ -1164,7 +1166,7 @@ Those remote lecture files are created dynamically from jobs. The uploader must 
 
 ## Definition of done
 
-Current status is `IMPLEMENTED_THROUGH_PACKAGING / LIVE_ITEMS_OUTSTANDING`: the code through the packaging layer is in the tree, but the Go executable entrypoint and serial processor, the live render-time measurement, and the machine-local provisioning packet are still outstanding. The implementation is not complete merely because the normative source contracts exist; the actual Leccap fixture, course inventory, measurements, and account setup must still pass the remaining readiness checks.
+Current status is `IMPLEMENTED_THROUGH_PACKAGING / LIVE_ITEMS_OUTSTANDING`: the code through the packaging layer, including the serial processor and the `lecture-uploader` executable, is in the tree; the live render-time measurement and the machine-local provisioning packet are still outstanding. The implementation is not complete merely because the normative source contracts exist; the actual Leccap fixture, course inventory, measurements, and account setup must still pass the remaining readiness checks.
 
 The implementation is ready for personal use only when all of the following are true:
 

@@ -1,5 +1,7 @@
 # Extension Source Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Finish and wire the existing browser-side modules without changing the Phase 1 contracts.

@@ -83,7 +83,7 @@ scripts/install-native-host.sh <loaded-extension-id>
 ```
 
 See [docs/SETUP.md](docs/SETUP.md) for the complete install runbook, the GitHub
-App and machine-local config steps, and the current executable gap.
+App and machine-local config steps, and the remaining live items.
 
 ## Documentation
 

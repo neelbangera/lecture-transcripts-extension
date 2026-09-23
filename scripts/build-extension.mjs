@@ -38,12 +38,15 @@ function requireObject(object, key, label) {
   return value;
 }
 
-async function readJson(path, label) {
+async function readJson(path, label, { forbidMarkers = false } = {}) {
   let text;
   try {
     text = await readFile(path, "utf8");
   } catch {
     fail(`missing ${label} at ${path}`);
+  }
+  if (forbidMarkers && /TBD|CSS selector string|e\.g\./i.test(text)) {
+    fail(`${label} still contains template markers`);
   }
   try {
     return JSON.parse(text);
@@ -97,7 +100,9 @@ async function buildBundle(entry, format) {
 }
 
 const selectorsFixture = validateSelectors(
-  await readJson(join(fixtureRoot, "lecture-page.selectors.json"), "selector fixture"),
+  await readJson(join(fixtureRoot, "lecture-page.selectors.json"), "selector fixture", {
+    forbidMarkers: true,
+  }),
 );
 const courseMapping = await readJson(
   join(fixtureRoot, "course-mapping.json"),

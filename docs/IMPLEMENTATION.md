@@ -1,5 +1,7 @@
 # Documentation Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Make the documentation describe the repository that actually exists and give the owner enough information to install, operate, secure, test, and recover the finished system.

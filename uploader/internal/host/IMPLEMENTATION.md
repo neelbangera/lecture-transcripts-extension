@@ -1,5 +1,7 @@
 # Native Messaging Host Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Provide a conservative, long-lived Chrome Native Messaging transport for the uploader processor.

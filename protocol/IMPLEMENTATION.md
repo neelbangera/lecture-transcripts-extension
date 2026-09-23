@@ -1,5 +1,7 @@
 # Shared Protocol Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Keep the TypeScript extension, Go uploader, and machine-readable schemas on one exact wire contract.

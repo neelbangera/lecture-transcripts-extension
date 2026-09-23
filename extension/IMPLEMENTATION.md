@@ -1,5 +1,7 @@
 # Chrome Extension Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Build a Manifest V3 extension that captures an explicitly opened Leccap transcript, validates it, and hands it to the local uploader. It must never talk to GitHub or store GitHub credentials.

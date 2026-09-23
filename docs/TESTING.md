@@ -37,8 +37,8 @@ sh -n scripts/uninstall-native-host.sh
 sh -n scripts/tests/run.sh
 ```
 
-Current baseline: `npm test` runs 7 files / 71 tests, `go test ./...` passes in
-all 9 uploader packages, `npm run typecheck` is clean, `npm run build` writes
+Current baseline: `npm test` runs 16 files / 224 tests, `go test ./...` passes in
+all 10 uploader packages, `npm run typecheck` is clean, `npm run build` writes
 `dist/extension/`, and `sh scripts/tests/run.sh` reports 59 passed / 0 failed.
 
 ## Browser-side unit tests

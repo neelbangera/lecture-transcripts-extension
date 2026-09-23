@@ -1,5 +1,7 @@
 # Extension Test Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Make the browser-side test suite runnable and broad enough to protect the capture/outbox contract.

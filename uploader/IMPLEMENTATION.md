@@ -1,5 +1,7 @@
 # Uploader Implementation Plan
 
+> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+
 ## Goal
 
 Build the macOS local uploader that owns durable queue state, GitHub authentication, retries, and write-once publishing.
