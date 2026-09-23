@@ -15,9 +15,11 @@
   "lectureKey": "eecs484/2026-fall/001",
   "contentHash": "4bfc0f5736615f920fa7ad0f557ff1c20426f39525bfc8717f4d9f2a770ed0cd",
   "stableSnapshotCount": 2,
+  "discussionSection": null,
   "notes": {
     "sourceUrl": "test stub for location.href; structural path shape preserved with a sanitized route ID, matching the committed sanitized fixtures",
     "lectureDate": "supplied by the overview fixture (overview-page.html) card whose play-link href matches the stubbed player URL; rec-date 9/1/2026 parsed month-first",
+    "discussionSection": "the correlated card badge is 'Lecture - 001'; only the observed 'Discussion - 0NN' shape yields a section, so a lecture yields null",
     "timestampedSerialization": "[time] text per row with the verbatim .transcript-time value; the normative timestamp regex fully consumes each prefix including the bracket and single-space delimiter",
     "layoutLoadingClass": "present in this fixture exactly as observed on the real completed page; the parser must not read its absence as completion"
   }

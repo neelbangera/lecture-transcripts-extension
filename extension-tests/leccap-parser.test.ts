@@ -86,6 +86,7 @@ describe("Leccap parser against the Stage 0 packet", () => {
       lectureKey: expected.lectureKey,
       contentHash: expected.contentHash,
       stableSnapshotCount: expected.stableSnapshotCount,
+      discussionSection: expected.discussionSection,
     });
   });
 
@@ -311,6 +312,67 @@ describe("Leccap parser against the Stage 0 packet", () => {
       expect(rejected).toMatchObject({
         supported: false,
         status: "rejected_ambiguous_metadata",
+      });
+    }
+  });
+
+  it("reads the correlated overview badge section for a discussion and null for a lecture", async () => {
+    const discussionUrl =
+      "https://leccap.engin.umich.edu/leccap/player/r/sanitized21";
+    const discussionDocument = makeDocument(
+      readFixture("lecture-page.html").replace(
+        '<span class="content-header-recording-title">01 Intro, [REDACTED]</span>',
+        '<span class="content-header-recording-title">Discussion 2, [REDACTED]</span>',
+      ),
+      discussionUrl,
+    ).document;
+    const discussion = await parseLecturePage(discussionDocument, {
+      selectors,
+      courseMappings: courseFixture.courseMappings,
+      sourceUrl: discussionUrl,
+      fetchOverview: fixtureFetcher(readFixture("overview-page.html")),
+    });
+    expect(discussion).toMatchObject({
+      supported: true,
+      kind: "discussion",
+      lectureNumber: 2,
+      lectureDate: "2026-09-08",
+      discussionSection: "012",
+    });
+
+    const lecture = await parseFixture();
+    expect(lecture).toMatchObject({
+      supported: true,
+      kind: "lecture",
+      discussionSection: null,
+    });
+  });
+
+  it("treats any non 'Discussion - 0NN' badge as a null section", async () => {
+    const discussionUrl =
+      "https://leccap.engin.umich.edu/leccap/player/r/sanitized21";
+    for (const badge of ["Discussion - 12", "Discussion - 0123", "Lecture - 001"]) {
+      const overview = readFixture("overview-page.html").replace(
+        'ms-2">Discussion - 012</span>',
+        `ms-2">${badge}</span>`,
+      );
+      const { document } = makeDocument(
+        readFixture("lecture-page.html").replace(
+          '<span class="content-header-recording-title">01 Intro, [REDACTED]</span>',
+          '<span class="content-header-recording-title">Discussion 2, [REDACTED]</span>',
+        ),
+        discussionUrl,
+      );
+      const result = await parseLecturePage(document, {
+        selectors,
+        courseMappings: courseFixture.courseMappings,
+        sourceUrl: discussionUrl,
+        fetchOverview: fixtureFetcher(overview),
+      });
+      expect(result).toMatchObject({
+        supported: true,
+        kind: "discussion",
+        discussionSection: null,
       });
     }
   });
