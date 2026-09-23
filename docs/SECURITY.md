@@ -13,6 +13,7 @@ authority; this is the owner-facing explanation of it.
 | --- | --- |
 | `alarms` | One-minute `lecture-transcripts-drain` alarm that reconnects the Native Messaging port after service-worker suspension. |
 | `nativeMessaging` | The only channel to the local uploader. |
+| `notifications` | Terminal upload outcomes surface one desktop notification whose message carries only the lectureKey and the status label; never transcript text, a content hash, a URL, or an error body. Creation is skipped when `chrome.notifications` is unavailable. |
 | `storage` | Bounded pending-handoff outbox and metadata-only overflow notices in `chrome.storage.local`. |
 
 The only host permission and content-script match is
@@ -185,9 +186,12 @@ There are two different resets; they are not interchangeable.
 | `scripts/uninstall-native-host.sh` (no flag) | Removes only the rendered host manifest and the built uploader. |
 
 Discarding a job from the popup is a local queue operation for terminal
-rejected or permanent-conflict rows; it never calls a GitHub delete. Retrying a
-permanent conflict requires the owner to confirm the remote file was removed
-first, and the uploader performs a fresh preflight `GET` before retrying.
+rejected, permanent-conflict, uploaded, and unchanged rows; it never calls a
+GitHub delete and leaves the remote file untouched. The popup **Clear uploaded**
+action sequentially discards the currently loaded uploaded/unchanged rows the
+same way. Retrying a permanent conflict requires the owner to confirm the
+remote file was removed first, and the uploader performs a fresh preflight `GET`
+before retrying.
 
 ## Private versus public repository
 
