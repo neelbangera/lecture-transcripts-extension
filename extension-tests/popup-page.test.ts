@@ -42,7 +42,12 @@ const JOB: JobSummary = {
 };
 
 function makeSnapshot(
-  options: { jobs?: JobSummary[]; lastOutcome?: LastOutcome | null } = {},
+  options: {
+    jobs?: JobSummary[];
+    lastOutcome?: LastOutcome | null;
+    authState?: UploaderStatus["authState"];
+    authorization?: UploaderStatus["authorization"];
+  } = {},
 ): ExtensionSnapshot {
   const jobs = options.jobs ?? [];
   const counts: CountMap = { ...EMPTY_COUNTS };
@@ -53,8 +58,8 @@ function makeSnapshot(
     requestId: null,
     extensionVersion: "0.1.0",
     uploaderVersion: "0.4.2",
-    authState: "connected",
-    authorization: {
+    authState: options.authState ?? "connected",
+    authorization: options.authorization ?? {
       userCode: null,
       verificationUri: null,
       verificationUriComplete: null,
@@ -86,6 +91,8 @@ const OUTCOME: LastOutcome = {
 type Responder = (message: { type: string }) => unknown;
 
 let dom: JSDOM;
+let openedTabs: string[] = [];
+let copiedTexts: string[] = [];
 
 function element<T extends HTMLElement>(id: string): T {
   const found = dom.window.document.getElementById(id);
@@ -101,15 +108,30 @@ async function settle(rounds = 8): Promise<void> {
 
 async function mountPopup(respond: Responder): Promise<void> {
   dom = new JSDOM(popupHtml);
+  openedTabs = [];
+  copiedTexts = [];
   const globals = globalThis as Record<string, unknown>;
   globals.window = dom.window;
   globals.document = dom.window.document;
+  vi.stubGlobal("navigator", {
+    clipboard: {
+      writeText: async (value: string) => {
+        copiedTexts.push(value);
+      },
+    },
+  });
   globals.chrome = {
     runtime: {
+      id: "abcdefghijklmnopqrstuvwxyzabcdef",
       sendMessage: (message: { type: string }, callback: (response: unknown) => void) => {
         callback(respond(message));
       },
       openOptionsPage: () => undefined,
+    },
+    tabs: {
+      create: ({ url }: { url: string }) => {
+        openedTabs.push(url);
+      },
     },
   };
   vi.resetModules();
@@ -122,6 +144,7 @@ afterEach(() => {
   delete globals.window;
   delete globals.document;
   delete globals.chrome;
+  vi.unstubAllGlobals();
   vi.resetModules();
 });
 
@@ -196,5 +219,86 @@ describe("popup queue and outcome states", () => {
     const outcome = element("last-outcome");
     expect(outcome.textContent).toBe("");
     expect(outcome.className).toBe("notice");
+  });
+});
+
+describe("popup GitHub authorization UX", () => {
+  const CHALLENGE = {
+    userCode: "ABCD-1234",
+    verificationUri: "https://github.com/login/device",
+    verificationUriComplete: "https://github.com/login/device?user_code=ABCD-1234",
+    expiresAt: "2100-01-01T00:00:00Z",
+  };
+
+  function authorizingSnapshot(): ExtensionSnapshot {
+    return makeSnapshot({ authState: "authorizing", authorization: CHALLENGE });
+  }
+
+  it("auto-opens the prefilled GitHub page exactly once per challenge", async () => {
+    await mountPopup(() => ({ ok: true, snapshot: authorizingSnapshot() }));
+    expect(openedTabs).toEqual([
+      "https://github.com/login/device?user_code=ABCD-1234",
+    ]);
+    const link = element<HTMLAnchorElement>("authorization-link");
+    expect(link.href).toContain("user_code=ABCD-1234");
+
+    element<HTMLButtonElement>("refresh-button").click();
+    await settle();
+    expect(openedTabs).toEqual([
+      "https://github.com/login/device?user_code=ABCD-1234",
+    ]);
+  });
+
+  it("shows the code card, expiry countdown, and keychain heads-up", async () => {
+    await mountPopup(() => ({ ok: true, snapshot: authorizingSnapshot() }));
+    expect(element("authorization-code-row").classList.contains("hidden")).toBe(false);
+    expect(element("authorization-code").textContent).toBe("ABCD-1234");
+    expect(element("authorization-expiry").textContent).toContain("expires in");
+    expect(element("authorization-keychain").textContent).toContain("Always Allow");
+  });
+
+  it("copies the user code to the clipboard", async () => {
+    await mountPopup(() => ({ ok: true, snapshot: authorizingSnapshot() }));
+    element<HTMLButtonElement>("copy-code-button").click();
+    await settle();
+    expect(copiedTexts).toEqual(["ABCD-1234"]);
+    expect(element("copy-code-button").textContent).toBe("Copied");
+  });
+
+  it("hides the authorization card and stops the countdown when connected", async () => {
+    await mountPopup(() => ({ ok: true, snapshot: makeSnapshot() }));
+    expect(element("authorization").classList.contains("hidden")).toBe(true);
+    expect(element("authorization-code-row").classList.contains("hidden")).toBe(true);
+    expect(element("authorization-expiry").classList.contains("hidden")).toBe(true);
+  });
+
+  it("never auto-opens a non-GitHub verification URL", async () => {
+    await mountPopup(() => ({
+      ok: true,
+      snapshot: makeSnapshot({
+        authState: "authorizing",
+        authorization: {
+          ...CHALLENGE,
+          verificationUri: "https://example.com/login/device",
+          verificationUriComplete: "https://example.com/login/device?user_code=ABCD-1234",
+        },
+      }),
+    }));
+    expect(openedTabs).toEqual([]);
+    expect(element("authorization-link").classList.contains("hidden")).toBe(true);
+    expect(element("authorization-code-row").classList.contains("hidden")).toBe(false);
+  });
+});
+
+describe("popup extension identity", () => {
+  it("shows the extension ID and copies it on demand", async () => {
+    await mountPopup(() => ({ ok: true, snapshot: makeSnapshot() }));
+    expect(element("extension-id").textContent).toBe(
+      "ID abcdefghijklmnopqrstuvwxyzabcdef",
+    );
+    element<HTMLButtonElement>("copy-id-button").click();
+    await settle();
+    expect(copiedTexts).toEqual(["abcdefghijklmnopqrstuvwxyzabcdef"]);
+    expect(element("copy-id-button").textContent).toBe("Copied");
   });
 });

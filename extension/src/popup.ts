@@ -16,12 +16,22 @@ import {
 } from "./status";
 import { canOpenOptionsPage, openOptionsPage } from "./settings-actions";
 
+interface TabsApi {
+  create(createProperties: { url: string }): void;
+}
+
 interface RuntimeMessageApi {
+  id?: string;
   sendMessage(message: ExtensionMessage, callback: (response: BackgroundResponse) => void): void;
   openOptionsPage?(callback?: () => void): void | Promise<void>;
 }
 
-const chromeApi = (globalThis as { chrome?: { runtime?: RuntimeMessageApi } }).chrome;
+interface ChromeApi {
+  runtime?: RuntimeMessageApi;
+  tabs?: TabsApi;
+}
+
+const chromeApi = (globalThis as { chrome?: ChromeApi }).chrome;
 
 function element<T extends HTMLElement>(id: string): T {
   const value = document.getElementById(id);
@@ -33,7 +43,12 @@ const connectionSummary = element<HTMLParagraphElement>("connection-summary");
 const drainState = element<HTMLSpanElement>("drain-state");
 const authorization = element<HTMLElement>("authorization");
 const authorizationCopy = element<HTMLParagraphElement>("authorization-copy");
+const authorizationCodeRow = element<HTMLElement>("authorization-code-row");
+const authorizationCode = element<HTMLElement>("authorization-code");
+const copyCodeButton = element<HTMLButtonElement>("copy-code-button");
+const authorizationExpiry = element<HTMLParagraphElement>("authorization-expiry");
 const authorizationLink = element<HTMLAnchorElement>("authorization-link");
+const authorizationKeychain = element<HTMLParagraphElement>("authorization-keychain");
 const connectButton = element<HTMLButtonElement>("connect-button");
 const resetButton = element<HTMLButtonElement>("reset-button");
 const refreshButton = element<HTMLButtonElement>("refresh-button");
@@ -50,10 +65,16 @@ const jobList = element<HTMLUListElement>("job-list");
 const clearUploadedButton = element<HTMLButtonElement>("clear-uploaded-button");
 const loadMoreButton = element<HTMLButtonElement>("load-more-button");
 const versions = element<HTMLSpanElement>("versions");
+const extensionId = element<HTMLElement>("extension-id");
+const copyIdButton = element<HTMLButtonElement>("copy-id-button");
 
 let loadedJobs: JobSummary[] = [];
 let nextBeforeJobId: number | null = null;
 let loading = false;
+/** Challenges whose GitHub page has already been opened this popup session. */
+const openedChallenges = new Set<string>();
+let expiryTimer: ReturnType<typeof setInterval> | null = null;
+let currentExpiresAt: string | null = null;
 
 type NoticeVariant = "info" | "success" | "warn" | "error";
 
@@ -116,29 +137,129 @@ function isSafeGitHubUrl(value: string | null): value is string {
   }
 }
 
+function openExternal(url: string): void {
+  try {
+    chromeApi?.tabs?.create({ url });
+    return;
+  } catch {
+    // Fall through to window.open when the tabs bridge is unavailable.
+  }
+  try {
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch {
+    // The visible link remains as the fallback.
+  }
+}
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(value: string): Promise<void> } } }).navigator?.clipboard;
+    if (clipboard?.writeText) {
+      await clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Clipboard access can be denied; report failure instead of throwing.
+  }
+  return false;
+}
+
+function flashButton(button: HTMLButtonElement, label: string): void {
+  const original = button.textContent;
+  button.textContent = label;
+  setTimeout(() => {
+    button.textContent = original;
+  }, 1500);
+}
+
+function stopExpiryCountdown(): void {
+  if (expiryTimer !== null) {
+    clearInterval(expiryTimer);
+    expiryTimer = null;
+  }
+  currentExpiresAt = null;
+  authorizationExpiry.textContent = "";
+  authorizationExpiry.classList.add("hidden");
+}
+
+function renderExpiry(expiresAt: string | null): void {
+  stopExpiryCountdown();
+  currentExpiresAt = expiresAt;
+  const update = () => {
+    if (!currentExpiresAt) {
+      authorizationExpiry.textContent = "Waiting for approval on GitHub…";
+      authorizationExpiry.classList.remove("hidden");
+      return;
+    }
+    const remainingMs = Date.parse(currentExpiresAt) - Date.now();
+    if (!Number.isFinite(remainingMs)) {
+      authorizationExpiry.textContent = "Waiting for approval on GitHub…";
+      authorizationExpiry.classList.remove("hidden");
+      return;
+    }
+    if (remainingMs <= 0) {
+      stopExpiryCountdown();
+      authorizationExpiry.textContent = "This code expired. Press Connect GitHub for a new one.";
+      authorizationExpiry.classList.remove("hidden");
+      return;
+    }
+    const totalSeconds = Math.ceil(remainingMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    authorizationExpiry.textContent = `Waiting for approval on GitHub… expires in ${minutes}:${String(seconds).padStart(2, "0")}`;
+    authorizationExpiry.classList.remove("hidden");
+  };
+  update();
+  if (currentExpiresAt) {
+    expiryTimer = setInterval(update, 1000);
+  }
+}
+
 function renderAuthorization(status: UploaderStatus | null): void {
   const auth = status?.authorization;
   if (!status || status.authState !== "authorizing" || !auth) {
     authorization.classList.add("hidden");
     authorizationCopy.textContent = "";
+    authorizationCodeRow.classList.add("hidden");
+    authorizationCode.textContent = "";
     authorizationLink.classList.add("hidden");
     authorizationLink.removeAttribute("href");
+    authorizationKeychain.classList.add("hidden");
+    stopExpiryCountdown();
     return;
   }
 
   authorization.classList.remove("hidden");
+  authorizationKeychain.classList.remove("hidden");
   authorizationCopy.textContent = auth.userCode
-    ? `Enter code ${auth.userCode} on GitHub. The local uploader is polling; this popup never receives a credential.`
+    ? "Approve the lecture-transcripts app in the browser tab that just opened. This popup never receives a credential."
     : "Finish the GitHub authorization in your browser. The local uploader owns the credential.";
+
+  if (auth.userCode) {
+    authorizationCode.textContent = auth.userCode;
+    authorizationCodeRow.classList.remove("hidden");
+    copyCodeButton.hidden = false;
+    copyCodeButton.textContent = "Copy code";
+  } else {
+    authorizationCodeRow.classList.add("hidden");
+    authorizationCode.textContent = "";
+  }
 
   const link = auth.verificationUriComplete ?? auth.verificationUri;
   if (isSafeGitHubUrl(link)) {
     authorizationLink.href = link;
     authorizationLink.classList.remove("hidden");
+    const challengeKey = auth.userCode ?? link;
+    if (!openedChallenges.has(challengeKey)) {
+      openedChallenges.add(challengeKey);
+      openExternal(link);
+    }
   } else {
     authorizationLink.classList.add("hidden");
     authorizationLink.removeAttribute("href");
   }
+
+  renderExpiry(auth.expiresAt);
 }
 
 function renderOverflow(notices: OverflowNotice[]): void {
@@ -240,6 +361,9 @@ function render(snapshot: ExtensionSnapshot, append = false): void {
   connectionSummary.textContent = status ? statusLabel(status.authState) : "Local uploader not connected";
   drainState.textContent = status?.drainState ?? "idle";
   versions.textContent = `Extension ${status?.extensionVersion ?? "—"} · Uploader ${status?.uploaderVersion ?? "—"}`;
+  const runtimeId = chromeApi?.runtime?.id;
+  extensionId.textContent = runtimeId ? `ID ${runtimeId}` : "ID —";
+  copyIdButton.classList.toggle("hidden", !runtimeId);
   pendingCount.textContent = String(snapshot.pendingHandoffs);
   pendingCopy.textContent = snapshot.pendingHandoffs > 0
     ? "Captured, not yet acknowledged by the uploader. The outbox replays automatically."
@@ -357,6 +481,20 @@ resetButton.addEventListener("click", () => void reset());
 refreshButton.addEventListener("click", () => void refresh());
 clearUploadedButton.addEventListener("click", () => void clearUploaded());
 loadMoreButton.addEventListener("click", () => void loadMore());
+copyCodeButton.addEventListener("click", () => {
+  const code = authorizationCode.textContent?.trim();
+  if (!code) return;
+  void copyText(code).then((copied) => {
+    flashButton(copyCodeButton, copied ? "Copied" : "Copy failed");
+  });
+});
+copyIdButton.addEventListener("click", () => {
+  const id = chromeApi?.runtime?.id;
+  if (!id) return;
+  void copyText(id).then((copied) => {
+    flashButton(copyIdButton, copied ? "Copied" : "Copy failed");
+  });
+});
 
 if (canOpenOptionsPage(chromeApi?.runtime)) {
   settingsButton.addEventListener("click", () => {

@@ -27,7 +27,13 @@
       <section id="authorization" class="card hidden" aria-live="polite">
         <h2>Connect GitHub</h2>
         <p id="authorization-copy"></p>
-        <a id="authorization-link" class="button secondary hidden" target="_blank" rel="noopener noreferrer">Open GitHub authorization</a>
+        <div id="authorization-code-row" class="code-row hidden">
+          <code id="authorization-code" class="code"></code>
+          <button id="copy-code-button" class="button secondary" type="button">Copy code</button>
+        </div>
+        <p id="authorization-expiry" class="muted hidden"></p>
+        <a id="authorization-link" class="button primary hidden" target="_blank" rel="noopener noreferrer">Open GitHub authorization</a>
+        <p id="authorization-keychain" class="muted">If macOS asks whether the local uploader may use the login keychain, choose <strong>Always Allow</strong>.</p>
       </section>
 
       <section class="actions" aria-label="Connection actions">
@@ -68,6 +74,10 @@
 
       <footer class="footer">
         <span id="versions" class="muted">Extension — · Uploader —</span>
+        <span class="id-row">
+          <code id="extension-id" class="code muted">ID —</code>
+          <button id="copy-id-button" class="button secondary" type="button">Copy ID</button>
+        </span>
       </footer>
     </main>
     <script type="module" src="popup.js"></script>

@@ -170,7 +170,7 @@ The parser is pure: it receives `SelectorFixture`, course mappings, an optional 
 ### Popup — `popup.ts`
 
 - `refresh()` sends `popup_snapshot` then `popup_status`, renders connection summary, drain state, versions, pending-handoff count/copy, overflow notices, last outcome (success/warn/error styling), and the first queue page. `loadMore()` sends `popup_status { beforeJobId }` and appends new `jobId`s. While a request is in flight the action buttons are disabled.
-- Authorization rendering shows `authorizing` state copy and, when the URL passes the `https://github.com` check, a link preferring `verificationUriComplete`. The popup never receives or displays a credential.
+- Authorization rendering shows `authorizing` state copy, a large copyable `user_code` card, a live "Waiting for approval on GitHub… expires in M:SS" countdown from `authorization.expiresAt`, the Keychain **Always Allow** heads-up, and — preferring `verificationUriComplete` when the URL passes the `https://github.com` check — a primary **Open GitHub authorization** link. The popup auto-opens that GitHub page exactly once per challenge (`chrome.tabs.create`, `window.open` fallback). The footer shows `chrome.runtime.id` with a **Copy ID** button. The popup never receives or displays a credential.
 - Job rows show `lectureKey — statusLabel`, `targetPath`, and remote hash/kind diagnostics, with Retry/Discard buttons per `job-actions.ts` eligibility. A permanent-conflict retry requires a confirmation that the remote file was corrected or deleted. **Clear uploaded** sequentially discards every loaded uploaded/unchanged row, refreshes, and reports the failure count.
 - The Settings button is hidden when `openOptionsPage` is unavailable; otherwise it opens the options page.
 
@@ -248,7 +248,7 @@ Leccap page (document_idle)
 | `extension-storage.test.ts` | Capacity, dedupe, serialization, notices, restart replay, snapshot clamping, derived-identity records |
 | `native-messaging.test.ts` | Bounded requests, single persistent port, concurrent correlation, exact response envelopes |
 | `background.test.ts` | Sender/message validation, outbox-before-submit, replay/ack handling, rejection notices, handoff-full, drain lifecycle/port close, popup commands, terminal notifications, startup wiring, derived-identity correction |
-| `popup-page.test.ts`, `options-page.test.ts`, `job-actions.test.ts`, `settings-storage.test.ts`, `settings-actions.test.ts` | Popup outcome styling/queue copy, options dirty-state/save/reload/busy-lock, action eligibility, settings defaults/validation |
+| `popup-page.test.ts`, `options-page.test.ts`, `job-actions.test.ts`, `settings-storage.test.ts`, `settings-actions.test.ts` | Popup outcome styling/queue copy and GitHub authorization UX (auto-open, code card, expiry, Keychain heads-up, ID copy), options dirty-state/save/reload/busy-lock, action eligibility, settings defaults/validation |
 | `fixture-packet.test.ts` | Stage 0 selector/course/expected/size fixtures and sanitization rules |
 | `build-smoke.test.ts` | Builds the extension and asserts manifest-referenced files, inlined selectors, bundle markers |
 

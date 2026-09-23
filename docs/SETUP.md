@@ -70,8 +70,9 @@ sh scripts/tests/run.sh
 1. Open `chrome://extensions`.
 2. Enable **Developer mode**.
 3. Choose **Load unpacked** and select the `dist/extension/` directory.
-4. Copy the 32-character extension ID Chrome shows on the card. This is the
-   `<loaded-extension-id>` used by the host installer.
+4. Copy the 32-character extension ID. The popup footer shows it as `ID …`
+   with a **Copy ID** button (Chrome also shows it on the extension card).
+   This is the `<loaded-extension-id>` used by the host installer.
 5. Pin the extension and open its popup once to confirm it renders. The popup's
    **Settings** button opens the extension's options page; the same page is
    available from the extension card's **Extension options** in
@@ -213,14 +214,17 @@ Chrome reads the registration.
 ## Authorize GitHub
 
 1. Open the extension popup and choose **Connect GitHub**.
-2. The uploader starts the GitHub App device flow and the popup shows the
-   `user_code` and a GitHub verification link.
-3. Open the link (or `https://github.com/login/device`), enter the code, and
-   authorize the App.
-4. When macOS asks whether the uploader may use the Keychain item, choose
-   **Always Allow**. The first access may prompt; a rebuilt binary can prompt
-   again.
-5. The popup reports **GitHub connected** only after the repository sanity
+2. The uploader starts the GitHub App device flow. The popup opens the
+   prefilled GitHub approval page in a new tab and shows the `user_code` as a
+   large copyable card while it polls (`Waiting for approval on GitHub…
+   expires in M:SS`). Nothing needs to be typed when the prefilled tab is used;
+   the **Copy code** button and `https://github.com/login/device` remain as a
+   fallback.
+3. Approve the App in that GitHub tab. If macOS asks whether the local
+   uploader may use the login keychain, choose **Always Allow** (the popup
+   shows this heads-up under the code). The first access may prompt; a rebuilt
+   binary can prompt again.
+4. The popup reports **GitHub connected** only after the repository sanity
    checks pass. If it reports `target_repository_unavailable`, verify the
    numeric repository ID, the App installation, the Contents permission, and
    that `main` has at least one commit.
