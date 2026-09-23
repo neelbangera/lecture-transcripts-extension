@@ -45,6 +45,7 @@ const overflowSection = element<HTMLElement>("overflow-section");
 const overflowCount = element<HTMLSpanElement>("overflow-count");
 const overflowList = element<HTMLUListElement>("overflow-list");
 const queueCount = element<HTMLSpanElement>("queue-count");
+const queueCopy = element<HTMLParagraphElement>("queue-copy");
 const jobList = element<HTMLUListElement>("job-list");
 const clearUploadedButton = element<HTMLButtonElement>("clear-uploaded-button");
 const loadMoreButton = element<HTMLButtonElement>("load-more-button");
@@ -197,6 +198,7 @@ function renderJobs(status: UploaderStatus | null, append = false): void {
   }
   const total = status ? Object.values(status.counts).reduce((sum, count) => sum + count, 0) : loadedJobs.length;
   queueCount.textContent = String(total);
+  queueCopy.classList.toggle("hidden", total > 0);
   clearUploadedButton.classList.toggle("hidden", clearableJobs(loadedJobs).length === 0);
   loadMoreButton.classList.toggle("hidden", nextBeforeJobId === null);
 }
