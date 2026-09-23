@@ -60,6 +60,11 @@ type Config struct {
 	Owner             string `json:"owner"`
 	Repo              string `json:"repo"`
 	Branch            string `json:"branch"`
+
+	// WriteTimestamped controls whether the uploader publishes the
+	// timestamped transcript alongside the plain file.  An absent config field
+	// means true; an explicit false publishes the plain file only.
+	WriteTimestamped bool `json:"writeTimestamped"`
 }
 
 type Paths struct {
@@ -118,11 +123,42 @@ func LoadFrom(path string) (Config, error) {
 	return cfg, nil
 }
 
+// wireConfig mirrors Config's JSON shape so an absent writeTimestamped can
+// default to true while an explicit false is preserved.  Decoding still
+// rejects unknown fields, and optionalBool rejects non-boolean values.
+type wireConfig struct {
+	SchemaVersion     int          `json:"schemaVersion"`
+	GitHubAppClientID string       `json:"githubAppClientId"`
+	RepositoryID      int64        `json:"repositoryId"`
+	Owner             string       `json:"owner"`
+	Repo              string       `json:"repo"`
+	Branch            string       `json:"branch"`
+	WriteTimestamped  optionalBool `json:"writeTimestamped"`
+}
+
+// optionalBool distinguishes an absent JSON boolean from an explicit false.
+// The zero value means absent; null and non-boolean values are rejected.
+type optionalBool struct {
+	present bool
+	value   bool
+}
+
+func (o *optionalBool) UnmarshalJSON(data []byte) error {
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return errors.New("writeTimestamped must be a boolean")
+	}
+	if err := json.Unmarshal(data, &o.value); err != nil {
+		return err
+	}
+	o.present = true
+	return nil
+}
+
 func decode(data []byte) (Config, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
-	var cfg Config
-	if err := decoder.Decode(&cfg); err != nil {
+	var wire wireConfig
+	if err := decoder.Decode(&wire); err != nil {
 		return Config{}, fmt.Errorf("decode machine-local config: %w", err)
 	}
 	var extra any
@@ -131,6 +167,18 @@ func decode(data []byte) (Config, error) {
 			return Config{}, errors.New("decode machine-local config: multiple JSON values")
 		}
 		return Config{}, fmt.Errorf("decode machine-local config: %w", err)
+	}
+	cfg := Config{
+		SchemaVersion:     wire.SchemaVersion,
+		GitHubAppClientID: wire.GitHubAppClientID,
+		RepositoryID:      wire.RepositoryID,
+		Owner:             wire.Owner,
+		Repo:              wire.Repo,
+		Branch:            wire.Branch,
+		WriteTimestamped:  true,
+	}
+	if wire.WriteTimestamped.present {
+		cfg.WriteTimestamped = wire.WriteTimestamped.value
 	}
 	return cfg, nil
 }
