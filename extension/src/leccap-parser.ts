@@ -78,6 +78,8 @@ export interface CourseMapping {
   courseName: string;
   courseSlug: string;
   supportedTerms: readonly string[];
+  /** Optional preferred discussion section; absent/null captures all sections. */
+  preferredDiscussionSection?: string | null;
 }
 
 export interface ParserOptions {
@@ -128,6 +130,12 @@ export interface ParsedLecture {
   lectureKey: string;
   contentHash: string;
   stableSnapshotCount: number;
+  /**
+   * The correlated overview card's "Discussion - 0NN" badge value for a
+   * discussion recording; null for lectures and for any other badge shape.
+   * Never an identity field.
+   */
+  discussionSection: string | null;
 }
 
 export interface RejectedLecture {
@@ -153,12 +161,16 @@ export const NORMATIVE_TIMESTAMP_PREFIX =
 const TRANSCRIPT_ROW_SELECTOR = ".transcript-row";
 const TRANSCRIPT_TIME_SELECTOR = ".transcript-time";
 const TRANSCRIPT_TEXT_SELECTOR = ".transcript-text";
+/** Observed overview card badge ("Discussion - 012"); section label only. */
+const RECORDING_BADGE_SELECTOR = ".badge";
 const SOURCE_URL_HOST = "leccap.engin.umich.edu";
 
 const LOADING_ONLY_TRANSCRIPT = /^(?:loading…|loading transcript|no transcript)$/i;
 const RAW_TIMESTAMP = /^\d{1,2}:\d{2}(?::\d{2})?$/;
 /** Observed recording-title prefix for discussion recordings ("Discussion 1"). */
 const DISCUSSION_TITLE_PREFIX = /^\s*Discussion\s+(\d{1,3})\b/i;
+/** Observed discussion section badge shape ("Discussion - 012"); anything else is null. */
+const DISCUSSION_SECTION_BADGE_RE = /^\s*Discussion\s*-\s*(\d{3})\s*$/;
 const MONTH_NAMES: Record<string, number> = {
   jan: 1,
   january: 1,
@@ -612,13 +624,18 @@ export function parseRecordingDate(
   return parseDateParts(month, day, year);
 }
 
+interface ResolvedLectureDate {
+  lectureDate: string;
+  discussionSection: string | null;
+}
+
 async function resolveLectureDate(
   document: Document,
   sourceUrl: string,
   term: string,
   selectors: SelectorFixture,
   fetchOverview: OverviewFetcher | undefined,
-): Promise<string | RejectedLecture> {
+): Promise<ResolvedLectureDate | RejectedLecture> {
   const source = selectors.lectureDateSource;
   if (source.page === "lecture_page") {
     const dateElement = queryOne(document, source.dateSelector);
@@ -634,13 +651,12 @@ async function resolveLectureDate(
       source.dateCaptureGroup,
       term,
     );
-    return (
-      parsed ??
-      reject(
-        "rejected_ambiguous_metadata",
-        "the configured lecture-page date is missing or invalid",
-      )
-    );
+    return parsed
+      ? { lectureDate: parsed, discussionSection: null }
+      : reject(
+          "rejected_ambiguous_metadata",
+          "the configured lecture-page date is missing or invalid",
+        );
   }
 
   if (
@@ -765,13 +781,21 @@ async function resolveLectureDate(
     source.dateCaptureGroup,
     term,
   );
-  return (
-    parsed ??
-    reject(
+  if (!parsed) {
+    return reject(
       "rejected_ambiguous_metadata",
       "the correlated overview recording date is missing or invalid",
-    )
+    );
+  }
+  // The badge is a category/section label, never an identity input: only the
+  // observed "Discussion - 0NN" shape is retained, everything else is null.
+  const badgeMatch = DISCUSSION_SECTION_BADGE_RE.exec(
+    normalizedMetadataText(textOf(queryOne(matches[0], RECORDING_BADGE_SELECTOR))),
   );
+  return {
+    lectureDate: parsed,
+    discussionSection: badgeMatch ? badgeMatch[1] : null,
+  };
 }
 
 function extractIdentity(
@@ -929,21 +953,23 @@ export async function parseLecturePage(
   if ("supported" in transcript) {
     return transcript;
   }
-  const lectureDate = await resolveLectureDate(
+  const resolvedDate = await resolveLectureDate(
     document,
     sourceUrl,
     identity.term,
     selectors,
     options.fetchOverview,
   );
-  if (typeof lectureDate !== "string") {
+  if ("supported" in resolvedDate) {
     return {
-      ...lectureDate,
+      ...resolvedDate,
       courseName: identity.courseName,
       term: identity.term,
       lectureNumber: identity.lectureNumber,
     };
   }
+  const discussionSection =
+    identity.kind === "discussion" ? resolvedDate.discussionSection : null;
 
   const contentHash = await hashTranscriptForms(
     transcript.transcript,
@@ -957,7 +983,7 @@ export async function parseLecturePage(
     courseSlug: identity.courseSlug,
     term: identity.term,
     lectureNumber: identity.lectureNumber,
-    lectureDate,
+    lectureDate: resolvedDate.lectureDate,
     sourceUrl,
     transcript: transcript.transcript,
     timestampedTranscript: transcript.timestampedTranscript,
@@ -965,5 +991,6 @@ export async function parseLecturePage(
     lectureKey: `${identity.courseSlug}/${identity.term}/${String(identity.lectureNumber).padStart(3, "0")}`,
     contentHash,
     stableSnapshotCount,
+    discussionSection,
   };
 }
