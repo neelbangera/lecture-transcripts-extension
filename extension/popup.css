@@ -60,6 +60,12 @@ body {
 
 .header { margin-bottom: 14px; }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 h1, h2, p { margin: 0; }
 h1 { font-size: 18px; line-height: 1.25; }
 h2 { font-size: 14px; line-height: 1.3; }

@@ -14,9 +14,11 @@ import {
   type QueueStatus,
   type UploaderStatus,
 } from "./status";
+import { canOpenOptionsPage, openOptionsPage } from "./settings-actions";
 
 interface RuntimeMessageApi {
   sendMessage(message: ExtensionMessage, callback: (response: BackgroundResponse) => void): void;
+  openOptionsPage?(callback?: () => void): void | Promise<void>;
 }
 
 const chromeApi = (globalThis as { chrome?: { runtime?: RuntimeMessageApi } }).chrome;
@@ -35,6 +37,7 @@ const authorizationLink = element<HTMLAnchorElement>("authorization-link");
 const connectButton = element<HTMLButtonElement>("connect-button");
 const resetButton = element<HTMLButtonElement>("reset-button");
 const refreshButton = element<HTMLButtonElement>("refresh-button");
+const settingsButton = element<HTMLButtonElement>("settings-button");
 const lastOutcome = element<HTMLParagraphElement>("last-outcome");
 const pendingCount = element<HTMLSpanElement>("pending-count");
 const pendingCopy = element<HTMLParagraphElement>("pending-copy");
@@ -317,4 +320,13 @@ resetButton.addEventListener("click", () => void reset());
 refreshButton.addEventListener("click", () => void refresh());
 clearUploadedButton.addEventListener("click", () => void clearUploaded());
 loadMoreButton.addEventListener("click", () => void loadMore());
+
+if (canOpenOptionsPage(chromeApi?.runtime)) {
+  settingsButton.addEventListener("click", () => {
+    if (!openOptionsPage(chromeApi?.runtime)) settingsButton.classList.add("hidden");
+  });
+} else {
+  settingsButton.classList.add("hidden");
+}
+
 void refresh();

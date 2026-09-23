@@ -1,10 +1,11 @@
 /**
- * Options page: edit the persisted course allowlist.
+ * Options page: edit the persisted course allowlist and behavior settings.
  *
  * Every save is validated with the same rules the content runtime applies, so
  * an invalid allowlist can never reach `chrome.storage.local`.  The page is
  * seeded from the stored mappings, or from the built-in Stage 0 allowlist
- * when storage is empty or invalid.
+ * when storage is empty or invalid.  The two behavior toggles persist
+ * immediately on change and show their stored values on load.
  */
 
 import type { CourseConfig } from "./course-config";
@@ -14,6 +15,7 @@ import {
   validateCourseMappings,
   type CourseMappingIssue,
 } from "./course-storage";
+import { loadSettings, saveSettings } from "./settings-storage";
 
 function element<T extends HTMLElement>(id: string): T {
   const value = document.getElementById(id);
@@ -27,6 +29,9 @@ const courseList = element<HTMLElement>("course-list");
 const addButton = element<HTMLButtonElement>("add-course");
 const saveButton = element<HTMLButtonElement>("save-courses");
 const reloadButton = element<HTMLButtonElement>("reload-courses");
+const autoCaptureToggle = element<HTMLInputElement>("auto-capture-toggle");
+const notificationsToggle = element<HTMLInputElement>("notifications-toggle");
+const settingsStatus = element<HTMLParagraphElement>("settings-status");
 
 const COURSE_TEMPLATE = `
   <legend>Course</legend>
@@ -188,11 +193,57 @@ async function reload(): Promise<void> {
   }
 }
 
+function readSettings(): { autoCapture: boolean; notificationsEnabled: boolean } {
+  return {
+    autoCapture: autoCaptureToggle.checked,
+    notificationsEnabled: notificationsToggle.checked,
+  };
+}
+
+function applySettings(settings: {
+  autoCapture: boolean;
+  notificationsEnabled: boolean;
+}): void {
+  autoCaptureToggle.checked = settings.autoCapture;
+  notificationsToggle.checked = settings.notificationsEnabled;
+}
+
+function setSettingsStatus(message: string): void {
+  settingsStatus.textContent = message;
+}
+
+async function loadSettingsToggles(): Promise<void> {
+  applySettings(await loadSettings());
+}
+
+async function saveSettingsToggles(): Promise<void> {
+  const desired = readSettings();
+  autoCaptureToggle.disabled = true;
+  notificationsToggle.disabled = true;
+  try {
+    await saveSettings(desired);
+    setSettingsStatus("Saved settings.");
+  } catch (error) {
+    setSettingsStatus(
+      error instanceof Error
+        ? `Not saved: ${error.message}`
+        : "Not saved: storage is unavailable.",
+    );
+    await loadSettingsToggles();
+  } finally {
+    autoCaptureToggle.disabled = false;
+    notificationsToggle.disabled = false;
+  }
+}
+
 addButton.addEventListener("click", () => {
   courseList.append(createCourseCard());
   setStatus("Unsaved changes. Select Save to persist them.");
 });
 saveButton.addEventListener("click", () => void save());
 reloadButton.addEventListener("click", () => void reload());
+autoCaptureToggle.addEventListener("change", () => void saveSettingsToggles());
+notificationsToggle.addEventListener("change", () => void saveSettingsToggles());
 
 void reload();
+void loadSettingsToggles();
