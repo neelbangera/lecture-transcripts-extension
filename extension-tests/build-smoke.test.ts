@@ -14,6 +14,7 @@ const unresolvedPlaceholderPattern = /(?<!<define:)__STAGE0_SELECTORS__/;
 interface ExtensionManifest {
   background: { service_worker: string };
   action: { default_popup: string };
+  options_ui: { page: string; open_in_tab: boolean };
   content_scripts: Array<{ js: string[] }>;
 }
 
@@ -45,22 +46,30 @@ describe("built extension smoke test", () => {
     const manifest = JSON.parse(
       readFileSync(join(outputRoot, "manifest.json"), "utf8"),
     ) as ExtensionManifest;
+    expect(manifest.options_ui.open_in_tab).toBe(true);
     const referenced = [
       manifest.background.service_worker,
       manifest.action.default_popup,
+      manifest.options_ui.page,
       ...manifest.content_scripts.flatMap((entry) => entry.js),
     ];
     for (const file of referenced) {
       expect(existsSync(join(outputRoot, file)), `missing ${file}`).toBe(true);
     }
 
-    const popupHtml = readFileSync(join(outputRoot, "popup.html"), "utf8");
-    for (const match of popupHtml.matchAll(/(?:src|href)="([^"]+)"/g)) {
-      const target = match[1];
-      if (/^(?:https?:)?\/\//.test(target)) continue;
-      expect(existsSync(join(outputRoot, target)), `missing ${target}`).toBe(
-        true,
-      );
+    for (const htmlFile of [
+      manifest.action.default_popup,
+      manifest.options_ui.page,
+    ]) {
+      const html = readFileSync(join(outputRoot, htmlFile), "utf8");
+      for (const match of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
+        const target = match[1];
+        if (/^(?:https?:)?\/\//.test(target)) continue;
+        expect(
+          existsSync(join(outputRoot, target)),
+          `missing ${target} referenced by ${htmlFile}`,
+        ).toBe(true);
+      }
     }
 
     for (const path of listFiles(outputRoot)) {
