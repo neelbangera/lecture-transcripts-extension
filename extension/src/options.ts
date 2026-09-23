@@ -138,7 +138,6 @@ function createCourseCard(course?: CourseConfig): HTMLFieldSetElement {
     const placeholder = document.createElement("option");
     placeholder.value = "";
     placeholder.textContent = "Select a term…";
-    placeholder.disabled = true;
     placeholder.selected = true;
     select.replaceChildren(
       placeholder,

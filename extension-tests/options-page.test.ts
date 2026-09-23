@@ -172,6 +172,27 @@ describe("options page dirty state", () => {
     expect(termChips(courseCards()[0])).toHaveLength(1);
   });
 
+  it("lets the term dropdown return to the blank placeholder", async () => {
+    await mountOptionsPage();
+    const select = termSelect(courseCards()[0]);
+    const placeholder = Array.from(select.options).find(
+      (option) => option.value === "",
+    );
+    expect(placeholder).toBeDefined();
+    expect(placeholder?.disabled).toBe(false);
+    expect(placeholder?.textContent).toContain("Select a term");
+
+    const choice = Array.from(select.options).find(
+      (option) => option.value !== "" && option.value !== "2026-fall",
+    );
+    select.value = choice?.value ?? "";
+    select.value = "";
+    fire(select, "input");
+    fire(select, "change");
+    expect(select.value).toBe("");
+    expect(saveButton().disabled).toBe(true);
+  });
+
   it("editing a text field marks the form dirty", async () => {
     await mountOptionsPage();
     const input = field(courseCards()[0], "pageCourseText");
