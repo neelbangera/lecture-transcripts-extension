@@ -101,11 +101,12 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	}
 
 	proc, err := processor.New(processor.Config{
-		Store:     store,
-		Auth:      authManager,
-		Publisher: client,
-		Logger:    logger,
-		Version:   version,
+		Store:            store,
+		Auth:             authManager,
+		Publisher:        client,
+		Logger:           logger,
+		Version:          version,
+		WriteTimestamped: &cfg.WriteTimestamped,
 	})
 	if err != nil {
 		return logFatal(logger, logging.EventStartup, err)
