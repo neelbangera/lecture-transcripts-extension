@@ -685,8 +685,34 @@ func TestDiscardRules(t *testing.T) {
 	if err := store.MarkUploaded(claimed.ID, baseTime); err != nil {
 		t.Fatalf("MarkUploaded: %v", err)
 	}
-	if status, err := store.DiscardJob(claimed.ID, baseTime); !errors.Is(err, ErrNotEligible) || status != protocol.StatusUploaded {
+	if status, err := store.DiscardJob(claimed.ID, baseTime); err != nil || status != protocol.StatusUploaded {
 		t.Fatalf("DiscardJob uploaded = %s, %v", status, err)
+	}
+	if _, err := store.Get(claimed.ID); !errors.Is(err, ErrJobNotFound) {
+		t.Fatalf("discarded uploaded job still present: %v", err)
+	}
+
+	unchanged := testJob(4)
+	enqueueJob(t, store, unchanged)
+	claimed = claimJob(t, store, baseTime)
+	if err := store.MarkUnchanged(claimed.ID, unchanged.ContentHash, baseTime); err != nil {
+		t.Fatalf("MarkUnchanged: %v", err)
+	}
+	if status, err := store.DiscardJob(claimed.ID, baseTime); err != nil || status != protocol.StatusUnchanged {
+		t.Fatalf("DiscardJob unchanged = %s, %v", status, err)
+	}
+	if _, err := store.Get(claimed.ID); !errors.Is(err, ErrJobNotFound) {
+		t.Fatalf("discarded unchanged job still present: %v", err)
+	}
+
+	retryable := testJob(5)
+	enqueueJob(t, store, retryable)
+	claimed = claimJob(t, store, baseTime)
+	if err := store.MarkRetryableError(claimed.ID, "internal", nil, baseTime.Add(time.Minute), baseTime); err != nil {
+		t.Fatalf("MarkRetryableError: %v", err)
+	}
+	if status, err := store.DiscardJob(claimed.ID, baseTime); !errors.Is(err, ErrNotEligible) || status != protocol.StatusRetryableError {
+		t.Fatalf("DiscardJob retryable = %s, %v", status, err)
 	}
 	if _, err := store.DiscardJob(9999, baseTime); !errors.Is(err, ErrJobNotFound) {
 		t.Fatalf("DiscardJob missing = %v", err)
