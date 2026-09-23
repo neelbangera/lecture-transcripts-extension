@@ -54,22 +54,24 @@
           <code>YYYY-winter</code>, <code>YYYY-spring</code>,
           <code>YYYY-summer</code>, or <code>YYYY-fall</code>.
         </p>
-
-        <p id="options-status" class="notice" aria-live="polite"></p>
-        <ul id="options-errors" class="error-list hidden" aria-live="assertive"></ul>
-
-        <section id="course-list" class="course-list" aria-label="Courses"></section>
-
-        <div class="actions actions-end" aria-label="Course actions">
-          <button id="reload-courses" class="button secondary" type="button">Reload</button>
-          <button id="save-courses" class="button primary" type="button" disabled>Save</button>
-        </div>
-
         <p class="muted">
           Optional preferred discussion section: three digits, for example
           <code>012</code>. When set, discussion recordings from any other section
           are skipped and never handed off. Leave empty to capture every section.
         </p>
+
+        <p id="options-status" class="notice" aria-live="polite"></p>
+        <ul id="options-errors" class="error-list hidden" aria-live="assertive"></ul>
+
+        <section id="course-list" class="course-list" aria-label="Courses"></section>
+        <p id="course-list-empty" class="muted course-list-empty hidden" aria-live="polite">
+          No courses configured. Use <strong>+ Add course</strong> to add one.
+        </p>
+
+        <div class="actions actions-end" aria-label="Course actions">
+          <button id="reload-courses" class="button secondary" type="button">Reload</button>
+          <button id="save-courses" class="button primary" type="button" disabled>Save</button>
+        </div>
       </section>
     </main>
     <script type="module" src="options.js"></script>

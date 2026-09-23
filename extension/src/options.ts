@@ -26,6 +26,7 @@ function element<T extends HTMLElement>(id: string): T {
 const statusLine = element<HTMLParagraphElement>("options-status");
 const errorList = element<HTMLUListElement>("options-errors");
 const courseList = element<HTMLElement>("course-list");
+const emptyState = element<HTMLParagraphElement>("course-list-empty");
 const addButton = element<HTMLButtonElement>("add-course");
 const saveButton = element<HTMLButtonElement>("save-courses");
 const reloadButton = element<HTMLButtonElement>("reload-courses");
@@ -167,6 +168,7 @@ function createCourseCard(course?: CourseConfig): HTMLFieldSetElement {
   });
   card.querySelector(".remove-course")?.addEventListener("click", () => {
     card.remove();
+    refreshEmptyState();
     markDirty();
   });
   for (const input of card.querySelectorAll<HTMLInputElement>("input[data-field]")) {
@@ -189,6 +191,14 @@ function setFieldValue(card: ParentNode, field: string, value: string): void {
 
 function renderCourses(courses: readonly CourseConfig[]): void {
   courseList.replaceChildren(...courses.map((course) => createCourseCard(course)));
+  refreshEmptyState();
+}
+
+function refreshEmptyState(): void {
+  emptyState.classList.toggle(
+    "hidden",
+    courseList.querySelector("fieldset[data-course]") !== null,
+  );
 }
 
 function readCourses(): unknown[] {
@@ -212,8 +222,13 @@ function setStatus(message: string, variant: StatusVariant = "info"): void {
     statusTimer = null;
   }
   statusLine.textContent = message;
-  statusLine.classList.remove("notice-success", "notice-warn", "notice-error");
-  if (variant !== "info") statusLine.classList.add(`notice-${variant}`);
+  statusLine.classList.remove(
+    "notice-info",
+    "notice-success",
+    "notice-warn",
+    "notice-error",
+  );
+  statusLine.classList.add(`notice-${variant}`);
   if (variant === "success") {
     statusTimer = window.setTimeout(() => {
       statusTimer = null;
@@ -237,6 +252,11 @@ function setBusy(value: boolean): void {
   busy = value;
   addButton.disabled = value;
   reloadButton.disabled = value;
+  for (const control of courseList.querySelectorAll<
+    HTMLButtonElement | HTMLInputElement | HTMLSelectElement
+  >("button, input, select")) {
+    control.disabled = value;
+  }
   refreshSaveState();
 }
 
@@ -376,6 +396,7 @@ async function saveSettingsToggles(): Promise<void> {
 
 addButton.addEventListener("click", () => {
   courseList.append(createCourseCard());
+  refreshEmptyState();
   markDirty();
 });
 saveButton.addEventListener("click", () => void save());
