@@ -9,6 +9,15 @@
  * docs/STAGE_0_LECCAP_OBSERVATIONS.md.
  */
 
+import {
+  deriveIdentityFromOverview,
+  parseRecordingBadge,
+  parseRecordingTime,
+  parseTitleIdentity,
+  type OverviewCardFact,
+  type RecordingKind,
+} from "./identity-derivation";
+
 export type ParserRejectionStatus =
   | "not_ready"
   | "rejected_missing_identity"
@@ -136,6 +145,11 @@ export interface ParsedLecture {
    * Never an identity field.
    */
   discussionSection: string | null;
+  /**
+   * Whether the numeric identity came from an explicit recording-title number
+   * or from the overview-sequence derivation used for lagging titles.
+   */
+  numberSource: "title" | "derived";
 }
 
 export interface RejectedLecture {
@@ -167,10 +181,8 @@ const SOURCE_URL_HOST = "leccap.engin.umich.edu";
 
 const LOADING_ONLY_TRANSCRIPT = /^(?:loading…|loading transcript|no transcript)$/i;
 const RAW_TIMESTAMP = /^\d{1,2}:\d{2}(?::\d{2})?$/;
-/** Observed recording-title prefix for discussion recordings ("Discussion 1"). */
-const DISCUSSION_TITLE_PREFIX = /^\s*Discussion\s+(\d{1,3})\b/i;
-/** Observed discussion section badge shape ("Discussion - 012"); anything else is null. */
-const DISCUSSION_SECTION_BADGE_RE = /^\s*Discussion\s*-\s*(\d{3})\s*$/;
+/** Overview card title node inside .rec-title; the badge is a sibling, never the title. */
+const RECORDING_TITLE_SELECTOR = ".rec-title > span:first-child";
 const MONTH_NAMES: Record<string, number> = {
   jan: 1,
   january: 1,
@@ -624,18 +636,56 @@ export function parseRecordingDate(
   return parseDateParts(month, day, year);
 }
 
-interface ResolvedLectureDate {
+interface ResolvedOverview {
   lectureDate: string;
+  recTime: string | null;
   discussionSection: string | null;
+  cards: OverviewCardFact[];
 }
 
-async function resolveLectureDate(
+function inventoryOverviewCards(
+  cardElements: readonly Element[],
+  source: LectureDateSource,
+  overviewUrl: string,
+  term: string,
+): OverviewCardFact[] {
+  const cards: OverviewCardFact[] = [];
+  for (const element of cardElements) {
+    const link = queryOne(element, source.recordingLinkSelector!);
+    const hrefRaw = link?.getAttribute("href");
+    const href =
+      typeof hrefRaw === "string" ? canonicalizeLeccapUrl(hrefRaw, overviewUrl) : null;
+    if (!href) continue;
+    const titleElement = queryOne(element, RECORDING_TITLE_SELECTOR);
+    const title = normalizedMetadataText(textOf(titleElement ?? queryOne(element, ".rec-title")));
+    const dateElement = queryOne(element, source.dateSelector);
+    const dateText = dateElement ? textOf(dateElement) : "";
+    const lectureDate = dateElement
+      ? parseRecordingDate(dateText, source.dateRegex, source.dateCaptureGroup, term)
+      : null;
+    const recTime = dateElement ? parseRecordingTime(dateText) : null;
+    const badge = parseRecordingBadge(
+      normalizedMetadataText(textOf(queryOne(element, RECORDING_BADGE_SELECTOR))),
+    );
+    cards.push({
+      href,
+      title,
+      lectureDate,
+      recTime,
+      kind: badge.kind,
+      discussionSection: badge.discussionSection,
+    });
+  }
+  return cards;
+}
+
+async function resolveOverview(
   document: Document,
   sourceUrl: string,
   term: string,
   selectors: SelectorFixture,
   fetchOverview: OverviewFetcher | undefined,
-): Promise<ResolvedLectureDate | RejectedLecture> {
+): Promise<ResolvedOverview | RejectedLecture> {
   const source = selectors.lectureDateSource;
   if (source.page === "lecture_page") {
     const dateElement = queryOne(document, source.dateSelector);
@@ -645,14 +695,20 @@ async function resolveLectureDate(
         "the lecture page has no configured recording-date element",
       );
     }
+    const dateText = textOf(dateElement);
     const parsed = parseRecordingDate(
-      textOf(dateElement),
+      dateText,
       source.dateRegex,
       source.dateCaptureGroup,
       term,
     );
     return parsed
-      ? { lectureDate: parsed, discussionSection: null }
+      ? {
+          lectureDate: parsed,
+          recTime: parseRecordingTime(dateText),
+          discussionSection: null,
+          cards: [],
+        }
       : reject(
           "rejected_ambiguous_metadata",
           "the configured lecture-page date is missing or invalid",
@@ -775,8 +831,9 @@ async function resolveLectureDate(
       "the correlated overview recording has no date element",
     );
   }
+  const dateText = textOf(dateElement);
   const parsed = parseRecordingDate(
-    textOf(dateElement),
+    dateText,
     source.dateRegex,
     source.dateCaptureGroup,
     term,
@@ -789,31 +846,39 @@ async function resolveLectureDate(
   }
   // The badge is a category/section label, never an identity input: only the
   // observed "Discussion - 0NN" shape is retained, everything else is null.
-  const badgeMatch = DISCUSSION_SECTION_BADGE_RE.exec(
+  const badge = parseRecordingBadge(
     normalizedMetadataText(textOf(queryOne(matches[0], RECORDING_BADGE_SELECTOR))),
   );
   return {
     lectureDate: parsed,
-    discussionSection: badgeMatch ? badgeMatch[1] : null,
+    recTime: parseRecordingTime(dateText),
+    discussionSection: badge.discussionSection,
+    cards: inventoryOverviewCards(cards, source, overviewUrl, term),
   };
 }
 
-function extractIdentity(
+interface ResolvedNumericIdentity {
+  kind: RecordingKind;
+  courseName: string;
+  courseSlug: string;
+  term: string;
+  lectureNumber: number;
+  numberSource: "title" | "derived";
+}
+
+function extractCourseIdentity(
   document: Document,
   selectors: SelectorFixture,
   mappings: readonly CourseMapping[],
 ):
   | {
-      kind: "lecture" | "discussion";
       courseName: string;
       courseSlug: string;
       term: string;
-      lectureNumber: number;
     }
   | RejectedLecture {
   const courseElement = queryOne(document, selectors.courseSelector.selector);
   const termElement = queryOne(document, selectors.termSelector.selector);
-  const numberElement = queryOne(document, selectors.lectureNumberSelector.selector);
   if (!courseElement || !termElement) {
     return reject(
       "rejected_missing_identity",
@@ -864,40 +929,71 @@ function extractIdentity(
       { courseName: mapping.courseName, term },
     );
   }
-
-  if (!numberElement) {
-    return reject(
-      "rejected_ambiguous_metadata",
-      "the recording title has no numeric lecture prefix; the overview badge is not an identity",
-      { courseName: mapping.courseName, term, lectureNumber: null },
-    );
-  }
-  const numberMatcher = compileRegex(selectors.lectureNumberSelector.regex);
-  const numberMatch = numberMatcher?.exec(textOf(numberElement)) ?? null;
-  let numberText = capture(numberMatch, selectors.lectureNumberSelector.captureGroup);
-  let kind: "lecture" | "discussion" = "lecture";
-  if (!numberText) {
-    // The observed overview lists discussion recordings as "Discussion N"
-    // (badge "Discussion - 0NN" is not an identity); decoys such as
-    // "DISREGARD -- Empty discussion" or "Lecture recorded on ..." fail here.
-    const discussionMatch = DISCUSSION_TITLE_PREFIX.exec(textOf(numberElement));
-    numberText = discussionMatch ? discussionMatch[1] : null;
-    if (numberText) kind = "discussion";
-  }
-  const lectureNumber = numberText ? Number(numberText) : Number.NaN;
-  if (!numberText || !Number.isInteger(lectureNumber) || lectureNumber < 1 || lectureNumber > 999) {
-    return reject(
-      "rejected_ambiguous_metadata",
-      "the recording title has no valid numeric lecture or discussion prefix; the overview badge is not an identity",
-      { courseName: mapping.courseName, term, lectureNumber: null },
-    );
-  }
   return {
-    kind,
     courseName: mapping.courseName,
     courseSlug: mapping.courseSlug,
     term,
-    lectureNumber,
+  };
+}
+
+/**
+ * Resolve kind and number from the recording title when it carries one;
+ * otherwise derive the number from the already-inventoried overview sequence.
+ */
+function resolveNumericIdentity(
+  document: Document,
+  selectors: SelectorFixture,
+  course: { courseName: string; courseSlug: string; term: string },
+  overview: ResolvedOverview,
+  sourceUrl: string,
+): ResolvedNumericIdentity | RejectedLecture {
+  const numberElement = queryOne(document, selectors.lectureNumberSelector.selector);
+  const title = textOf(numberElement);
+  const titleIdentity = parseTitleIdentity(title);
+  if (titleIdentity && titleIdentity.lectureNumber !== null) {
+    return {
+      kind: titleIdentity.kind,
+      ...course,
+      lectureNumber: titleIdentity.lectureNumber,
+      numberSource: "title",
+    };
+  }
+  if (!numberElement || !titleIdentity) {
+    return reject(
+      "rejected_ambiguous_metadata",
+      "the recording title has no numeric lecture prefix and is not a recognized unnumbered recording title; the overview badge is not an identity",
+      {
+        courseName: course.courseName,
+        term: course.term,
+        lectureNumber: null,
+      },
+    );
+  }
+  // A lagging page title can still resolve from an already-updated overview
+  // card title ("Lecture: N") without needing the sequence walk.
+  const targetCard = overview.cards.find((card) => card.href === sourceUrl);
+  const cardIdentity = targetCard ? parseTitleIdentity(targetCard.title) : null;
+  if (cardIdentity && cardIdentity.lectureNumber !== null) {
+    return {
+      kind: titleIdentity.kind,
+      ...course,
+      lectureNumber: cardIdentity.lectureNumber,
+      numberSource: "title",
+    };
+  }
+  const derived = deriveIdentityFromOverview(overview.cards, sourceUrl, title);
+  if (!derived.ok) {
+    return reject("rejected_ambiguous_metadata", derived.reason, {
+      courseName: course.courseName,
+      term: course.term,
+      lectureNumber: null,
+    });
+  }
+  return {
+    kind: derived.kind,
+    ...course,
+    lectureNumber: derived.lectureNumber,
+    numberSource: "derived",
   };
 }
 
@@ -945,31 +1041,46 @@ export async function parseLecturePage(
     );
   }
 
-  const identity = extractIdentity(document, selectors, options.courseMappings);
-  if ("supported" in identity) {
-    return identity;
+  const course = extractCourseIdentity(document, selectors, options.courseMappings);
+  if ("supported" in course) {
+    return course;
   }
   const transcript = extractTranscript(container, selectors);
   if ("supported" in transcript) {
     return transcript;
   }
-  const resolvedDate = await resolveLectureDate(
+  const overview = await resolveOverview(
     document,
     sourceUrl,
-    identity.term,
+    course.term,
     selectors,
     options.fetchOverview,
   );
-  if ("supported" in resolvedDate) {
+  if ("supported" in overview) {
     return {
-      ...resolvedDate,
-      courseName: identity.courseName,
-      term: identity.term,
+      ...overview,
+      courseName: course.courseName,
+      term: course.term,
+      lectureNumber: null,
+    };
+  }
+  const identity = resolveNumericIdentity(
+    document,
+    selectors,
+    course,
+    overview,
+    sourceUrl,
+  );
+  if ("supported" in identity) {
+    return {
+      ...identity,
+      courseName: course.courseName,
+      term: course.term,
       lectureNumber: identity.lectureNumber,
     };
   }
   const discussionSection =
-    identity.kind === "discussion" ? resolvedDate.discussionSection : null;
+    identity.kind === "discussion" ? overview.discussionSection : null;
 
   const contentHash = await hashTranscriptForms(
     transcript.transcript,
@@ -983,7 +1094,7 @@ export async function parseLecturePage(
     courseSlug: identity.courseSlug,
     term: identity.term,
     lectureNumber: identity.lectureNumber,
-    lectureDate: resolvedDate.lectureDate,
+    lectureDate: overview.lectureDate,
     sourceUrl,
     transcript: transcript.transcript,
     timestampedTranscript: transcript.timestampedTranscript,
@@ -992,5 +1103,6 @@ export async function parseLecturePage(
     contentHash,
     stableSnapshotCount,
     discussionSection,
+    numberSource: identity.numberSource,
   };
 }

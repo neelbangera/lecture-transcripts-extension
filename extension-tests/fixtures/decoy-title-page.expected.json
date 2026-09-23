@@ -1,0 +1,14 @@
+{
+  "fixtureId": "decoy-title-page",
+  "supported": false,
+  "completion": "complete",
+  "courseName": "EECS 484",
+  "term": "2026-fall",
+  "lectureNumber": null,
+  "expectedRejection": "rejected_ambiguous_metadata",
+  "reason": "the recording title 'DISREGARD -- Empty discussion' is an unrecognized decoy: it has no numeric lecture or discussion prefix and is not a recognized unnumbered recording title, so no number is derived and no job is created. The category badge is never a lecture number.",
+  "notes": {
+    "fixtureRelation": "identical to no-number-lecture-page.html except the recording-title text, which is the only failing field",
+    "identityRule": "only the observed title shapes (numeric prefix, 'Lecture: N', 'Discussion N', 'Discussion: N', and the lag form 'Lecture recorded on ...') can become an identity"
+  }
+}

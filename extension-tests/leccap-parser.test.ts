@@ -158,7 +158,7 @@ describe("Leccap parser against the Stage 0 packet", () => {
     expect((result as { reason: string }).reason).toContain("sign-in page");
   });
 
-  it("uses only the numeric recording-title prefix, never the overview badge", async () => {
+  it("derives the lecture number from the overview sequence, never the overview badge", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const result = await parseFixture(
       "no-number-lecture-page.html",
@@ -167,6 +167,26 @@ describe("Leccap parser against the Stage 0 packet", () => {
     );
 
     expect(result).toMatchObject({
+      supported: true,
+      completion: "complete",
+      courseName: "EECS 484",
+      term: "2026-fall",
+      kind: "lecture",
+      lectureNumber: 3,
+      numberSource: "derived",
+      lectureDate: "2026-09-17",
+      lectureKey: "eecs484/2026-fall/003",
+    });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("rejects an unrecognized decoy recording title without inventing a number", async () => {
+    const result = await parseFixture(
+      "decoy-title-page.html",
+      "https://leccap.engin.umich.edu/leccap/player/r/sanitized17",
+      fixtureFetcher(readFixture("overview-page.html")),
+    );
+    expect(result).toMatchObject({
       supported: false,
       completion: "complete",
       status: "rejected_ambiguous_metadata",
@@ -174,8 +194,9 @@ describe("Leccap parser against the Stage 0 packet", () => {
       term: "2026-fall",
       lectureNumber: null,
     });
-    expect((result as { reason: string }).reason).toContain("overview badge is not an identity");
-    expect(calls).toHaveLength(0);
+    expect((result as { reason: string }).reason).toContain(
+      "not a recognized unnumbered recording title",
+    );
   });
 
   it("rejects an unrelated page and a loading-only transcript", async () => {
@@ -293,10 +314,7 @@ describe("Leccap parser against the Stage 0 packet", () => {
       lectureKey: "eecs484/2026-fall/001",
     });
 
-    for (const decoy of [
-      "DISREGARD -- Empty discussion",
-      "Lecture recorded on 9/18/2026",
-    ]) {
+    for (const decoy of ["DISREGARD -- Empty discussion", "Welcome to the course"]) {
       const { document } = makeDocument(
         readFixture("lecture-page.html").replace(
           '<span class="content-header-recording-title">01 Intro, [REDACTED]</span>',
@@ -314,6 +332,50 @@ describe("Leccap parser against the Stage 0 packet", () => {
         status: "rejected_ambiguous_metadata",
       });
     }
+  });
+
+  it("accepts the lag form and an updated 'Lecture: N' title as identities", async () => {
+    const lagging = makeDocument(
+      readFixture("lecture-page.html").replace(
+        '<span class="content-header-recording-title">01 Intro, [REDACTED]</span>',
+        '<span class="content-header-recording-title">Lecture recorded on 9/1/2026</span>',
+      ),
+      lectureUrl,
+    ).document;
+    // The lagging page title with an already-updated overview card title uses
+    // the card's explicit number ("01 Intro" on the correlated card).
+    const fromCard = await parseLecturePage(lagging, {
+      selectors,
+      courseMappings: courseFixture.courseMappings,
+      sourceUrl: lectureUrl,
+      fetchOverview: fixtureFetcher(readFixture("overview-page.html")),
+    });
+    expect(fromCard).toMatchObject({
+      supported: true,
+      kind: "lecture",
+      lectureNumber: 1,
+      numberSource: "title",
+    });
+
+    const colon = makeDocument(
+      readFixture("lecture-page.html").replace(
+        '<span class="content-header-recording-title">01 Intro, [REDACTED]</span>',
+        '<span class="content-header-recording-title">Lecture: 5</span>',
+      ),
+      lectureUrl,
+    ).document;
+    const fromColon = await parseLecturePage(colon, {
+      selectors,
+      courseMappings: courseFixture.courseMappings,
+      sourceUrl: lectureUrl,
+      fetchOverview: fixtureFetcher(readFixture("overview-page.html")),
+    });
+    expect(fromColon).toMatchObject({
+      supported: true,
+      kind: "lecture",
+      lectureNumber: 5,
+      numberSource: "title",
+    });
   });
 
   it("reads the correlated overview badge section for a discussion and null for a lecture", async () => {

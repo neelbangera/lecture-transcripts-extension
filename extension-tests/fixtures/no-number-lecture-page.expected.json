@@ -1,14 +1,26 @@
 {
   "fixtureId": "no-number-lecture-page",
-  "supported": false,
+  "supported": true,
   "completion": "complete",
   "courseName": "EECS 484",
+  "courseSlug": "eecs484",
   "term": "2026-fall",
-  "lectureNumber": null,
-  "expectedRejection": "rejected_ambiguous_metadata",
-  "reason": "the recording title has no numeric lecture prefix; this is the real observed case on the EECS 484 Fall 2026 overview ('Lecture recorded on 9/17/2026', play route r/sanitized17). The category badge ('Lecture - 001') is shared by every lecture card and must never be used as the lecture number. No job is created.",
+  "kind": "lecture",
+  "lectureNumber": 3,
+  "numberSource": "derived",
+  "lectureDate": "2026-09-17",
+  "sourceUrl": "https://leccap.engin.umich.edu/leccap/player/r/sanitized17",
+  "transcript": "Can I ask you a question?\nI think we can start. Welcome in 484,\nDatabase Management System.\nThank you.",
+  "timestampedTranscript": "[00:00] Can I ask you a question?\n[00:02] I think we can start. Welcome in 484,\nDatabase Management System.\n[1:22:58] Thank you.",
+  "derivedFrom": "both",
+  "lectureKey": "eecs484/2026-fall/003",
+  "contentHash": "4bfc0f5736615f920fa7ad0f557ff1c20426f39525bfc8717f4d9f2a770ed0cd",
+  "stableSnapshotCount": 2,
+  "discussionSection": null,
   "notes": {
-    "fixtureRelation": "identical to lecture-page.html except the recording-title text, which is the only failing field",
-    "dateNote": "the overview supplies a rec-date for this recording, but a missing lecture number fails closed independently of the date"
+    "fixtureRelation": "identical to lecture-page.html except the recording-title text, which is the observed lag form 'Lecture recorded on 9/17/2026'",
+    "numberSource": "derived: the title carries no number, so the linked overview sequence supplies it by 'next from the last one' (01 on 9/1, 02 on 9/3, then this card)",
+    "badgeRule": "the category badge ('Lecture - 001') is shared by every lecture card and must never be used as the lecture number",
+    "dateNote": "the correlated overview card supplies rec-date 9/17/2026 and rec-time 4:29 PM; lecture-kind cards share one start time"
   }
 }

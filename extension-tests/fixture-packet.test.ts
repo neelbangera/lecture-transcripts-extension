@@ -112,6 +112,7 @@ const SECRET_PATTERNS: Array<[string, RegExp]> = [
 const HTML_FIXTURES = [
   "lecture-page.html",
   "no-number-lecture-page.html",
+  "decoy-title-page.html",
   "overview-page.html",
   "loading-transcript-page.html",
   "non-lecture-page.html",
@@ -119,6 +120,7 @@ const HTML_FIXTURES = [
 const EXPECTED_FIXTURES = [
   "lecture-page.expected.json",
   "no-number-lecture-page.expected.json",
+  "decoy-title-page.expected.json",
 ];
 
 const selectors = readJson<SelectorFixture>("lecture-page.selectors.json");
