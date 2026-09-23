@@ -40,6 +40,15 @@
   margin-top: 0;
 }
 
+.settings-section .notice {
+  margin-top: 10px;
+}
+
+.settings-section .notice:empty {
+  min-height: 0;
+  margin-top: 0;
+}
+
 .toggle {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -52,6 +61,11 @@
 .toggle input {
   margin: 2px 0 0;
   accent-color: var(--primary-bg);
+}
+
+.toggle input:focus-visible {
+  outline: 2px solid var(--primary-bg);
+  outline-offset: 2px;
 }
 
 .toggle-copy {
@@ -114,23 +128,24 @@
   padding: 7px 8px;
 }
 
-.field input:focus {
+.field input:focus-visible {
   outline: 2px solid var(--primary-bg);
   outline-offset: 1px;
 }
 
-.field input[aria-invalid="true"] {
-  border-color: #d1242f;
-  outline-color: #d1242f;
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"] {
+  border-color: var(--danger);
+  outline-color: var(--danger);
 }
 
 .error-list {
   margin: 10px 0 0;
   padding: 10px 12px 10px 28px;
-  border: 1px solid #d1242f;
+  border: 1px solid var(--danger);
   border-radius: 8px;
-  background: rgba(209, 36, 47, 0.08);
-  color: #d1242f;
+  background: var(--danger-bg);
+  color: var(--danger);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -142,12 +157,12 @@
 
 .button.danger {
   background: transparent;
-  border: 1px solid #d1242f;
-  color: #d1242f;
+  border: 1px solid var(--danger);
+  color: var(--danger);
 }
 
 .button.danger:hover {
-  background: rgba(209, 36, 47, 0.08);
+  background: var(--danger-bg);
 }
 
 .options-page .section-heading {
@@ -166,17 +181,8 @@
   margin-top: 12px;
 }
 
-.notice-success {
-  color: #1a7f37;
-  font-weight: 600;
-}
-
-.notice-warn {
-  color: var(--notice);
-}
-
-.notice-error {
-  color: #d1242f;
+.notice-info {
+  color: var(--muted);
 }
 
 .field-label {
@@ -194,7 +200,7 @@
   padding: 7px 8px;
 }
 
-.field select:focus {
+.field select:focus-visible {
   outline: 2px solid var(--primary-bg);
   outline-offset: 1px;
 }
@@ -222,6 +228,10 @@
   padding: 0;
 }
 
+.term-chips:empty {
+  display: none;
+}
+
 .term-chip {
   display: inline-flex;
   align-items: center;
@@ -244,7 +254,13 @@
 }
 
 .chip-remove:hover {
-  color: #d1242f;
+  color: var(--danger);
+}
+
+.chip-remove:focus-visible {
+  outline: 2px solid var(--primary-bg);
+  outline-offset: 1px;
+  border-radius: 4px;
 }
 
 .allowlist-section {
@@ -253,4 +269,17 @@
 
 .allowlist-section .section-heading {
   margin-bottom: 6px;
+}
+
+.allowlist-section .notice {
+  margin-top: 8px;
+}
+
+.allowlist-section .notice:empty {
+  min-height: 0;
+  margin-top: 0;
+}
+
+.course-list-empty {
+  margin-top: 12px;
 }

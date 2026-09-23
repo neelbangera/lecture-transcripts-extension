@@ -45,6 +45,7 @@ const overflowSection = element<HTMLElement>("overflow-section");
 const overflowCount = element<HTMLSpanElement>("overflow-count");
 const overflowList = element<HTMLUListElement>("overflow-list");
 const queueCount = element<HTMLSpanElement>("queue-count");
+const queueCopy = element<HTMLParagraphElement>("queue-copy");
 const jobList = element<HTMLUListElement>("job-list");
 const clearUploadedButton = element<HTMLButtonElement>("clear-uploaded-button");
 const loadMoreButton = element<HTMLButtonElement>("load-more-button");
@@ -53,6 +54,36 @@ const versions = element<HTMLSpanElement>("versions");
 let loadedJobs: JobSummary[] = [];
 let nextBeforeJobId: number | null = null;
 let loading = false;
+
+type NoticeVariant = "info" | "success" | "warn" | "error";
+
+const OUTCOME_SUCCESS = new Set(["uploaded", "unchanged", "discarded", "reset"]);
+const OUTCOME_WARN = new Set([
+  "retryable_error",
+  "not_ready",
+  "waiting_for_uploader",
+  "skipped_section",
+]);
+
+function outcomeVariant(status: string): NoticeVariant {
+  if (OUTCOME_SUCCESS.has(status)) return "success";
+  if (status === "permanent_conflict" || status.startsWith("rejected_")) {
+    return "error";
+  }
+  if (OUTCOME_WARN.has(status)) return "warn";
+  return "info";
+}
+
+function setOutcome(message: string, variant: NoticeVariant = "info"): void {
+  lastOutcome.textContent = message;
+  lastOutcome.classList.remove(
+    "notice-info",
+    "notice-success",
+    "notice-warn",
+    "notice-error",
+  );
+  if (variant !== "info") lastOutcome.classList.add(`notice-${variant}`);
+}
 
 function send(message: ExtensionMessage): Promise<BackgroundResponse> {
   return new Promise((resolve) => {
@@ -197,6 +228,7 @@ function renderJobs(status: UploaderStatus | null, append = false): void {
   }
   const total = status ? Object.values(status.counts).reduce((sum, count) => sum + count, 0) : loadedJobs.length;
   queueCount.textContent = String(total);
+  queueCopy.classList.toggle("hidden", total > 0);
   clearUploadedButton.classList.toggle("hidden", clearableJobs(loadedJobs).length === 0);
   loadMoreButton.classList.toggle("hidden", nextBeforeJobId === null);
 }
@@ -210,9 +242,12 @@ function render(snapshot: ExtensionSnapshot, append = false): void {
   pendingCopy.textContent = snapshot.pendingHandoffs > 0
     ? "Captured, not yet acknowledged by the uploader. The outbox replays automatically."
     : "Every capture has been acknowledged by the uploader.";
-  lastOutcome.textContent = snapshot.lastOutcome
-    ? `${statusLabel(snapshot.lastOutcome.status)}${snapshot.lastOutcome.lectureKey ? ` · ${snapshot.lastOutcome.lectureKey}` : ""}`
-    : "";
+  setOutcome(
+    snapshot.lastOutcome
+      ? `${statusLabel(snapshot.lastOutcome.status)}${snapshot.lastOutcome.lectureKey ? ` · ${snapshot.lastOutcome.lectureKey}` : ""}`
+      : "",
+    snapshot.lastOutcome ? outcomeVariant(snapshot.lastOutcome.status) : "info",
+  );
   connectButton.textContent = status?.authState === "connected" ? "Reconnect GitHub" : "Connect GitHub";
   renderAuthorization(status);
   renderOverflow(snapshot.overflowNotices);
@@ -251,7 +286,7 @@ async function connect(): Promise<void> {
   try {
     const response = await send({ type: "popup_connect" });
     if (response.snapshot) render(response.snapshot);
-    if (!response.ok && response.message) lastOutcome.textContent = response.message;
+    if (!response.ok && response.message) setOutcome(response.message, "error");
   } finally {
     setBusy(false);
   }
@@ -263,7 +298,7 @@ async function reset(): Promise<void> {
   try {
     const response = await send({ type: "popup_reset" });
     if (response.snapshot) render(response.snapshot);
-    if (!response.ok && response.message) lastOutcome.textContent = response.message;
+    if (!response.ok && response.message) setOutcome(response.message, "error");
   } finally {
     setBusy(false);
   }
@@ -276,7 +311,7 @@ async function retryJob(job: JobSummary): Promise<void> {
   try {
     const response = await send({ type: "popup_retry", jobId: job.jobId });
     if (response.snapshot) render(response.snapshot);
-    if (!response.ok && response.message) lastOutcome.textContent = response.message;
+    if (!response.ok && response.message) setOutcome(response.message, "error");
   } finally {
     setBusy(false);
   }
@@ -288,7 +323,7 @@ async function discardJob(job: JobSummary): Promise<void> {
   try {
     const response = await send({ type: "popup_discard", jobId: job.jobId });
     if (response.snapshot) render(response.snapshot);
-    if (!response.ok && response.message) lastOutcome.textContent = response.message;
+    if (!response.ok && response.message) setOutcome(response.message, "error");
   } finally {
     setBusy(false);
   }
@@ -311,7 +346,7 @@ async function clearUploaded(): Promise<void> {
   }
   await refresh();
   if (failures > 0) {
-    lastOutcome.textContent = `${failures} uploaded ${failures === 1 ? "row was" : "rows were"} not cleared.`;
+    setOutcome(`${failures} uploaded ${failures === 1 ? "row was" : "rows were"} not cleared.`, "error");
   }
 }
 
