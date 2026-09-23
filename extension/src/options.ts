@@ -43,7 +43,7 @@ let statusTimer: number | null = null;
 function termOptions(existing: readonly string[] = []): string[] {
   const currentYear = new Date().getFullYear();
   const options: string[] = [];
-  for (let year = currentYear - 1; year <= currentYear + 2; year += 1) {
+  for (let year = currentYear; year <= currentYear + 1; year += 1) {
     for (const season of SEASONS) {
       options.push(`${year}-${season}`);
     }
@@ -78,7 +78,7 @@ const COURSE_TEMPLATE = `
     </div>
     <ul class="term-chips" data-term-chips aria-label="Selected terms"></ul>
   </div>
-  <button class="button secondary remove-course" type="button">Remove course</button>
+  <button class="button danger remove-course" type="button">Remove course</button>
 `;
 
 function termChips(card: ParentNode): HTMLUListElement | null {
@@ -122,6 +122,7 @@ function addTerm(card: ParentNode): void {
   const term = select?.value ?? "";
   if (!term || selectedTerms(card).includes(term)) return;
   renderTerms(card, [...selectedTerms(card), term].sort());
+  if (select) select.value = "";
   markDirty();
 }
 
@@ -133,7 +134,13 @@ function createCourseCard(course?: CourseConfig): HTMLFieldSetElement {
 
   const select = card.querySelector<HTMLSelectElement>("[data-term-select]");
   if (select) {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select a term…";
+    placeholder.disabled = true;
+    placeholder.selected = true;
     select.replaceChildren(
+      placeholder,
       ...termOptions(course?.supportedTerms).map((term) => {
         const option = document.createElement("option");
         option.value = term;
