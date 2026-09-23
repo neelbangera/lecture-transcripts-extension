@@ -824,6 +824,31 @@ func TestDiscardCommandEligibility(t *testing.T) {
 		result.ErrorCategory == nil || *result.ErrorCategory != protocol.ErrorIneligibleCommand {
 		t.Fatalf("ineligible discard = %+v", result)
 	}
+	if _, err := p.drainOnce(ctx); err != nil {
+		t.Fatalf("drainOnce: %v", err)
+	}
+
+	uploaded := testJob(3)
+	submitJob(t, p, "req-3", uploaded)
+	claimed, err = store.ClaimNext(baseTime)
+	if err != nil || claimed == nil {
+		t.Fatalf("ClaimNext: %v, %v", claimed, err)
+	}
+	if err := store.MarkUploaded(claimed.ID, baseTime); err != nil {
+		t.Fatalf("MarkUploaded: %v", err)
+	}
+	response, err = p.HandleRequest(ctx, discardRequest("discard-uploaded", claimed.ID))
+	if err != nil {
+		t.Fatalf("HandleRequest(discard uploaded): %v", err)
+	}
+	result = response.(protocol.CommandResult)
+	assertValidResponse(t, result)
+	if result.Result != "accepted" || result.Status == nil || *result.Status != "discarded" {
+		t.Fatalf("uploaded discard = %+v", result)
+	}
+	if _, err := store.Get(claimed.ID); !errors.Is(err, queue.ErrJobNotFound) {
+		t.Fatalf("discarded uploaded job still present: %v", err)
+	}
 
 	response, err = p.HandleRequest(ctx, discardRequest("discard-missing", 9999))
 	if err != nil {

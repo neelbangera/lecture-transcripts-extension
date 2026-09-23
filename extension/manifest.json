@@ -3,9 +3,13 @@
   "name": "Lecture Transcripts",
   "version": "0.1.0",
   "description": "Captures activated Leccap transcripts for the local GitHub uploader.",
+  "icons": {
+    "128": "icons/icon128.png"
+  },
   "permissions": [
     "alarms",
     "nativeMessaging",
+    "notifications",
     "storage"
   ],
   "host_permissions": [
@@ -17,7 +21,10 @@
   },
   "action": {
     "default_title": "Lecture Transcripts",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icons/icon128.png"
+    }
   },
   "options_ui": {
     "page": "options.html",

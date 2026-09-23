@@ -485,8 +485,12 @@ func (s *Store) DiscardJob(id int64, now time.Time) (protocol.QueueStatus, error
 		return "", err
 	}
 	current := protocol.QueueStatus(status)
-	if current != protocol.StatusPermanentConflict && !isRejection(current) {
-		return current, ErrNotEligible
+	switch current {
+	case protocol.StatusPermanentConflict, protocol.StatusUploaded, protocol.StatusUnchanged:
+	default:
+		if !isRejection(current) {
+			return current, ErrNotEligible
+		}
 	}
 	if _, err := tx.Exec(`DELETE FROM jobs WHERE id = ?`, id); err != nil {
 		return current, err
