@@ -8,6 +8,7 @@ import {
 
 export const MAX_PENDING_HANDOFFS = 3;
 export const MAX_OVERFLOW_NOTICES = 20;
+export const MAX_DERIVED_IDENTITIES = 20;
 export const STORAGE_KEY = "lectureTranscriptsExtensionState";
 
 export interface PendingHandoff {
@@ -18,9 +19,24 @@ export interface PendingHandoff {
   job: NativeTranscriptJob;
 }
 
+/**
+ * One resolved identity for a source URL. Written when the numeric identity
+ * came from the overview derivation used for lagging titles so a later,
+ * title-explicit capture can correct a stale derived slot.
+ */
+export interface DerivedIdentityRecord {
+  sourceUrl: string;
+  kind: "lecture" | "discussion";
+  lectureNumber: number;
+  lectureKey: string;
+  contentHash: string;
+  capturedAt: string;
+}
+
 interface PersistedState {
   pendingHandoffs: PendingHandoff[];
   overflowNotices: OverflowNotice[];
+  derivedIdentities: DerivedIdentityRecord[];
   lastStatus: UploaderStatus | null;
   lastOutcome: LastOutcome | null;
   updatedAt: string;
@@ -63,6 +79,7 @@ function emptyState(): PersistedState {
   return {
     pendingHandoffs: [],
     overflowNotices: [],
+    derivedIdentities: [],
     lastStatus: null,
     lastOutcome: null,
     updatedAt: nowIso(),
@@ -77,9 +94,11 @@ function readPersistedState(value: unknown): PersistedState {
   if (!isObject(value)) return emptyState();
   const pendingHandoffs = Array.isArray(value.pendingHandoffs) ? value.pendingHandoffs : [];
   const overflowNotices = Array.isArray(value.overflowNotices) ? value.overflowNotices : [];
+  const derivedIdentities = Array.isArray(value.derivedIdentities) ? value.derivedIdentities : [];
   return {
     pendingHandoffs: pendingHandoffs.slice(0, MAX_PENDING_HANDOFFS) as PendingHandoff[],
     overflowNotices: overflowNotices.slice(0, MAX_OVERFLOW_NOTICES) as OverflowNotice[],
+    derivedIdentities: derivedIdentities.slice(0, MAX_DERIVED_IDENTITIES) as DerivedIdentityRecord[],
     lastStatus: (value.lastStatus ?? null) as UploaderStatus | null,
     lastOutcome: (value.lastOutcome ?? null) as LastOutcome | null,
     updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : nowIso(),
@@ -137,6 +156,37 @@ export class ExtensionStorage {
       );
       if (next.length === state.pendingHandoffs.length) return false;
       state.pendingHandoffs = next;
+      await this.write(state);
+      return true;
+    });
+  }
+
+  async findDerivedIdentity(sourceUrl: string): Promise<DerivedIdentityRecord | null> {
+    const state = await this.read();
+    const found = state.derivedIdentities.find((entry) => entry.sourceUrl === sourceUrl);
+    return found ? clone(found) : null;
+  }
+
+  async recordDerivedIdentity(record: DerivedIdentityRecord): Promise<void> {
+    return this.serial(async () => {
+      const state = await this.readUnserialized();
+      const next = state.derivedIdentities.filter(
+        (entry) => entry.sourceUrl !== record.sourceUrl,
+      );
+      next.unshift(clone(record));
+      // Oldest entries fall off first: these are correction bookkeeping, not
+      // a user-facing log, and never evict an overflow notice.
+      state.derivedIdentities = next.slice(0, MAX_DERIVED_IDENTITIES);
+      await this.write(state);
+    });
+  }
+
+  async clearDerivedIdentity(sourceUrl: string): Promise<boolean> {
+    return this.serial(async () => {
+      const state = await this.readUnserialized();
+      const next = state.derivedIdentities.filter((entry) => entry.sourceUrl !== sourceUrl);
+      if (next.length === state.derivedIdentities.length) return false;
+      state.derivedIdentities = next;
       await this.write(state);
       return true;
     });

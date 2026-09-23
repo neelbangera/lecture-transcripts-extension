@@ -79,7 +79,7 @@ interface ChromeLike {
 }
 
 export type ExtensionMessage =
-  | { type: "capture_job"; job: NativeTranscriptJob }
+  | { type: "capture_job"; job: NativeTranscriptJob; numberSource?: "title" | "derived" }
   | { type: "popup_snapshot" }
   | { type: "popup_connect" }
   | { type: "popup_reset" }
@@ -143,7 +143,13 @@ function isExtensionMessage(value: unknown): value is ExtensionMessage {
   if (!isObject(value) || typeof value.type !== "string") return false;
   switch (value.type) {
     case "capture_job":
-      return hasExactKeys(value, ["type", "job"]) && isNativeTranscriptJob(value.job);
+      return (
+        hasExactKeys(value, ["type", "job"], ["numberSource"]) &&
+        isNativeTranscriptJob(value.job) &&
+        (value.numberSource === undefined ||
+          value.numberSource === "title" ||
+          value.numberSource === "derived")
+      );
     case "popup_snapshot":
     case "popup_connect":
     case "popup_reset":
@@ -257,7 +263,7 @@ export class BackgroundCoordinator {
 
     switch (message.type) {
       case "capture_job":
-        return this.handleCapture(message.job);
+        return this.handleCapture(message.job, message.numberSource);
       case "popup_snapshot":
         this.markInteractive();
         return { ok: true, snapshot: await this.storage.snapshot() };
@@ -311,7 +317,15 @@ export class BackgroundCoordinator {
     await this.alarms.create(DRAIN_ALARM_NAME, { periodInMinutes: DRAIN_PERIOD_MINUTES });
   }
 
-  private async handleCapture(job: NativeTranscriptJob): Promise<BackgroundResponse> {
+  private async handleCapture(
+    job: NativeTranscriptJob,
+    numberSource?: "title" | "derived",
+  ): Promise<BackgroundResponse> {
+    try {
+      await this.reconcileIdentity(job, numberSource);
+    } catch (error) {
+      return responseError(error);
+    }
     try {
       await this.storage.addPendingHandoff(job);
     } catch (error) {
@@ -519,6 +533,61 @@ export class BackgroundCoordinator {
       if (error instanceof OverflowNoticeFullError) return false;
       throw error;
     }
+  }
+
+  /**
+   * Reconcile a capture against the recorded derived identity for its source
+   * URL. A lagging title ("Lecture recorded on ...") is derived and recorded;
+   * a later title-explicit capture with a different number replaces any
+   * still-pending local handoff for the stale key and, when that key may
+   * already have been published, surfaces a `stale_derived_identity` notice.
+   * The system never deletes or overwrites a remote file.
+   */
+  private async reconcileIdentity(
+    job: NativeTranscriptJob,
+    numberSource?: "title" | "derived",
+  ): Promise<void> {
+    const prior = await this.storage.findDerivedIdentity(job.sourceUrl);
+    const changed =
+      prior !== null &&
+      (prior.lectureKey !== job.lectureKey ||
+        prior.kind !== job.kind ||
+        prior.lectureNumber !== job.lectureNumber);
+
+    if (prior && changed) {
+      const stillPending = await this.storage.removePendingHandoff(
+        prior.lectureKey,
+        prior.contentHash,
+      );
+      if (!stillPending) {
+        try {
+          await this.storage.addOverflowNotice({
+            lectureKey: job.lectureKey,
+            staleLectureKey: prior.lectureKey,
+            lectureDate: job.lectureDate,
+            capturedAt: job.capturedAt,
+            reason: "stale_derived_identity",
+          });
+        } catch (error) {
+          if (!(error instanceof OverflowNoticeFullError)) throw error;
+        }
+      }
+    }
+
+    if (numberSource === "derived") {
+      await this.storage.recordDerivedIdentity({
+        sourceUrl: job.sourceUrl,
+        kind: job.kind,
+        lectureNumber: job.lectureNumber,
+        lectureKey: job.lectureKey,
+        contentHash: job.contentHash,
+        capturedAt: job.capturedAt,
+      });
+      return;
+    }
+    // An explicit title is authoritative: it confirms and clears any derived
+    // record, and never creates one.
+    await this.storage.clearDerivedIdentity(job.sourceUrl);
   }
 
   private async recordOutcome(job: NativeTranscriptJob, status: string, action: LastOutcome["action"]): Promise<void> {

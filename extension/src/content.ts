@@ -71,7 +71,7 @@ export type ParserRejectionStatus =
   | 'rejected_unsafe_url';
 
 export type ParserResult<T> =
-  | { ok: true; value: T }
+  | { ok: true; value: T; numberSource?: "title" | "derived" }
   | { ok: false; status: ParserRejectionStatus };
 
 /**
@@ -107,7 +107,10 @@ export interface ContentScriptDependencies<Job> {
    * sending the exact extension-internal message.  It must not resolve as
    * durable until the background layer has received a definitive ack.
    */
-  handoff(job: Job): HandoffResult | void | Promise<HandoffResult | void>;
+  handoff(
+    job: Job,
+    numberSource?: "title" | "derived",
+  ): HandoffResult | void | Promise<HandoffResult | void>;
   onStatus?: (status: PageCaptureStatus) => void;
   /**
    * Whether a recognized lecture page may open and capture a transcript on
@@ -492,7 +495,7 @@ export function createContentScript<Job>(
     // adapter owns the bounded outbox and resolves only on a definitive ack.
     setStatus('handoff_pending');
     try {
-      await dependencies.handoff(jobResult.value);
+      await dependencies.handoff(jobResult.value, jobResult.numberSource);
     } catch {
       // Keep the state as handoff_pending: the background layer may have
       // retained the job in its outbox even though this call lost its reply.

@@ -153,7 +153,9 @@ function renderOverflow(notices: OverflowNotice[]): void {
     title.textContent = notice.lectureKey;
     const meta = document.createElement("span");
     meta.className = "job-meta";
-    meta.textContent = `${statusLabel(notice.reason)} · ${notice.lectureDate} · captured ${notice.capturedAt}`;
+    meta.textContent = notice.staleLectureKey
+      ? `${statusLabel(notice.reason)} · was ${notice.staleLectureKey} · ${notice.lectureDate}`
+      : `${statusLabel(notice.reason)} · ${notice.lectureDate} · captured ${notice.capturedAt}`;
     item.append(title, meta);
     overflowList.append(item);
   }

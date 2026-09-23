@@ -155,7 +155,14 @@ export interface OverflowNotice {
     | "rejected_invalid_hash"
     | "rejected_unsafe_url"
     | "rejected_unknown_field"
-    | "rejected_permission";
+    | "rejected_permission"
+    | "stale_derived_identity";
+  /**
+   * The superseded derived identity for a lagging-title correction. Present
+   * only on `stale_derived_identity` notices so the owner can delete the
+   * stale remote path manually; the system never deletes a remote file.
+   */
+  staleLectureKey?: string;
 }
 
 export interface ExtensionSnapshot {
@@ -196,6 +203,7 @@ const LABELS: Record<string, string> = {
   rejected_unknown_field: "Rejected — unknown field",
   rejected_invalid_schema: "Rejected — invalid job schema",
   rejected_permission: "Rejected — GitHub permission denied",
+  stale_derived_identity: "Stale derived identity — review the superseded path",
   not_ready: "Transcript is not ready yet",
   skipped_section: "Skipped — not the preferred discussion section",
   waiting_for_uploader: "Waiting for local uploader",

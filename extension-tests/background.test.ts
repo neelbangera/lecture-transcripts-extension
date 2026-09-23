@@ -1357,3 +1357,114 @@ describe("BackgroundCoordinator startup wiring", () => {
     expect(await storage.pendingHandoffs()).toHaveLength(0);
   });
 });
+
+describe("BackgroundCoordinator derived-identity correction", () => {
+  const SOURCE_URL = "https://leccap.engin.umich.edu/leccap/player/r/lagging";
+
+  function jobAt(lectureNumber: number): NativeTranscriptJob {
+    return createTranscriptJob({
+      courseName: "EECS 484",
+      term: "Fall 2026",
+      lectureNumber,
+      lectureDate: "2026-09-17",
+      sourceUrl: SOURCE_URL,
+      capturedAt: CAPTURED_AT,
+      transcript: TRANSCRIPT,
+    });
+  }
+
+  it("records a derived identity and replaces a still-pending stale handoff without a notice", async () => {
+    const { coordinator, client, storage } = makeHarness();
+    const derived = jobAt(6);
+    client.hostAvailable = false;
+    await coordinator.handleMessage(
+      { type: "capture_job", job: derived, numberSource: "derived" },
+      CONTENT_SENDER,
+    );
+    expect(await storage.findDerivedIdentity(SOURCE_URL)).toMatchObject({
+      lectureKey: derived.lectureKey,
+      lectureNumber: 6,
+    });
+    expect(await storage.pendingHandoffs()).toHaveLength(1);
+
+    client.hostAvailable = true;
+    const corrected = jobAt(5);
+    client.submitResponses = [ackFor(corrected, "queued")];
+    let pendingDuringSubmit: string[] = [];
+    client.onSubmit = async () => {
+      pendingDuringSubmit = (await storage.pendingHandoffs()).map(
+        (entry) => entry.lectureKey,
+      );
+    };
+    await coordinator.handleMessage(
+      { type: "capture_job", job: corrected, numberSource: "title" },
+      CONTENT_SENDER,
+    );
+
+    expect(pendingDuringSubmit).toEqual([corrected.lectureKey]);
+    expect(client.submitCalls).toEqual([corrected]);
+    expect(await storage.pendingHandoffs()).toHaveLength(0);
+    expect((await storage.snapshot()).overflowNotices).toEqual([]);
+    expect(await storage.findDerivedIdentity(SOURCE_URL)).toBeNull();
+  });
+
+  it("records a stale_derived_identity notice when the stale key may already have been published", async () => {
+    const { coordinator, client, storage } = makeHarness();
+    const derived = jobAt(6);
+    client.submitResponses = [ackFor(derived, "queued")];
+    await coordinator.handleMessage(
+      { type: "capture_job", job: derived, numberSource: "derived" },
+      CONTENT_SENDER,
+    );
+    expect(await storage.pendingHandoffs()).toHaveLength(0);
+
+    const corrected = jobAt(5);
+    client.submitResponses = [ackFor(corrected, "queued")];
+    await coordinator.handleMessage(
+      { type: "capture_job", job: corrected, numberSource: "title" },
+      CONTENT_SENDER,
+    );
+
+    const notices = (await storage.snapshot()).overflowNotices;
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toEqual({
+      lectureKey: corrected.lectureKey,
+      staleLectureKey: derived.lectureKey,
+      lectureDate: corrected.lectureDate,
+      capturedAt: corrected.capturedAt,
+      reason: "stale_derived_identity",
+    });
+    expect(await storage.findDerivedIdentity(SOURCE_URL)).toBeNull();
+  });
+
+  it("clears the derived record when an explicit title confirms the same number", async () => {
+    const { coordinator, client, storage } = makeHarness();
+    const derived = jobAt(6);
+    client.submitResponses = [ackFor(derived, "queued")];
+    await coordinator.handleMessage(
+      { type: "capture_job", job: derived, numberSource: "derived" },
+      CONTENT_SENDER,
+    );
+
+    const confirmed = jobAt(6);
+    client.submitResponses = [ackFor(confirmed, "queued")];
+    await coordinator.handleMessage(
+      { type: "capture_job", job: confirmed, numberSource: "title" },
+      CONTENT_SENDER,
+    );
+
+    expect(await storage.findDerivedIdentity(SOURCE_URL)).toBeNull();
+    expect((await storage.snapshot()).overflowNotices).toEqual([]);
+  });
+
+  it("never records a title-explicit identity as derived", async () => {
+    const { coordinator, client, storage } = makeHarness();
+    const job = jobAt(3);
+    client.submitResponses = [ackFor(job, "queued")];
+    await coordinator.handleMessage(
+      { type: "capture_job", job, numberSource: "title" },
+      CONTENT_SENDER,
+    );
+    expect(await storage.findDerivedIdentity(SOURCE_URL)).toBeNull();
+  });
+});

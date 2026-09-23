@@ -2,11 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ExtensionStorage,
+  MAX_DERIVED_IDENTITIES,
   MAX_OVERFLOW_NOTICES,
   MAX_PENDING_HANDOFFS,
   OutboxFullError,
   OverflowNoticeFullError,
   STORAGE_KEY,
+  type DerivedIdentityRecord,
   type StorageAreaLike,
 } from "../extension/src/extension-storage";
 import type { NativeTranscriptJob } from "../extension/src/native-messaging";
@@ -417,5 +419,49 @@ describe("ExtensionStorage status and snapshot", () => {
     expect(snapshot.pendingHandoffs).toBe(0);
     expect(snapshot.overflowNotices).toEqual([]);
     expect(snapshot.uploader).toBeNull();
+  });
+});
+
+describe("ExtensionStorage derived identities", () => {
+  function derivedFor(lectureNumber: number, sourceUrl?: string): DerivedIdentityRecord {
+    const job = jobFor(lectureNumber);
+    return {
+      sourceUrl: sourceUrl ?? job.sourceUrl,
+      kind: "lecture",
+      lectureNumber,
+      lectureKey: job.lectureKey,
+      contentHash: job.contentHash,
+      capturedAt: job.capturedAt,
+    };
+  }
+
+  it("records, finds, upserts, and clears a derived identity by source URL", async () => {
+    const storage = new ExtensionStorage(new MemoryStorageArea());
+    const sourceUrl = "https://leccap.engin.umich.edu/leccap/player/r/lagging";
+    const first = derivedFor(6, sourceUrl);
+    await storage.recordDerivedIdentity(first);
+    expect(await storage.findDerivedIdentity(sourceUrl)).toEqual(first);
+
+    const second = derivedFor(5, sourceUrl);
+    await storage.recordDerivedIdentity(second);
+    expect(await storage.findDerivedIdentity(sourceUrl)).toEqual(second);
+
+    expect(await storage.clearDerivedIdentity(sourceUrl)).toBe(true);
+    expect(await storage.findDerivedIdentity(sourceUrl)).toBeNull();
+    expect(await storage.clearDerivedIdentity(sourceUrl)).toBe(false);
+  });
+
+  it("bounds derived identities at twenty by dropping the oldest", async () => {
+    const storage = new ExtensionStorage(new MemoryStorageArea());
+    for (let index = 1; index <= MAX_DERIVED_IDENTITIES + 2; index += 1) {
+      await storage.recordDerivedIdentity(derivedFor(index));
+    }
+    expect(
+      await storage.findDerivedIdentity(derivedFor(1).sourceUrl),
+    ).toBeNull();
+    expect(await storage.findDerivedIdentity(derivedFor(3).sourceUrl)).not.toBeNull();
+    expect(
+      await storage.findDerivedIdentity(derivedFor(MAX_DERIVED_IDENTITIES + 2).sourceUrl),
+    ).not.toBeNull();
   });
 });

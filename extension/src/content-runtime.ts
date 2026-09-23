@@ -68,8 +68,11 @@ function runtimeFromGlobal(): ChromeRuntimeMessaging | undefined {
 
 export function createRuntimeHandoff(
   runtime?: ChromeRuntimeMessaging,
-): (job: TranscriptJob) => Promise<HandoffResult> {
-  return (job) =>
+): (
+  job: TranscriptJob,
+  numberSource?: "title" | "derived",
+) => Promise<HandoffResult> {
+  return (job, numberSource) =>
     new Promise<HandoffResult>((resolve, reject) => {
       const target = runtime ?? runtimeFromGlobal();
       if (!target || typeof target.sendMessage !== "function") {
@@ -78,7 +81,9 @@ export function createRuntimeHandoff(
       }
       try {
         target.sendMessage(
-          { type: CAPTURE_JOB_MESSAGE_TYPE, job },
+          numberSource === undefined
+            ? { type: CAPTURE_JOB_MESSAGE_TYPE, job }
+            : { type: CAPTURE_JOB_MESSAGE_TYPE, job, numberSource },
           (response: unknown) => {
             const lastError = target.lastError;
             if (lastError) {
@@ -389,7 +394,7 @@ export function createContentRuntimeParser(
           transcript: parsed.transcript,
           timestampedTranscript: parsed.timestampedTranscript,
         });
-        return { ok: true, value: job };
+        return { ok: true, value: job, numberSource: parsed.numberSource };
       } catch (error) {
         console.log(
           "[lecture-transcripts] job rejection:",
