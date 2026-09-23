@@ -246,3 +246,11 @@
 .chip-remove:hover {
   color: #d1242f;
 }
+
+.allowlist-section {
+  margin-top: 28px;
+}
+
+.allowlist-section .section-heading {
+  margin-bottom: 6px;
+}

@@ -169,7 +169,9 @@ function createCourseCard(course?: CourseConfig): HTMLFieldSetElement {
     card.remove();
     markDirty();
   });
-  card.addEventListener("input", () => markDirty());
+  for (const input of card.querySelectorAll<HTMLInputElement>("input[data-field]")) {
+    input.addEventListener("input", () => markDirty());
+  }
   return card;
 }
 
