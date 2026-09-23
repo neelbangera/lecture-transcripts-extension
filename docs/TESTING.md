@@ -48,7 +48,9 @@ all 10 uploader packages, `npm run typecheck` is clean, `npm run build` writes
 | Suite | Covers |
 | --- | --- |
 | `transcript-normalizer.test.ts` | NFC, line-ending, horizontal-whitespace, and blank-line normalization; timestamp digit preservation and separator normalization; idempotence; framed-hash relationships. |
-| `leccap-parser.test.ts` | Parser output against the Stage 0 fixture packet; activation and already-expanded extraction forms; unmapped course/term rejection; no-number and badge rejection; linked-overview date correlation (zero/multiple matches fail closed); unsafe URL rejection; not-ready and loading-only pages. |
+| `leccap-parser.test.ts` | Parser output against the Stage 0 fixture packet; activation and already-expanded extraction forms; unmapped course/term rejection; unnumbered-title derivation and decoy rejection; linked-overview date correlation (zero/multiple matches fail closed); unsafe URL rejection; not-ready and loading-only pages. |
+| `identity-derivation.test.ts` | Title-shape parsing (numeric prefix, `Lecture: N`, `Discussion N`, lag form, decoys) and "next from the last one" overview-sequence derivation, including contradictions, kind separation, and the lecture start-time check. |
+| `background.test.ts` (derived-identity correction) | In-flight replace of a stale derived handoff, `stale_derived_identity` notice when the stale key may already have been published, title confirmation clearing the derived record. |
 | `transcript-job.test.ts` | Identity/path derivation from the committed course mapping; bounded metadata and transcript sizes; canonical serialization byte-for-byte against the Go fixture; hash recomputation. |
 | `content.test.ts` | No submission on ordinary page visit; click activation; already-expanded activation; URL-change activation only when open and populated; stability-window reset on mutation; observation timeout; parser-rejection mapping; handoff-pending behavior when the background channel is missing or rejects; rejection of non-durable background responses. |
 | `native-messaging.test.ts` | Request/response envelope validation, unknown-field rejection, persistent-port reuse, and concurrent response correlation. |
@@ -90,7 +92,8 @@ the parser's source of truth:
 | --- | --- |
 | `lecture-page.html` + `lecture-page.selectors.json` + `lecture-page.expected.json` | The supported lecture-page shape, observed selectors, completion policy, and expected normalized result. |
 | `overview-page.html` | Linked-overview shape used for exact player-link/date correlation. |
-| `no-number-lecture-page.html` + `.expected.json` | Fail-closed identity case: a title without a numeric lecture prefix is `rejected_ambiguous_metadata`; the category badge is never a lecture number. |
+| `no-number-lecture-page.html` + `.expected.json` | Unnumbered lag-title case: "Lecture recorded on 9/17/2026" takes its number from the linked overview sequence ("next from the last one"); the category badge is never a lecture number. |
+| `decoy-title-page.html` + `.expected.json` | Fail-closed identity case: an unrecognized decoy title (`DISREGARD -- Empty discussion`) is `rejected_ambiguous_metadata` and never becomes a job. |
 | `loading-transcript-page.html`, `non-lecture-page.html` | Negative cases for not-ready and unrelated pages. |
 | `course-mapping.json` | The complete supported course/term allowlist (currently `eecs484` / `2026-fall`); unmapped labels fail closed. |
 | `transcript-size-report.json` | Measured byte maxima against the approved caps; `renderTimeMs` is still a live owner measurement. |

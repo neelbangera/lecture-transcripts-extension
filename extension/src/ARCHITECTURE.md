@@ -59,11 +59,11 @@ The parser is pure: it receives `SelectorFixture`, course mappings, an optional 
 
 **Source URL**: `canonicalizeLeccapUrl` accepts only `https`, host `leccap.engin.umich.edu`, no userinfo, and no port or `:443`; it drops query/fragment, preserves the encoded path and trailing slash, normalizes an empty path to `/`, and returns `https://leccap.engin.umich.edu<path>` or `null`. `parseLecturePage` rejects a non-canonicalizable URL as `rejected_unsafe_url` before any metadata or overview work.
 
-**Identity** (`extractIdentity`):
+**Identity** (`extractCourseIdentity`, `resolveNumericIdentity`, `identity-derivation.ts`):
 - Course and term come from `selectors.courseSelector`/`termSelector`; a missing course or term element is `rejected_missing_identity`.
 - The season must be one of `winter|spring|summer|fall`; anything else (including a literal `Spring/Summer`) is `rejected_ambiguous_metadata`.
 - The page course/term pair must match exactly one mapping entry, and that entry must have a path-safe slug and newline-free name; otherwise `rejected_ambiguous_metadata`.
-- Lecture number comes only from the recording-title numeric prefix (`lectureNumberSelector`). If it does not match, the parser tries the observed discussion prefix `^\s*Discussion\s+(\d{1,3})\b` (case-insensitive) and sets `kind: "discussion"`; decoys such as `DISREGARD -- Empty discussion` or `Lecture recorded on ...` fail closed. A missing or out-of-range number is `rejected_ambiguous_metadata` with `lectureNumber: null`. The overview category badge is never an identity input.
+- Lecture number comes from the recording title when it carries one: a leading numeric prefix (`lectureNumberSelector`), `Lecture: N` / `Lecture N`, `Discussion N`, or `Discussion: N` (`parseTitleIdentity`). A lagging title (`Lecture recorded on ...` / `Discussion recorded on ...`) takes its number from the already-inventoried overview sequence by "next from the last one" (`deriveIdentityFromOverview`): same-kind cards are ordered by rec-date then rec-time and walked with `next = 1`; an explicit number `N` requires `N >= next` and advances `next` to `N + 1`; an unnumbered card takes `next`. An unrecognized title (decoy such as `DISREGARD -- Empty discussion`), a contradictory explicit number, a missing lecture start time, or lecture-kind start-time drift is `rejected_ambiguous_metadata` with `lectureNumber: null`. The overview category badge is never an identity input; it only classifies cards (`Lecture - *` / `Discussion - *`) and supplies the discussion section. A lagging page title with an already-updated overview card title uses the card's explicit number. `ParsedLecture.numberSource` records `"title"` vs `"derived"` for correction tracking.
 - The result is `{ kind, courseName, courseSlug, term, lectureNumber }`, with `lectureNumber` in 1–999.
 
 **Completion** (`completionIsReady`): the fixture's completion indicator must match (mode `present`, `attribute_equals`, or `text_matches`), the loading/error region must be clear when `loadingIndicatorSelector` is non-null (a `null` selector is vacuous), and, when `populationSelector` is set, at least one matching element inside the transcript container must have non-empty text.
@@ -76,14 +76,14 @@ The parser is pure: it receives `SelectorFixture`, course mappings, an optional 
 - Plain-only rows produce `timestampedTranscript: ""` and `derivedFrom: "plain-only"`. Timestamped rows are serialized one line per row as `[<verbatim .transcript-time>] <text>` and produce `derivedFrom: "both"`. The type permits `"timestamped-only"`, but this function never emits it; derivation from a timestamped-only source exists in `transcript-normalizer.ts` for callers that need it.
 - The parser normalizes with its own private `normalizeTranscript` and hashes with `hashTranscriptForms` (framed `transcript-hash-v1\0`, byte lengths, `crypto.subtle` SHA-256). These duplicate the rules in `transcript-normalizer.ts`; the two implementations must stay identical.
 
-**Recording date** (`resolveLectureDate`, `parseRecordingDate`):
-- The selected policy is `linked_overview_page` + `on_demand_fetch`. A `lecture_page` source reads `dateSelector` directly; a non-executable policy, missing overview link, unsafe link/player URL, failed or non-OK fetch, unreadable body, missing DOM parser, zero or multiple card matches, missing date element, or invalid date all fail as `rejected_ambiguous_metadata`.
+**Recording date** (`resolveOverview`, `parseRecordingDate`, `parseRecordingTime`):
+- The selected policy is `linked_overview_page` + `on_demand_fetch`. A `lecture_page` source reads `dateSelector` directly; a non-executable policy, missing overview link, unsafe link/player URL, failed or non-OK fetch, unreadable body, missing DOM parser, zero or multiple card matches, missing date element, or invalid date all fail as `rejected_ambiguous_metadata`. The same overview fetch also inventories every recording card (`title`, rec-date, rec-time, badge category/section, canonical href) for number derivation; the rec-date time tail (`• h:MM AM/PM`) is parsed as the start time.
 - The fetch uses `credentials: "include"`, `cache: "no-store"`, and `Accept: text/html,application/xhtml+xml`, shaped like a document navigation so the Leccap session is carried. The response is parsed with `DOMParser`; the card set is `recordingCardSelector`, and exactly one card's `recordingLinkSelector` href must canonicalize to the canonical current player URL.
 - `parseRecordingDate` accepts month-first `M/D/YYYY` (validated as a real calendar date) and unambiguous textual month/day (`Feb 12`, `Feb 12, 2027`), using the already-validated term year when the year is absent. Yearless numeric dates and invalid dates are rejected.
 - A sign-in page in the overview response is reported with a session-specific `rejected_ambiguous_metadata` reason.
 - The correlated card's `.badge` is retained only when it matches `^\s*Discussion\s*-\s*(\d{3})\s*$`; this becomes `discussionSection` (a section label, never an identity field). For lectures it is always `null`.
 
-**`parseLecturePage` order**: canonicalize URL → require the transcript container (or classify the page as `not_ready` when a known header exists, else `rejected_missing_identity`) → require completion → require `stableSnapshotCount >= 2` (default 2) → identity → transcript → date → framed hash. A success returns `ParsedLecture` with `supported: true`, `completion: "complete"`, both transcript forms, `derivedFrom`, `lectureKey` (`<slug>/<term>/<NNN>`), `contentHash`, `stableSnapshotCount`, and `discussionSection`.
+**`parseLecturePage` order**: canonicalize URL → require the transcript container (or classify the page as `not_ready` when a known header exists, else `rejected_missing_identity`) → require completion → require `stableSnapshotCount >= 2` (default 2) → course/term identity → transcript → overview (date, rec-time, card inventory) → kind + number (title explicit | overview-derived) → framed hash. A success returns `ParsedLecture` with `supported: true`, `completion: "complete"`, both transcript forms, `derivedFrom`, `lectureKey` (`<slug>/<term>/<NNN>`), `contentHash`, `stableSnapshotCount`, `discussionSection`, and `numberSource`.
 
 ### Normalization and hashing — `transcript-normalizer.ts`
 
@@ -125,11 +125,12 @@ The parser is pure: it receives `SelectorFixture`, course mappings, an optional 
 
 ### Outbox and notices — `extension-storage.ts`
 
-- `STORAGE_KEY = "lectureTranscriptsExtensionState"`; `MAX_PENDING_HANDOFFS = 3`; `MAX_OVERFLOW_NOTICES = 20`.
-- Persisted shape: `{ pendingHandoffs, overflowNotices, lastStatus, lastOutcome, updatedAt }`. Reads clamp both arrays to the caps and treat a non-object value as empty state.
-- `PendingHandoff` is `{ lectureKey, contentHash, lectureDate, capturedAt, job }`; jobs are stored as structured clones and deduplicated by `(lectureKey, contentHash)`. A fourth distinct job throws `OutboxFullError` without evicting anything.
-- `OverflowNotice` is metadata only (`lectureKey`, `lectureDate`, `capturedAt`, `reason`); notices are newest-first, duplicate-suppressed by exact shape, capped at 20, and never evict an older notice (`OverflowNoticeFullError`).
-- Every mutation runs through a promise-serialized critical section (`serial`), so concurrent read-modify-write calls cannot interleave. `removePendingHandoff` returns whether a row was removed; `removeOverflowNotice` accepts a valid index only.
+- `STORAGE_KEY = "lectureTranscriptsExtensionState"`; `MAX_PENDING_HANDOFFS = 3`; `MAX_OVERFLOW_NOTICES = 20`; `MAX_DERIVED_IDENTITIES = 20`.
+- Persisted shape: `{ pendingHandoffs, overflowNotices, derivedIdentities, lastStatus, lastOutcome, updatedAt }`. Reads clamp the arrays to the caps and treat a non-object value as empty state.
+- `PendingHandoff` is `{ lectureKey, contentHash, lectureDate, capturedAt, job }`; jobs are stored as structured clones and deduplicated by `(lectureKey, contentHash)`. A fourth distinct job throws `OutboxFullError` without evicting anything. `removePendingHandoff` returns whether a row was removed.
+- `OverflowNotice` is metadata only (`lectureKey`, `lectureDate`, `capturedAt`, `reason`, optional `staleLectureKey`); notices are newest-first, duplicate-suppressed by exact shape, capped at 20, and never evict an older notice (`OverflowNoticeFullError`). Reasons cover submit rejections plus extension-local `rejected_handoff_full` and `stale_derived_identity` (a lagging-title correction naming the superseded derived key).
+- `DerivedIdentityRecord` is `{ sourceUrl, kind, lectureNumber, lectureKey, contentHash, capturedAt }`, written only for `numberSource: "derived"` captures so a later title-explicit capture can correct a stale slot. Records are upserted by `sourceUrl` and the oldest fall off first at 20.
+- Every mutation runs through a promise-serialized critical section (`serial`), so concurrent read-modify-write calls cannot interleave. `removeOverflowNotice` accepts a valid index only.
 - `snapshot()` returns `{ uploader, pendingHandoffs: count, overflowNotices, lastOutcome, updatedAt }`. `setUploaderStatus`/`clearStatus` manage the cached uploader snapshot; `recordOutcome` clamps the message to 256 characters and stamps `at`.
 
 ### Native Messaging client — `native-messaging.ts`
@@ -145,7 +146,7 @@ The parser is pure: it receives `SelectorFixture`, course mappings, an optional 
 
 - `DRAIN_ALARM_NAME = "lecture-transcripts-drain"`, `DRAIN_PERIOD_MINUTES = 1`; interactive commands hold a 30 s lease (`INTERACTIVE_LEASE_MS`) that keeps the port open.
 - **Message validation**: `isExtensionMessage` enforces exact key sets for the seven internal message types. `handleMessage` rejects unknown/malformed messages, senders that are not this extension (a missing `sender.id` or missing `runtime.id` is tolerated), and `capture_job` senders whose `url`/`tab.url` is not an `https://leccap.engin.umich.edu` URL.
-- **Capture**: `handleCapture` writes the job to the outbox first, then runs a drain cycle. `queued`/`already_queued` is reported only when the outbox is empty afterward; a remaining copy reports `waiting_for_uploader` with `host_unavailable`; a matching `rejected_*` last outcome is surfaced instead of a false success. `OutboxFullError` records a `rejected_handoff_full` notice and outcome (appending a reopen instruction when the notice list is also full) and returns `ok: false`.
+- **Capture**: `handleCapture` reconciles the job against any recorded derived identity for its `sourceUrl` (in-flight replace of a stale key, or a `stale_derived_identity` notice when the stale key may already have been published), writes the job to the outbox first, then runs a drain cycle. `queued`/`already_queued` is reported only when the outbox is empty afterward; a remaining copy reports `waiting_for_uploader` with `host_unavailable`; a matching `rejected_*` last outcome is surfaced instead of a false success. `OutboxFullError` records a `rejected_handoff_full` notice and outcome (appending a reopen instruction when the notice list is also full) and returns `ok: false`.
 - **Drain**: `runDrainCycle` is single-flight. `drain()` connects, sends `connect`, persists the returned status, requests the first status page, replays pending handoffs in order, then closes the alarm-owned port only when `lastDrainState` is `idle` or `waiting_for_backoff`. A `host_unavailable` error keeps the outbox intact for the next alarm; other errors are recorded as outcomes.
 - **Replay/ack**: `replayPendingHandoffs` submits each stored job. `acceptAck` requires the ack to echo the submitted `lectureKey`/`contentHash`; `queued`/`already_queued` removes the outbox copy and records the outcome; a submit rejection records a metadata-only notice first and removes the full copy only when that notice was saved, then records the ack's action.
 - **Status**: `handleStatus` caches the status and notifies terminal transitions relative to the previously stored status. `handleStatusRequest` persists only the first page; older pages are returned to the popup without replacing the worker's last-known status.
@@ -156,7 +157,7 @@ The parser is pure: it receives `SelectorFixture`, course mappings, an optional 
 ### Status vocabulary — `status.ts`
 
 - `QUEUE_STATUSES` is the exact persisted set: `queued`, `uploading`, `uploaded`, `unchanged`, `retryable_error`, `permanent_conflict`, and the nine `rejected_*` values through `rejected_permission`. `EXTENSION_LOCAL_STATUSES` is `rejected_handoff_full`, `not_ready`, `waiting_for_uploader`. `AUTH_STATES`, `DRAIN_STATES`, and `ERROR_CATEGORIES` mirror the plan's lists; `EMPTY_COUNTS` has exactly the 15 queue-status keys.
-- `LABELS` is the single user-facing mapping for statuses, auth states, and error categories, including `skipped_section` and `rejected_handoff_full`. `statusLabel`/`errorLabel` return `Unknown status` for anything unmapped.
+- `LABELS` is the single user-facing mapping for statuses, auth states, and error categories, including `skipped_section`, `rejected_handoff_full`, and `stale_derived_identity`. `statusLabel`/`errorLabel` return `Unknown status` for anything unmapped.
 - Types `JobSummary`, `AuthorizationStatus`, `UploaderStatus`, `OverflowNotice`, `ExtensionSnapshot`, and `LastOutcome` mirror the wire shapes; `cloneCounts` fills missing count keys from `EMPTY_COUNTS`.
 
 ### Settings, options, and job actions — `settings-storage.ts`, `settings-actions.ts`, `job-actions.ts`, `options.ts`
@@ -184,10 +185,12 @@ Leccap page (document_idle)
   -> MutationObserver on .transcript-viewer subtree
   -> parser.snapshot() after 1500 ms quiet windows  [two equal hashes]
   -> content-runtime buildJob()
-       parseLecturePage -> identity, transcript, linked-overview date, hash
+       parseLecturePage -> course/term, transcript, overview (date + inventory),
+                           kind + number (title | derived), hash
        createTranscriptJob -> validated TranscriptJob
-  -> createRuntimeHandoff -> { type: "capture_job", job }
+  -> createRuntimeHandoff -> { type: "capture_job", job, numberSource? }
   -> background.handleCapture
+       reconcileIdentity (derived-record correction / stale notice)
        ExtensionStorage.addPendingHandoff (max 3)
        drain(): connect -> status -> replay
        submit_job -> ack
@@ -222,10 +225,11 @@ Leccap page (document_idle)
 | `status.ts` | Single status/auth/drain/error vocabulary and labels | `QUEUE_STATUSES`, `EXTENSION_LOCAL_STATUSES`, `AUTH_STATES`, `DRAIN_STATES`, `ERROR_CATEGORIES`, `EMPTY_COUNTS`, `statusLabel`, `errorLabel`, `UploaderStatus`, `JobSummary`, `OverflowNotice`, `ExtensionSnapshot`, `LastOutcome` |
 | `transcript-normalizer.ts` | Deterministic normalization, timestamp handling, framed hash, browser-safe SHA-256 | `TIMESTAMP_PREFIX_SOURCE`, `TIMESTAMP_PREFIX_RE`, `normalizeTranscript`, `stripTimestampPrefix`, `derivePlainTranscript`, `normalizeTranscriptForms`, `frameTranscriptHashInput`, `computeContentHash`, `computeNormalizedContentHash`, `sha256Bytes`, `sha256Hex` |
 | `transcript-job.ts` | Canonical job construction, validation, limits, URL canonicalization/sanitization | `TranscriptJob`, `validateTranscriptJob`, `assertValidTranscriptJob`, `createTranscriptJob`/`buildTranscriptJob`, `deriveLectureKey`, `canonicalizeSourceUrl`, `sanitizeSourceUrlForPublish`, `sourceUrlInfo`, `serializeTranscriptJob`, `transcriptJobByteLength`, limit constants, legacy `deriveStableLecturePath`/`deriveTimestampedLecturePath` |
-| `leccap-parser.ts` | Page classification, identity, transcript extraction, overview date correlation, parser-side hash | `parseLecturePage`, `extractTranscriptSnapshot`, `canonicalizeLeccapUrl`, `hashTranscriptForms`, `parseRecordingDate`, `NORMATIVE_TIMESTAMP_PREFIX`, fixture/result types |
+| `leccap-parser.ts` | Page classification, identity, transcript extraction, overview date/inventory correlation, parser-side hash | `parseLecturePage`, `extractTranscriptSnapshot`, `canonicalizeLeccapUrl`, `hashTranscriptForms`, `parseRecordingDate`, `NORMATIVE_TIMESTAMP_PREFIX`, fixture/result types |
+| `identity-derivation.ts` | Pure title-shape parsing and "next from the last one" overview-sequence number derivation | `parseTitleIdentity`, `parseRecordingBadge`, `parseRecordingTime`, `deriveIdentityFromOverview`, `OverviewCardFact`, `TitleIdentity` |
 | `content.ts` | Page-facing activation, scoped observation, stability snapshots, handoff status; content-script entry | `createContentScript`, `installContentRuntime`, `PageCaptureStatus`, `ContentScriptDependencies`, timing constants |
 | `content-runtime.ts` | Production parser/handoff adapter, overview fetch + iframe fallback, discussion-section filter | `createContentRuntimeParser`, `createProductionContentDependencies`, `createRuntimeHandoff`, `toPageSelectors`, `needsOverviewRender`, `renderOverviewInIframe`, `adaptCourseMappings`, `CAPTURE_JOB_MESSAGE_TYPE` |
-| `extension-storage.ts` | Bounded outbox, metadata-only notices, cached status/outcome | `ExtensionStorage`, `PendingHandoff`, `OutboxFullError`, `OverflowNoticeFullError`, `MAX_PENDING_HANDOFFS`, `MAX_OVERFLOW_NOTICES`, `STORAGE_KEY` |
+| `extension-storage.ts` | Bounded outbox, metadata-only notices, derived-identity records, cached status/outcome | `ExtensionStorage`, `PendingHandoff`, `DerivedIdentityRecord`, `OutboxFullError`, `OverflowNoticeFullError`, `MAX_PENDING_HANDOFFS`, `MAX_OVERFLOW_NOTICES`, `MAX_DERIVED_IDENTITIES`, `STORAGE_KEY` |
 | `native-messaging.ts` | Closed request/response vocabulary, validation, correlation, persistent port | `NativeMessagingClient`, `isNativeRequest`, `isNativeResponse`, `isStatusResponse`, `make*Request`, `createRequestId`, `NativeMessagingError`/`NativeProtocolError`/`NativeRemoteError`, `PROTOCOL_VERSION`, `NATIVE_HOST_NAME`, `MAX_STATUS_PAGE` |
 | `background.ts` | Service-worker coordinator: validation, alarm, outbox, drain/replay, status relay, notifications | `BackgroundCoordinator`, `DRAIN_ALARM_NAME`, `DRAIN_PERIOD_MINUTES`, `ExtensionMessage`, `BackgroundResponse` |
 | `popup.ts` | Popup rendering and commands; no credential handling | entry side effects only |
@@ -236,14 +240,14 @@ Leccap page (document_idle)
 
 | Suite | Covers |
 | --- | --- |
-| `leccap-parser.test.ts` | Fixture identity/date/rows/hash, overview correlation (zero/multiple/failure/sign-in), numeric-prefix identity, unmapped course, unsafe URL ordering, plain-only timestamps, mixed/malformed timestamps, discussions and decoys, badge section, textual dates |
+| `leccap-parser.test.ts` | Fixture identity/date/rows/hash, overview correlation (zero/multiple/failure/sign-in), unnumbered-title derivation and decoys, unmapped course, unsafe URL ordering, plain-only timestamps, mixed/malformed timestamps, discussions and badge section, textual dates |
 | `transcript-normalizer.test.ts` | NFC/line-ending/whitespace/blank-line normalization, timestamp preservation, timestamped-only derivation, plain-only jobs, framed hash/byte counts, hash sensitivity, idempotence |
 | `transcript-job.test.ts` | Identity/path derivation, whole-second `capturedAt`, URL canonicalization/publish sanitization, limits, unknown fields, invalid hashes |
 | `protocol-vectors.test.ts` | Shared normalization vectors, source-URL vectors, cross-language canonical job bytes |
 | `content.test.ts` | Activation/no-activation, auto-capture toggle, auto-open/close, already-expanded capture, URL-change capture, mutation restart, timeout, parser rejections, runtime parser adapter, discussion section filter, handoff adapter, production bootstrap, iframe fallback decision |
-| `extension-storage.test.ts` | Capacity, dedupe, serialization, notices, restart replay, snapshot clamping |
+| `extension-storage.test.ts` | Capacity, dedupe, serialization, notices, restart replay, snapshot clamping, derived-identity records |
 | `native-messaging.test.ts` | Bounded requests, single persistent port, concurrent correlation, exact response envelopes |
-| `background.test.ts` | Sender/message validation, outbox-before-submit, replay/ack handling, rejection notices, handoff-full, drain lifecycle/port close, popup commands, terminal notifications, startup wiring |
+| `background.test.ts` | Sender/message validation, outbox-before-submit, replay/ack handling, rejection notices, handoff-full, drain lifecycle/port close, popup commands, terminal notifications, startup wiring, derived-identity correction |
 | `popup-page.test.ts`, `options-page.test.ts`, `job-actions.test.ts`, `settings-storage.test.ts`, `settings-actions.test.ts` | Popup outcome styling/queue copy, options dirty-state/save/reload/busy-lock, action eligibility, settings defaults/validation |
 | `fixture-packet.test.ts` | Stage 0 selector/course/expected/size fixtures and sanitization rules |
 | `build-smoke.test.ts` | Builds the extension and asserts manifest-referenced files, inlined selectors, bundle markers |
