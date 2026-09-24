@@ -123,6 +123,8 @@ async function mountPopup(respond: Responder): Promise<void> {
   globals.chrome = {
     runtime: {
       id: "abcdefghijklmnopqrstuvwxyzabcdef",
+      getURL: (path: string) =>
+        `chrome-extension://abcdefghijklmnopqrstuvwxyzabcdef/${path}`,
       sendMessage: (message: { type: string }, callback: (response: unknown) => void) => {
         callback(respond(message));
       },
@@ -234,19 +236,22 @@ describe("popup GitHub authorization UX", () => {
     return makeSnapshot({ authState: "authorizing", authorization: CHALLENGE });
   }
 
-  it("auto-opens the prefilled GitHub page exactly once per challenge", async () => {
+  it("auto-opens the durable auth page exactly once per challenge and copies the code", async () => {
     await mountPopup(() => ({ ok: true, snapshot: authorizingSnapshot() }));
-    expect(openedTabs).toEqual([
-      "https://github.com/login/device?user_code=ABCD-1234",
-    ]);
+    expect(openedTabs).toHaveLength(1);
+    const opened = new URL(openedTabs[0]);
+    expect(opened.pathname).toContain("auth.html");
+    expect(opened.searchParams.get("code")).toBe("ABCD-1234");
+    expect(opened.searchParams.get("url")).toContain("github.com/login/device");
+    expect(copiedTexts).toEqual(["ABCD-1234"]);
+
     const link = element<HTMLAnchorElement>("authorization-link");
     expect(link.href).toContain("user_code=ABCD-1234");
 
     element<HTMLButtonElement>("refresh-button").click();
     await settle();
-    expect(openedTabs).toEqual([
-      "https://github.com/login/device?user_code=ABCD-1234",
-    ]);
+    expect(openedTabs).toHaveLength(1);
+    expect(copiedTexts).toEqual(["ABCD-1234"]);
   });
 
   it("shows the code card, expiry countdown, and keychain heads-up", async () => {
@@ -257,11 +262,13 @@ describe("popup GitHub authorization UX", () => {
     expect(element("authorization-keychain").textContent).toContain("Always Allow");
   });
 
-  it("copies the user code to the clipboard", async () => {
+  it("copies the user code to the clipboard on demand", async () => {
     await mountPopup(() => ({ ok: true, snapshot: authorizingSnapshot() }));
+    // The challenge auto-copy already placed the code on the clipboard.
+    expect(copiedTexts).toEqual(["ABCD-1234"]);
     element<HTMLButtonElement>("copy-code-button").click();
     await settle();
-    expect(copiedTexts).toEqual(["ABCD-1234"]);
+    expect(copiedTexts).toEqual(["ABCD-1234", "ABCD-1234"]);
     expect(element("copy-code-button").textContent).toBe("Copied");
   });
 
@@ -272,7 +279,7 @@ describe("popup GitHub authorization UX", () => {
     expect(element("authorization-expiry").classList.contains("hidden")).toBe(true);
   });
 
-  it("never auto-opens a non-GitHub verification URL", async () => {
+  it("never auto-opens anything when the verification URL is not GitHub", async () => {
     await mountPopup(() => ({
       ok: true,
       snapshot: makeSnapshot({
@@ -284,9 +291,15 @@ describe("popup GitHub authorization UX", () => {
         },
       }),
     }));
-    expect(openedTabs).toEqual([]);
+    // The auth page still opens so the code stays visible; it must not carry
+    // a non-GitHub approval URL.
+    expect(openedTabs).toHaveLength(1);
+    const opened = new URL(openedTabs[0]);
+    expect(opened.pathname).toContain("auth.html");
+    expect(opened.searchParams.get("url")).toBeNull();
     expect(element("authorization-link").classList.contains("hidden")).toBe(true);
     expect(element("authorization-code-row").classList.contains("hidden")).toBe(false);
+    expect(copiedTexts).toEqual(["ABCD-1234"]);
   });
 });
 

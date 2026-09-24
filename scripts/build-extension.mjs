@@ -134,8 +134,9 @@ await buildBundle("content.ts", "iife");
 await buildBundle("background.ts", "esm");
 await buildBundle("popup.ts", "esm");
 await buildBundle("options.ts", "esm");
+await buildBundle("auth.ts", "esm");
 
-for (const file of ["popup.html", "popup.css", "options.html", "options.css"]) {
+for (const file of ["popup.html", "popup.css", "options.html", "options.css", "auth.html"]) {
   const contents = await readFile(join(extensionRoot, file), "utf8");
   await writeFile(join(outputRoot, file), contents);
 }

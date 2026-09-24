@@ -22,6 +22,7 @@ interface TabsApi {
 
 interface RuntimeMessageApi {
   id?: string;
+  getURL?(path: string): string;
   sendMessage(message: ExtensionMessage, callback: (response: BackgroundResponse) => void): void;
   openOptionsPage?(callback?: () => void): void | Promise<void>;
 }
@@ -151,6 +152,25 @@ function openExternal(url: string): void {
   }
 }
 
+function authPageUrl(auth: UploaderStatus["authorization"], link: string | null): string | null {
+  const base =
+    chromeApi?.runtime?.getURL?.("auth.html") ??
+    (() => {
+      try {
+        return new URL("auth.html", globalThis.location?.href ?? "").toString();
+      } catch {
+        return null;
+      }
+    })();
+  if (!base) return null;
+  const params = new URLSearchParams();
+  if (auth.userCode) params.set("code", auth.userCode);
+  if (link) params.set("url", link);
+  if (auth.expiresAt) params.set("expires", auth.expiresAt);
+  const query = params.toString();
+  return query === "" ? base : `${base}?${query}`;
+}
+
 async function copyText(text: string): Promise<boolean> {
   try {
     const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(value: string): Promise<void> } } }).navigator?.clipboard;
@@ -246,17 +266,31 @@ function renderAuthorization(status: UploaderStatus | null): void {
   }
 
   const link = auth.verificationUriComplete ?? auth.verificationUri;
-  if (isSafeGitHubUrl(link)) {
-    authorizationLink.href = link;
+  const safeLink = isSafeGitHubUrl(link) ? link : null;
+  if (safeLink) {
+    authorizationLink.href = safeLink;
     authorizationLink.classList.remove("hidden");
-    const challengeKey = auth.userCode ?? link;
-    if (!openedChallenges.has(challengeKey)) {
-      openedChallenges.add(challengeKey);
-      openExternal(link);
-    }
   } else {
     authorizationLink.classList.add("hidden");
     authorizationLink.removeAttribute("href");
+  }
+
+  // The popup closes as soon as another tab opens, so the durable code lives
+  // on the auth page and in the clipboard rather than only in this card.
+  const challengeKey = auth.userCode ?? safeLink ?? "";
+  if (challengeKey !== "" && !openedChallenges.has(challengeKey)) {
+    openedChallenges.add(challengeKey);
+    if (auth.userCode) {
+      void copyText(auth.userCode).then((copied) => {
+        if (copied) flashButton(copyCodeButton, "Copied");
+      });
+    }
+    const target = authPageUrl(auth, safeLink);
+    if (target) {
+      openExternal(target);
+    } else if (safeLink) {
+      openExternal(safeLink);
+    }
   }
 
   renderExpiry(auth.expiresAt);
