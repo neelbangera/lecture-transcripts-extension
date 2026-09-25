@@ -6,7 +6,7 @@
     <title>Lecture Transcripts</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
-  <body>
+  <body class="popup-shell">
     <main class="panel">
       <header class="header">
         <div>
@@ -31,7 +31,8 @@
           <code id="authorization-code" class="code"></code>
           <button id="copy-code-button" class="button secondary" type="button">Copy code</button>
         </div>
-        <p id="authorization-expiry" class="muted hidden"></p>
+        <p id="authorization-expiry" class="muted hidden" aria-live="off"></p>
+        <p id="authorization-announce" class="visually-hidden" aria-live="polite"></p>
         <a id="authorization-link" class="button primary hidden" target="_blank" rel="noopener noreferrer">Open GitHub authorization</a>
         <p id="authorization-keychain" class="muted">If macOS asks whether the local uploader may use the login keychain, choose <strong>Always Allow</strong>.</p>
       </section>
@@ -68,7 +69,7 @@
         </div>
         <p id="queue-copy" class="muted">No uploads queued.</p>
         <ul id="job-list" class="job-list"></ul>
-        <button id="clear-uploaded-button" class="button secondary hidden" type="button">Clear uploaded</button>
+        <button id="clear-uploaded-button" class="button danger hidden" type="button">Clear uploaded</button>
         <button id="load-more-button" class="button secondary hidden" type="button">Load older jobs</button>
       </section>
 

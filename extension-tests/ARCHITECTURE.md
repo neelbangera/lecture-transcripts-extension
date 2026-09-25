@@ -175,7 +175,7 @@ Test counts below are the verified `npm test` output on 2026-09-23.
 | `extension-storage.test.ts` (17 tests) | `extension/src/extension-storage.ts` | Capacity constants and storage key, bounded outbox and notice lists with no eviction, `(lectureKey, contentHash)` dedup, defensive copies, serialized read-modify-write, restart replay, snapshot shape and clamping of corrupt persisted state, derived-identity record/find/upsert/clear and bound. |
 | `leccap-parser.test.ts` (18 tests) | `extension/src/leccap-parser.ts` + fixture packet | Fixture parse result vs `lecture-page.expected.json`, overview fetch and exact player-link correlation, zero/multiple/failed/sign-in overview outcomes, unnumbered-title derivation and decoy rejection, non-lecture and loading pages, unmapped course, unsafe URL pre-check, plain-only and malformed timestamp shapes, discussion parsing and section badge rule, textual month/day year policy, source URL canonicalization. |
 | `identity-derivation.test.ts` (10 tests) | `extension/src/identity-derivation.ts` | Title shapes (numeric prefix, `Lecture: N`, `Discussion N`, lag form, decoys), badge category/section, rec-time parsing, "next from the last one" derivation, consecutive unnumbered runs, kind separation, contradictions, start-time checks. |
-| `identity-derivation.test.ts` (10 tests) | `extension/src/identity-derivation.ts` | Title shapes (numeric prefix, `Lecture: N`, `Discussion N`, lag form, decoys), badge category/section, rec-time parsing, "next from the last one" derivation, consecutive unnumbered runs, kind separation, contradictions, start-time checks. |
+| `design-rules.test.ts` (9 tests) | `extension/popup.css`, `extension/popup.html`, `extension/auth.html`, `extension/src/status.ts` | WCAG AA text contrast and 3:1 focus-ring visibility on every token pairing in both schemes, light/dark primary kept distinct, 390px canvas scoped to `.popup-shell` so the auth page keeps its 460px column, per-second countdowns kept out of live regions with milestone-only announcements. |
 | `transcript-normalizer.test.ts` (8 tests) | `extension/src/transcript-normalizer.ts` | NFC, CRLF, horizontal whitespace, blank-line collapse, timestamp digit preservation, plain derivation from timestamped-only, plain-only behavior, exact framed hash bytes, committed fixture hash, hash sensitivity, idempotence. |
 | `transcript-job.test.ts` (12 tests) | `extension/src/transcript-job.ts` | Identity/path derivation from the allowlist, whole-second `capturedAt`, URL canonicalization and publish sanitization, unsafe URL rejection, unknown-field/hash/schema/date checks, transcript and per-field size caps at their exact boundaries. |
 | `protocol-vectors.test.ts` (9 tests) | `protocol/normalization-vectors.json`, `protocol/source-url-vectors.json`, `uploader/internal/protocol/testdata/transcript-job.canonical.json`, normalizer and job modules | Cross-language normalization vectors and hash assertions, source URL vector table, canonical job fixture byte-for-byte parity with the Go serializer, hash recomputation, compact escaping for Go parity. |
@@ -191,9 +191,10 @@ Test counts below are the verified `npm test` output on 2026-09-23.
 | `build-smoke.test.ts` (1 test) | `scripts/build-extension.mjs`, `extension/manifest.json`, `dist/extension/` | Every manifest-referenced file exists, icon PNG signature, popup/options HTML references resolve, no unresolved selector placeholder, fixture selectors and `capture_job` present in the bundles, options/popup bundles contain their key behavior strings. |
 
 Every module under `extension/src/` is imported by at least one suite.
-`extension/src/status.ts` has no dedicated test file; it is exercised as the
-shared vocabulary and as `EMPTY_COUNTS`/`QUEUE_STATUSES` oracles by the
-background, storage, popup, and job-action suites.
+`extension/src/status.ts` is exercised as the shared vocabulary and as
+`EMPTY_COUNTS`/`QUEUE_STATUSES` oracles by the background, storage, popup, and
+job-action suites, and its `expiryMilestone`/`EXPIRY_MILESTONE_ANNOUNCEMENTS`
+countdown helpers are covered by `design-rules.test.ts`.
 
 ## Testing and verification
 

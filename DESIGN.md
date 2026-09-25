@@ -3,7 +3,7 @@ name: Lecture Transcripts
 description: Instrument-panel UI for a zero-loss Leccap transcript capture pipeline — flat, dense, utilitarian.
 colors:
   signal-blue: "#1f6feb"
-  signal-blue-dark: "#2f81f7"
+  signal-blue-dark: "#2270e6"
   on-signal: "#ffffff"
   cool-chassis: "#f5f7fa"
   cool-chassis-dark: "#12161d"
@@ -33,6 +33,10 @@ colors:
   redline-dark: "#ff7b72"
   redline-wash: "rgba(209, 36, 47, 0.08)"
   redline-wash-dark: "rgba(248, 81, 73, 0.15)"
+  success-wash: "rgba(26, 127, 55, 0.08)"
+  success-wash-dark: "rgba(63, 185, 80, 0.15)"
+  warn-wash: "rgba(107, 75, 0, 0.08)"
+  warn-wash-dark: "rgba(227, 179, 65, 0.15)"
 typography:
   headline:
     fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
@@ -47,6 +51,11 @@ typography:
   title:
     fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
     fontSize: "14px"
+    fontWeight: 700
+    lineHeight: 1.3
+  title-options:
+    fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+    fontSize: "15px"
     fontWeight: 700
     lineHeight: 1.3
   body:
@@ -171,7 +180,7 @@ This is a GitHub-adjacent operational aesthetic: system typography, hairline-bor
 A cool, low-chroma operational palette with exactly one accent; the values share lineage with GitHub Primer, which keeps the uploader's GitHub-facing work feeling of one piece.
 
 ### Primary
-- **Signal Blue** (#1f6feb, dark #2f81f7): The only action accent. Primary buttons, the GitHub authorization link, focus rings, and native-control accent color. Never a chrome fill.
+- **Signal Blue** (#1f6feb, dark #2270e6): The only action accent. Primary buttons, the GitHub authorization link, focus rings, and native-control accent color. Never a chrome fill.
 - **On-Signal** (#ffffff): Text and icons on Signal Blue fills.
 
 ### Neutral
@@ -221,7 +230,7 @@ A cool, low-chroma operational palette with exactly one accent; the values share
 
 ## Layout
 
-A fixed instrument popup and one wide settings column; there is no responsive breakpoint behavior to design, because the surfaces are fixed by the platform. The popup body is exactly 390px wide with a 440px minimum height and 16px panel padding; sections stack full-width. The options page is a fluid-width document with a 760px centered column (padding 24px 20px 40px); the auth page is a 460px centered column whose code chip goes full-width at the large code size, with its copy button stacked full-width beneath.
+A fixed instrument popup and one wide settings column; there is no responsive breakpoint behavior to design, because the surfaces are fixed by the platform. The popup body is exactly 390px wide with a 440px minimum height and 16px panel padding (the width is scoped to the `.popup-shell` body class so the shared sheet cannot cap the other pages); sections stack full-width. The options page is a fluid-width document with a 760px centered column (padding 24px 20px 40px); the auth page is a 460px centered column whose code chip goes full-width at the large code size, with its copy button stacked full-width beneath.
 
 The spacing rhythm runs 4 / 6 / 8 / 10 / 12 / 14 / 16px, with 20 / 24 / 28px reserved for page-level breathing room on the options page. 8px is the default gap between controls; cards stack at 12px margins; inner card padding is 12px (settings sections 14px). Form fields use a reflowing grid (`auto-fit, minmax(200px, 1fr)`) that collapses to one column on narrow documents — the only adaptive layout in the system.
 
@@ -269,10 +278,10 @@ Compact utilitarian controls: precise hit targets, immediate state changes, fact
 - **Style:** No nav hierarchy. A header row (title, muted status line, icon button, status pill) and a footer row (version line, truncated extension ID with copy action), both flex rows at 10px gap. Hidden sections use a hard `display: none` — state is content, not chrome.
 
 ### Status Notices (signature)
-One-line outcome readouts, 12px text, minimum 16px tall so the layout never jumps: `notice-info` in Slate Mute, `notice-warn` in Caution Amber, `notice-success` in Verified Green at weight 600, `notice-error` in Redline. The unclassed resting tone of a `.notice` is Caution Amber. They live in `aria-live` regions — the color reports the outcome, the words state it.
+One-line outcome readouts, 12px text, minimum 16px tall so the layout never jumps: `notice-info` in Slate Mute, `notice-warn` in Caution Amber, `notice-success` in Verified Green at weight 600, `notice-error` in Redline. The unclassed resting tone of a `.notice` is Slate Mute (the info level); amber, green, and red only appear with their explicit modifier class. They live in `aria-live` regions — the color reports the outcome, the words state it. Device-flow countdowns are the exception: the per-second tick is `aria-live="off"` and only the three milestones (ready, under a minute, expired) go to a visually-hidden polite announcer.
 
 ### Job Rows (signature)
-Recessed Inset Wash rows (6px radius, 8px padding) in a tight grid list: title at 12px/600, metadata at 11px Slate Mute, and smaller nested action buttons (11px, padding 5px 8px). Each row is one capture in the pipeline — the visual atom of the flight recorder.
+Recessed Inset Wash rows (6px radius, 8px padding) in a tight grid list: title at 12px/600 on the left, a compact status chip on the right (10px/600, fully round, tinted wash background in the semantic color), metadata at 11px Slate Mute below, and smaller nested action buttons (11px, padding 5px 8px). Each row is one capture in the pipeline — the visual atom of the flight recorder. Status chips pair the semantic color with the status words so the queue is scannable at a glance.
 
 ### Code Chips (signature)
 Mono readouts on Inset Wash at 6px radius: device-flow codes at 16px/700 with 0.08em tracking in the popup (larger than any headline there — they must be transcribed), escalating to 28px/700 with 0.16em tracking, full-width and centered, on the authorization page. Extension IDs run 11px/500 in Slate Mute, truncated with ellipsis past 150px.

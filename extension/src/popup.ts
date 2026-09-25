@@ -7,7 +7,10 @@ import {
   discardConfirmText,
 } from "./job-actions";
 import {
+  EXPIRY_MILESTONE_ANNOUNCEMENTS,
+  expiryMilestone,
   statusLabel,
+  type ExpiryMilestone,
   type ExtensionSnapshot,
   type JobSummary,
   type OverflowNotice,
@@ -48,6 +51,7 @@ const authorizationCodeRow = element<HTMLElement>("authorization-code-row");
 const authorizationCode = element<HTMLElement>("authorization-code");
 const copyCodeButton = element<HTMLButtonElement>("copy-code-button");
 const authorizationExpiry = element<HTMLParagraphElement>("authorization-expiry");
+const authorizationAnnounce = element<HTMLParagraphElement>("authorization-announce");
 const authorizationLink = element<HTMLAnchorElement>("authorization-link");
 const authorizationKeychain = element<HTMLParagraphElement>("authorization-keychain");
 const connectButton = element<HTMLButtonElement>("connect-button");
@@ -72,10 +76,11 @@ const copyIdButton = element<HTMLButtonElement>("copy-id-button");
 let loadedJobs: JobSummary[] = [];
 let nextBeforeJobId: number | null = null;
 let loading = false;
-/** Challenges whose GitHub page has already been opened this popup session. */
+/** Challenges whose auth page has already been opened this popup session. */
 const openedChallenges = new Set<string>();
 let expiryTimer: ReturnType<typeof setInterval> | null = null;
 let currentExpiresAt: string | null = null;
+let announcedMilestone: ExpiryMilestone | null = null;
 
 type NoticeVariant = "info" | "success" | "warn" | "error";
 
@@ -96,6 +101,18 @@ function outcomeVariant(status: string): NoticeVariant {
   return "info";
 }
 
+type JobChipVariant = "info" | "success" | "warn" | "error";
+
+const JOB_SUCCESS = new Set(["uploaded", "unchanged"]);
+const JOB_WARN = new Set(["retryable_error", "not_ready", "waiting_for_uploader"]);
+
+function jobChipVariant(status: string): JobChipVariant {
+  if (JOB_SUCCESS.has(status)) return "success";
+  if (status === "permanent_conflict" || status.startsWith("rejected_")) return "error";
+  if (JOB_WARN.has(status)) return "warn";
+  return "info";
+}
+
 function setOutcome(message: string, variant: NoticeVariant = "info"): void {
   lastOutcome.textContent = message;
   lastOutcome.classList.remove(
@@ -104,7 +121,7 @@ function setOutcome(message: string, variant: NoticeVariant = "info"): void {
     "notice-warn",
     "notice-error",
   );
-  if (variant !== "info") lastOutcome.classList.add(`notice-${variant}`);
+  lastOutcome.classList.add(`notice-${variant}`);
 }
 
 function send(message: ExtensionMessage): Promise<BackgroundResponse> {
@@ -198,8 +215,10 @@ function stopExpiryCountdown(): void {
     expiryTimer = null;
   }
   currentExpiresAt = null;
+  announcedMilestone = null;
   authorizationExpiry.textContent = "";
   authorizationExpiry.classList.add("hidden");
+  authorizationAnnounce.textContent = "";
 }
 
 function renderExpiry(expiresAt: string | null): void {
@@ -228,6 +247,13 @@ function renderExpiry(expiresAt: string | null): void {
     const seconds = totalSeconds % 60;
     authorizationExpiry.textContent = `Waiting for approval on GitHub… expires in ${minutes}:${String(seconds).padStart(2, "0")}`;
     authorizationExpiry.classList.remove("hidden");
+    // The visual tick stays out of the live region; only the three
+    // milestones are announced to assistive technology.
+    const milestone = expiryMilestone(currentExpiresAt, Date.now());
+    if (milestone !== announcedMilestone) {
+      announcedMilestone = milestone;
+      authorizationAnnounce.textContent = EXPIRY_MILESTONE_ANNOUNCEMENTS[milestone];
+    }
   };
   update();
   if (currentExpiresAt) {
@@ -303,15 +329,22 @@ function renderOverflow(notices: OverflowNotice[]): void {
   for (const notice of notices) {
     const item = document.createElement("li");
     item.className = "job";
+    const titleRow = document.createElement("div");
+    titleRow.className = "job-title-row";
     const title = document.createElement("span");
     title.className = "job-title";
     title.textContent = notice.lectureKey;
+    const chip = document.createElement("span");
+    const chipVariant = notice.reason === "stale_derived_identity" ? "warn" : "error";
+    chip.className = `job-status job-status-${chipVariant}`;
+    chip.textContent = statusLabel(notice.reason);
+    titleRow.append(title, chip);
     const meta = document.createElement("span");
     meta.className = "job-meta";
     meta.textContent = notice.staleLectureKey
-      ? `${statusLabel(notice.reason)} · was ${notice.staleLectureKey} · ${notice.lectureDate}`
-      : `${statusLabel(notice.reason)} · ${notice.lectureDate} · captured ${notice.capturedAt}`;
-    item.append(title, meta);
+      ? `was ${notice.staleLectureKey} · ${notice.lectureDate}`
+      : `${notice.lectureDate} · captured ${notice.capturedAt}`;
+    item.append(titleRow, meta);
     overflowList.append(item);
   }
 }
@@ -320,9 +353,18 @@ function renderJob(job: JobSummary): HTMLLIElement {
   const item = document.createElement("li");
   item.className = "job";
 
+  const titleRow = document.createElement("div");
+  titleRow.className = "job-title-row";
+
   const title = document.createElement("span");
   title.className = "job-title";
-  title.textContent = `${job.lectureKey} — ${statusLabel(job.status)}`;
+  title.textContent = job.lectureKey;
+
+  const chip = document.createElement("span");
+  chip.className = `job-status job-status-${jobChipVariant(job.status)}`;
+  chip.textContent = statusLabel(job.status);
+
+  titleRow.append(title, chip);
 
   const meta = document.createElement("span");
   meta.className = "job-meta";
@@ -334,7 +376,7 @@ function renderJob(job: JobSummary): HTMLLIElement {
         ? `remote ${job.remoteFileKind}`
         : "";
   meta.textContent = [job.targetPath, remote].filter(Boolean).join(" · ");
-  item.append(title, meta);
+  item.append(titleRow, meta);
 
   const canRetry = canRetryJob(job.status);
   const canDiscard = canDiscardJob(job.status);
@@ -353,7 +395,7 @@ function renderJob(job: JobSummary): HTMLLIElement {
     }
     if (canDiscard) {
       const discard = document.createElement("button");
-      discard.className = "button secondary";
+      discard.className = "button danger";
       discard.type = "button";
       discard.textContent = "Discard local row";
       discard.addEventListener("click", () => {

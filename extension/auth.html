@@ -45,7 +45,8 @@
           <code id="auth-code" class="code"></code>
           <button id="auth-copy-code" class="button secondary" type="button">Copy code</button>
         </div>
-        <p id="auth-expiry" class="muted"></p>
+        <p id="auth-expiry" class="muted" aria-live="off"></p>
+        <p id="auth-announce" class="visually-hidden" aria-live="polite"></p>
         <a id="auth-github-link" class="button primary" target="_blank" rel="noopener noreferrer">Open GitHub approval page</a>
         <p id="auth-fallback" class="muted">
           If the code is not prefilled on GitHub, copy it here and enter it at

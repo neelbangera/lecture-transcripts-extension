@@ -224,6 +224,26 @@ export function statusLabel(status: string): string {
   return LABELS[status] ?? "Unknown status";
 }
 
+/** The three states a screen reader should hear from a device-flow countdown. */
+export type ExpiryMilestone = "ready" | "under-a-minute" | "expired";
+
+export function expiryMilestone(
+  expiresAt: string | null,
+  nowMs: number,
+): ExpiryMilestone {
+  if (!expiresAt) return "ready";
+  const remainingMs = Date.parse(expiresAt) - nowMs;
+  if (!Number.isFinite(remainingMs)) return "ready";
+  if (remainingMs <= 0) return "expired";
+  return remainingMs <= 60_000 ? "under-a-minute" : "ready";
+}
+
+export const EXPIRY_MILESTONE_ANNOUNCEMENTS: Record<ExpiryMilestone, string> = {
+  ready: "Waiting for approval on GitHub.",
+  "under-a-minute": "Less than one minute remaining to approve.",
+  expired: "The code expired.",
+};
+
 export function errorLabel(category: string): string {
   return LABELS[category] ?? statusLabel(category);
 }

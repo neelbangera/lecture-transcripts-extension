@@ -10,6 +10,12 @@
  * through to the approval page when ready.
  */
 
+import {
+  EXPIRY_MILESTONE_ANNOUNCEMENTS,
+  expiryMilestone,
+  type ExpiryMilestone,
+} from "./status";
+
 function element<T extends HTMLElement>(id: string): T {
   const value = document.getElementById(id);
   if (!value) throw new Error(`missing auth element: ${id}`);
@@ -22,11 +28,13 @@ const authCodeRow = element<HTMLElement>("auth-code-row");
 const authCode = element<HTMLElement>("auth-code");
 const authCopyCode = element<HTMLButtonElement>("auth-copy-code");
 const authExpiry = element<HTMLParagraphElement>("auth-expiry");
+const authAnnounce = element<HTMLParagraphElement>("auth-announce");
 const authGitHubLink = element<HTMLAnchorElement>("auth-github-link");
 const authFallback = element<HTMLParagraphElement>("auth-fallback");
 const authKeychain = element<HTMLParagraphElement>("auth-keychain");
 
 let expiryTimer: ReturnType<typeof setInterval> | null = null;
+let announcedMilestone: ExpiryMilestone | null = null;
 
 export function isSafeGitHubUrl(value: string | null): value is string {
   if (!value) return false;
@@ -127,8 +135,16 @@ export function installAuthPage(search: string, options: { now?: () => number } 
       ? formatExpiry(expires, now())
       : "";
     authExpiry.classList.toggle("hidden", !code);
+    if (code) {
+      const milestone = expiryMilestone(expires, now());
+      if (milestone !== announcedMilestone) {
+        announcedMilestone = milestone;
+        authAnnounce.textContent = EXPIRY_MILESTONE_ANNOUNCEMENTS[milestone];
+      }
+    }
   };
   if (expiryTimer !== null) clearInterval(expiryTimer);
+  announcedMilestone = null;
   update();
   if (code && expires) {
     expiryTimer = setInterval(update, 1000);

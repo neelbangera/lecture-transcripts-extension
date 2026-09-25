@@ -220,7 +220,7 @@ describe("popup queue and outcome states", () => {
     await mountPopup(() => ({ ok: true, snapshot: makeSnapshot() }));
     const outcome = element("last-outcome");
     expect(outcome.textContent).toBe("");
-    expect(outcome.className).toBe("notice");
+    expect(outcome.className).toBe("notice notice-info");
   });
 });
 
