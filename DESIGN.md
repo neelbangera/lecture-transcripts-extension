@@ -70,7 +70,16 @@ typography:
     fontSize: "16px"
     fontWeight: 700
     letterSpacing: "0.08em"
+  code-display-lg:
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    fontSize: "28px"
+    fontWeight: 700
+    letterSpacing: "0.16em"
   code-inline:
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    fontSize: "11px"
+    fontWeight: 400
+  code-id:
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
     fontSize: "11px"
     fontWeight: 500
@@ -200,19 +209,21 @@ A cool, low-chroma operational palette with exactly one accent; the values share
 - **Title** (700, 14px / 1.3): Section headings inside cards ("Pending handoffs", "Upload queue"). Options page uses 15px for the same role.
 - **Body** (400, 12px): Default copy — notices, job rows, buttons, header summary. The popup's working size.
 - **Body Large** (400, 13px): Options-page form copy and input values; the slightly larger reading size of the long-lived page.
-- **Label** (600, 11px): Pills, counts, course legends. Tabular, compact, scannable.
+- **Label** (600, 11px): Pills and counts. Tabular, compact, scannable. Course legends sit one step up at 12px/600 in Slate Mute.
 - **Meta** (400, 11px): Job metadata, footer versions — the quietest legible tier.
-- **Code Display** (700, 16px, letter-spacing 0.08em, mono): Device-flow authorization codes, shown large and tracked so they can be read off one screen and typed into another.
-- **Code Inline** (500, 11px, mono): Inline code, extension ID chips (truncated with ellipsis when long).
+- **Code Display** (700, 16px, letter-spacing 0.08em, mono): Device-flow authorization codes in the popup, shown large and tracked so they can be read off one screen and typed into another.
+- **Code Display Large** (700, 28px, letter-spacing 0.16em, mono): The authorization page's full-width code chip — bigger than any headline in the system, because it must be transcribed by hand.
+- **Code Inline** (400, 11px, mono): Inline code in options copy (`YYYY-fall`, `012`) on Chip Fill at 4px radius.
+- **Code ID** (500, 11px, mono): Extension ID chips — Slate Mute on Inset Wash, truncated with ellipsis past 150px.
 
 ### Named Rules
 **The Mono-Is-Evidence Rule.** Monospace marks machine facts — authorization codes, IDs, raw labels. Prose is never mono, and mono is never used for emphasis.
 
 ## Layout
 
-A fixed instrument popup and one wide settings column; there is no responsive breakpoint behavior to design, because the surfaces are fixed by the platform. The popup body is exactly 390px wide with a 440px minimum height and 16px panel padding; sections stack full-width. The options page is a fluid-width document with a 760px centered column (padding 24px 20px 40px); the auth page is a 460px centered column whose code chip goes full-width.
+A fixed instrument popup and one wide settings column; there is no responsive breakpoint behavior to design, because the surfaces are fixed by the platform. The popup body is exactly 390px wide with a 440px minimum height and 16px panel padding; sections stack full-width. The options page is a fluid-width document with a 760px centered column (padding 24px 20px 40px); the auth page is a 460px centered column whose code chip goes full-width at the large code size, with its copy button stacked full-width beneath.
 
-The spacing rhythm runs 4 / 6 / 8 / 10 / 12 / 16px, with 20 / 24 / 28px reserved for page-level breathing room on the options page. 8px is the default gap between controls; cards stack at 12px margins; inner card padding is 12px (settings sections 14px). Form fields use a reflowing grid (`auto-fit, minmax(200px, 1fr)`) that collapses to one column on narrow documents — the only adaptive layout in the system.
+The spacing rhythm runs 4 / 6 / 8 / 10 / 12 / 14 / 16px, with 20 / 24 / 28px reserved for page-level breathing room on the options page. 8px is the default gap between controls; cards stack at 12px margins; inner card padding is 12px (settings sections 14px). Form fields use a reflowing grid (`auto-fit, minmax(200px, 1fr)`) that collapses to one column on narrow documents — the only adaptive layout in the system.
 
 ## Elevation & Depth
 
@@ -232,15 +243,15 @@ Compact utilitarian controls: precise hit targets, immediate state changes, fact
 ### Buttons
 - **Shape:** Gently rounded (6px radius); borderless except danger.
 - **Primary:** Signal Blue fill, On-Signal text, 12px type, padding 7px 10px.
-- **Hover / Focus:** No transition — states snap. Focus-visible draws a 2px Signal Blue outline at 1px offset on every control. Icon buttons brighten their Quiet Fill on hover (`filter: brightness(0.95)`).
+- **Hover / Focus:** No transition — states snap. Fill buttons have no hover change; icon buttons brighten their Quiet Fill (`filter: brightness(0.95)`), and the danger variant tints Redline Wash. Focus-visible draws a 2px Signal Blue outline at 1px offset on every control (2px offset on the settings toggles).
 - **Secondary:** Quiet Fill / Quiet Ink for available-but-not-primary actions (Refresh, Reset, Reload).
 - **Danger:** Transparent fill, 1px Redline border, Redline text; hover fills with Redline Wash. Used for remove/discard and validation failures.
 - **Disabled:** 55% opacity, `not-allowed` cursor. Same shape, no other change.
 - **Icon Button:** 28×28px square at 6px radius, Quiet Fill, 16px inline SVG icon in Quiet Ink (e.g. the settings gear in the popup header).
 
 ### Chips
-- **Style:** Fully round (999px), Chip Fill on Chip Ink, 11px label type; status pills and counts use 4px 8px padding.
-- **State:** Term chips (options page) carry an inline remove control that turns Redline on hover; removable chips pad 3px 6px 3px 10px to seat the control.
+- **Style:** Fully round (999px), Chip Fill on Chip Ink. Status pills and counts run 11px label type at 4px 8px padding; term chips run 12px at 3px 6px 3px 10px to seat their inline remove control.
+- **State:** Removable term chips (options page) carry a remove glyph that turns Redline on hover.
 
 ### Cards / Containers
 - **Corner Style:** 8px radius.
@@ -258,22 +269,22 @@ Compact utilitarian controls: precise hit targets, immediate state changes, fact
 - **Style:** No nav hierarchy. A header row (title, muted status line, icon button, status pill) and a footer row (version line, truncated extension ID with copy action), both flex rows at 10px gap. Hidden sections use a hard `display: none` — state is content, not chrome.
 
 ### Status Notices (signature)
-One-line outcome readouts, 12px text, minimum 16px tall so the layout never jumps: info in Slate Mute, warn in Caution Amber, success in Verified Green at weight 600, error in Redline. They live in `aria-live` regions — the color reports the outcome, the words state it.
+One-line outcome readouts, 12px text, minimum 16px tall so the layout never jumps: `notice-info` in Slate Mute, `notice-warn` in Caution Amber, `notice-success` in Verified Green at weight 600, `notice-error` in Redline. The unclassed resting tone of a `.notice` is Caution Amber. They live in `aria-live` regions — the color reports the outcome, the words state it.
 
 ### Job Rows (signature)
 Recessed Inset Wash rows (6px radius, 8px padding) in a tight grid list: title at 12px/600, metadata at 11px Slate Mute, and smaller nested action buttons (11px, padding 5px 8px). Each row is one capture in the pipeline — the visual atom of the flight recorder.
 
 ### Code Chips (signature)
-Mono readouts on Inset Wash at 6px radius: device-flow codes at 16px/700 with 0.08em tracking (larger than any headline in the system — they must be transcribed), extension IDs at 11px truncated with ellipsis.
+Mono readouts on Inset Wash at 6px radius: device-flow codes at 16px/700 with 0.08em tracking in the popup (larger than any headline there — they must be transcribed), escalating to 28px/700 with 0.16em tracking, full-width and centered, on the authorization page. Extension IDs run 11px/500 in Slate Mute, truncated with ellipsis past 150px.
 
 ## Do's and Don'ts
 
 ### Do:
 - **Do** separate surfaces with 1px Hairline borders and the Cool Chassis → Panel White → Inset Wash tonal ladder.
 - **Do** ship every color as a light/dark pair and let `prefers-color-scheme` pick; test both schemes.
-- **Do** reserve Signal Blue for primary actions, links, and focus rings — and give every interactive control that 2px focus outline at 1px offset.
+- **Do** reserve Signal Blue for primary actions, links, and focus rings — and give every interactive control that 2px focus outline (1px offset; 2px on the settings toggles).
 - **Do** use Verified Green, Caution Amber, and Redline only to report outcome state, always next to plain words.
-- **Do** hold the type scale: 11px labels/meta, 12px popup body, 13px options form copy, 14px (15px options) section titles, 18px (22px options) page titles.
+- **Do** hold the type scale: 11px labels/meta, 12px popup body, 13px options form copy, 14px (15px options) section titles, 18px (22px options) page titles — and let only the mono code readouts break it (16px popup, 28px authorization page).
 - **Do** render machine facts — codes, IDs, raw labels — in the mono stack.
 
 ### Don't:

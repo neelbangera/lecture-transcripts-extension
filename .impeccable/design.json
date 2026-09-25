@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-25T02:54:08Z",
+  "generatedAt": "2026-09-25T03:20:34Z",
   "title": "Design System: Lecture Transcripts",
   "extensions": {
     "colorMeta": {
@@ -504,7 +504,7 @@
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Pills, counts, course legends at 11px/600 — compact and scannable."
+        "purpose": "Pills and counts at 11px/600. Course legends sit one step up at 12px/600 in Slate Mute."
       },
       "meta": {
         "displayName": "Meta",
@@ -512,11 +512,19 @@
       },
       "code-display": {
         "displayName": "Code Display",
-        "purpose": "Device-flow authorization codes at 16px/700 with 0.08em tracking."
+        "purpose": "Device-flow authorization codes in the popup at 16px/700 with 0.08em tracking."
       },
       "code-inline": {
         "displayName": "Code Inline",
-        "purpose": "Inline code and extension ID chips at 11px mono."
+        "purpose": "Inline code in options copy (YYYY-fall, 012) at 11px/400 on Chip Fill at 4px radius."
+      },
+      "code-display-lg": {
+        "displayName": "Code Display (Large)",
+        "purpose": "Authorization-page code chip at 28px/700 with 0.16em tracking — bigger than any headline, because it must be transcribed by hand."
+      },
+      "code-id": {
+        "displayName": "Code ID",
+        "purpose": "Extension ID chips at 11px/500 — Slate Mute on Inset Wash, truncated with ellipsis past 150px."
       }
     },
     "shadows": [],
@@ -528,25 +536,25 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one action accent: Connect GitHub, Save, authorizing links. 6px radius, 7px 10px padding, 12px system type.",
+      "description": "The one action accent: Connect GitHub, Save, authorizing links. 6px radius, 7px 10px padding, 12px system type. No hover change — states snap.",
       "html": "<button class=\"ds-btn-primary\">Connect GitHub</button>",
-      "css": ".ds-btn-primary { display: inline-block; border: 0; border-radius: 6px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; padding: 7px 10px; background: var(--primary-bg, #1f6feb); color: var(--primary-fg, #fff); }\n.ds-btn-primary:hover { filter: brightness(1.06); }\n.ds-btn-primary:active { filter: brightness(0.95); }\n.ds-btn-primary:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }\n.ds-btn-primary:disabled { cursor: not-allowed; opacity: 0.55; filter: none; }"
+      "css": ".ds-btn-primary { display: inline-block; border: 0; border-radius: 6px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; padding: 7px 10px; background: var(--primary-bg, #1f6feb); color: var(--primary-fg, #fff); }\n.ds-btn-primary:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }\n.ds-btn-primary:disabled { cursor: not-allowed; opacity: 0.55; }"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "Available-but-not-primary actions: Refresh, Reset, Reload, Clear uploaded. Quiet fill on quiet ink.",
+      "description": "Available-but-not-primary actions: Refresh, Reset, Reload, Clear uploaded. Quiet fill on quiet ink. No hover change — states snap.",
       "html": "<button class=\"ds-btn-secondary\">Refresh</button>",
-      "css": ".ds-btn-secondary { display: inline-block; border: 0; border-radius: 6px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; padding: 7px 10px; background: var(--secondary-bg, #e9edf3); color: var(--secondary-fg, #26344c); }\n.ds-btn-secondary:hover { filter: brightness(0.95); }\n.ds-btn-secondary:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }\n.ds-btn-secondary:disabled { cursor: not-allowed; opacity: 0.55; filter: none; }"
+      "css": ".ds-btn-secondary { display: inline-block; border: 0; border-radius: 6px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; padding: 7px 10px; background: var(--secondary-bg, #e9edf3); color: var(--secondary-fg, #26344c); }\n.ds-btn-secondary:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }\n.ds-btn-secondary:disabled { cursor: not-allowed; opacity: 0.55; }"
     },
     {
       "name": "Danger Button",
       "kind": "button",
       "refersTo": "button-danger",
-      "description": "Destructive controls (Remove course, Discard) and validation failures. Transparent fill with a 1px Redline outline; hover tints Redline Wash.",
+      "description": "Destructive controls (Remove course, Discard). Transparent fill with a 1px Redline outline; hover tints Redline Wash; focus ring stays Signal Blue like every other control.",
       "html": "<button class=\"ds-btn-danger\">Remove course</button>",
-      "css": ".ds-btn-danger { display: inline-block; border: 1px solid var(--danger, #d1242f); border-radius: 6px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; padding: 7px 10px; background: transparent; color: var(--danger, #d1242f); }\n.ds-btn-danger:hover { background: var(--danger-bg, rgba(209, 36, 47, 0.08)); }\n.ds-btn-danger:focus-visible { outline: 2px solid var(--danger, #d1242f); outline-offset: 1px; }"
+      "css": ".ds-btn-danger { display: inline-block; border: 1px solid var(--danger, #d1242f); border-radius: 6px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; padding: 7px 10px; background: transparent; color: var(--danger, #d1242f); }\n.ds-btn-danger:hover { background: var(--danger-bg, rgba(209, 36, 47, 0.08)); }\n.ds-btn-danger:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }"
     },
     {
       "name": "Icon Button",
@@ -570,13 +578,13 @@
       "refersTo": "job-row",
       "description": "The flight recorder's atom: one capture in the pipeline. Recessed inset row with title, metadata, and small nested actions.",
       "html": "<div class=\"ds-job\"><div class=\"ds-job-title\">Lecture 12 — Transactions</div><div class=\"ds-job-meta\">EECS 484 · 2026-fall · queued</div><div class=\"ds-job-actions\"><button class=\"ds-job-btn\">Retry</button><button class=\"ds-job-btn\">Discard</button></div></div>",
-      "css": ".ds-job { display: grid; gap: 4px; padding: 8px; border-radius: 6px; background: var(--job-bg, #f7f9fc); font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; color: var(--fg, #172033); }\n.ds-job-title { font-weight: 600; overflow-wrap: anywhere; }\n.ds-job-meta { color: var(--muted, #687286); font-size: 11px; overflow-wrap: anywhere; }\n.ds-job-actions { display: flex; gap: 6px; margin-top: 4px; }\n.ds-job-btn { border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 11px; padding: 5px 8px; background: var(--secondary-bg, #e9edf3); color: var(--secondary-fg, #26344c); }\n.ds-job-btn:hover { filter: brightness(0.95); }\n.ds-job-btn:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }"
+      "css": ".ds-job { display: grid; gap: 4px; padding: 8px; border-radius: 6px; background: var(--job-bg, #f7f9fc); font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; color: var(--fg, #172033); }\n.ds-job-title { font-weight: 600; overflow-wrap: anywhere; }\n.ds-job-meta { color: var(--muted, #687286); font-size: 11px; overflow-wrap: anywhere; }\n.ds-job-actions { display: flex; gap: 6px; margin-top: 4px; }\n.ds-job-btn { border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 11px; padding: 5px 8px; background: var(--secondary-bg, #e9edf3); color: var(--secondary-fg, #26344c); }\n.ds-job-btn:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }"
     },
     {
       "name": "Status Pill",
       "kind": "chip",
       "refersTo": "chip",
-      "description": "Compact state readout in the header and section headings: counts, drain state. Fully rounded chip fill.",
+      "description": "Compact state readout in the header and section headings: counts, drain state. Fully rounded chip fill at 11px/600. Options-page term chips run 12px with a Redline-on-hover remove glyph.",
       "html": "<span class=\"ds-pill\">idle</span> <span class=\"ds-pill\">3</span>",
       "css": ".ds-pill { display: inline-block; border-radius: 999px; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 11px; font-weight: 600; padding: 4px 8px; background: var(--pill-bg, #e6eaf0); color: var(--pill-fg, #4f5d72); white-space: nowrap; }"
     },
@@ -584,7 +592,7 @@
       "name": "Text Input",
       "kind": "input",
       "refersTo": "input",
-      "description": "Form field with inset fill and hairline border; error state driven by aria-invalid.",
+      "description": "Form field with inset fill and hairline border; 13px values; error state driven by aria-invalid. Focus ring is Signal Blue at 1px offset (2px on the native toggles).",
       "html": "<label class=\"ds-field\">Course code<input class=\"ds-input\" type=\"text\" value=\"EECS 484\" /></label>",
       "css": ".ds-field { display: grid; gap: 4px; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; color: var(--muted, #687286); }\n.ds-input { border: 1px solid var(--card-border, #dfe4ec); border-radius: 6px; background: var(--job-bg, #f7f9fc); color: var(--fg, #172033); font: inherit; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 13px; padding: 7px 8px; }\n.ds-input:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }\n.ds-input[aria-invalid=\"true\"] { border-color: var(--danger, #d1242f); outline-color: var(--danger, #d1242f); }"
     },
@@ -592,15 +600,15 @@
       "name": "Code Display",
       "kind": "custom",
       "refersTo": "code-display",
-      "description": "Machine evidence in mono: device-flow codes at 16px/700 tracked 0.08em; IDs truncate with ellipsis.",
-      "html": "<code class=\"ds-code\">AB12-CD34</code>",
-      "css": ".ds-code { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 16px; font-weight: 700; letter-spacing: 0.08em; padding: 8px 10px; border-radius: 6px; background: var(--job-bg, #f7f9fc); color: var(--fg, #172033); overflow-wrap: anywhere; }"
+      "description": "Machine evidence in mono: device-flow codes at 16px/700 tracked 0.08em in the popup, escalating to 28px/700 tracked 0.16em full-width on the authorization page.",
+      "html": "<code class=\"ds-code\">AB12-CD34</code> <code class=\"ds-code ds-code-lg\">AB12-CD34</code>",
+      "css": ".ds-code { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 16px; font-weight: 700; letter-spacing: 0.08em; padding: 8px 10px; border-radius: 6px; background: var(--job-bg, #f7f9fc); color: var(--fg, #172033); overflow-wrap: anywhere; }\n.ds-code-lg { display: block; width: 100%; text-align: center; font-size: 28px; letter-spacing: 0.16em; }"
     },
     {
       "name": "Status Notice",
       "kind": "custom",
       "refersTo": null,
-      "description": "One-line outcome readout in aria-live regions. Variants: info (slate mute), warn (caution amber), success (verified green, 600), error (redline).",
+      "description": "One-line outcome readout in aria-live regions. Resting tone is Caution Amber; variants: info (slate mute), warn (caution amber), success (verified green, 600), error (redline).",
       "html": "<p class=\"ds-notice ds-notice-success\">Lecture 12 uploaded</p>",
       "css": ".ds-notice { min-height: 16px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; color: var(--notice, #6b4b00); }\n.ds-notice-info { color: var(--muted, #687286); }\n.ds-notice-warn { color: var(--notice, #6b4b00); }\n.ds-notice-success { color: var(--success, #1a7f37); font-weight: 600; }\n.ds-notice-error { color: var(--danger, #d1242f); }"
     }
@@ -644,10 +652,10 @@
     ],
     "dos": [
       "Do separate surfaces with 1px Hairline borders and the Cool Chassis → Panel White → Inset Wash tonal ladder.",
-      "Do ship every color as a light/dark pair and let prefers-color-scheme pick; test both schemes.",
-      "Do reserve Signal Blue for primary actions, links, and focus rings — and give every interactive control that 2px focus outline at 1px offset.",
+      "Do ship every color as a light/dark pair and let `prefers-color-scheme` pick; test both schemes.",
+      "Do reserve Signal Blue for primary actions, links, and focus rings — and give every interactive control that 2px focus outline (1px offset; 2px on the settings toggles).",
       "Do use Verified Green, Caution Amber, and Redline only to report outcome state, always next to plain words.",
-      "Do hold the type scale: 11px labels/meta, 12px popup body, 13px options form copy, 14px (15px options) section titles, 18px (22px options) page titles.",
+      "Do hold the type scale: 11px labels/meta, 12px popup body, 13px options form copy, 14px (15px options) section titles, 18px (22px options) page titles — and let only the mono code readouts break it (16px popup, 28px authorization page).",
       "Do render machine facts — codes, IDs, raw labels — in the mono stack."
     ],
     "donts": [
