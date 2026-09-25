@@ -214,15 +214,16 @@ Chrome reads the registration.
 ## Authorize GitHub
 
 1. Open the extension popup and choose **Connect GitHub**.
-2. The uploader starts the GitHub App device flow. Two tabs open: a durable
-   **GitHub authorization** page holding the `user_code` as a large copyable
-   card (`Waiting for approval on GitHub… expires in M:SS`), and the prefilled
-   GitHub approval tab. The code is also copied to the clipboard
-   automatically, and the popup keeps a copy if you reopen it.
-3. Approve the App in the GitHub tab. If macOS asks whether the local
-   uploader may use the login keychain, choose **Always Allow** (both tabs
-   show this heads-up). The first access may prompt; a rebuilt binary can
-   prompt again.
+2. The uploader starts the GitHub App device flow and one durable
+   **GitHub authorization** tab opens, holding the `user_code` as a large
+   copyable card (`Waiting for approval on GitHub… expires in M:SS`). The
+   code is also copied to the clipboard automatically, and the popup keeps a
+   copy if you reopen it. GitHub is not opened for you — click **Open GitHub
+   approval page** on that tab when you are ready.
+3. Approve the App on the GitHub page. If macOS asks whether the local
+   uploader may use the login keychain, choose **Always Allow** (the
+   authorization tab shows this heads-up). The first access may prompt; a
+   rebuilt binary can prompt again.
 4. If GitHub does not prefill the code (some adblock/DNS setups strip
    `?user_code=`), copy the code from the authorization tab and enter it at
    `https://github.com/login/device`. Nothing else needs to change.

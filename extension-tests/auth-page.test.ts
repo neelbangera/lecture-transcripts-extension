@@ -95,13 +95,16 @@ describe("auth page rendering", () => {
     expect(element("auth-fallback").textContent).toContain("github.com/login/device");
   });
 
-  it("auto-opens the safe GitHub approval URL once", async () => {
+  it("does not auto-open GitHub and wires the guarded approval link", async () => {
     const mod = await mountAuth(searchFor());
     mod.installAuthPage(query(searchFor()));
-    expect(openedTabs).toEqual([SAFE_URL]);
+    expect(openedTabs).toEqual([]);
     expect(element<HTMLAnchorElement>("auth-github-link").href).toContain(
       "github.com/login/device",
     );
+    expect(element<HTMLAnchorElement>("auth-github-link").target).toBe("_blank");
+    expect(element("auth-github-link").classList.contains("hidden")).toBe(false);
+    expect(element("auth-status").textContent).toContain("Open the GitHub approval page");
   });
 
   it("never opens a non-GitHub verification URL and keeps the manual fallback", async () => {

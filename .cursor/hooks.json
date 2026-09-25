@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "[ ! -f '/Users/neel/.cursor/skills/impeccable/scripts/impeccable' ] || '/Users/neel/.cursor/skills/impeccable/scripts/impeccable' hook-before-edit",
+        "timeout": 5
+      }
+    ]
+  }
+}

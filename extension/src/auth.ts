@@ -5,18 +5,10 @@
  * user_code must live on a page that survives focus loss. This page is opened
  * by the popup with `?code=&url=&expires=` and shows the code alongside the
  * GitHub approval link, with a manual-entry fallback for environments where
- * the prefilled `?user_code=` query is stripped.
+ * the prefilled `?user_code=` query is stripped. GitHub is never opened
+ * automatically: this page is the landing surface and the owner clicks
+ * through to the approval page when ready.
  */
-
-interface TabsApi {
-  create(createProperties: { url: string }): void;
-}
-
-interface ChromeApi {
-  tabs?: TabsApi;
-}
-
-const chromeApi = (globalThis as { chrome?: ChromeApi }).chrome;
 
 function element<T extends HTMLElement>(id: string): T {
   const value = document.getElementById(id);
@@ -76,20 +68,6 @@ export function formatExpiry(expiresAt: string | null, nowMs: number): string {
   return `Waiting for approval on GitHub… expires in ${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-function openExternal(url: string): void {
-  try {
-    chromeApi?.tabs?.create({ url });
-    return;
-  } catch {
-    // Fall through to window.open when the tabs bridge is unavailable.
-  }
-  try {
-    window.open(url, "_blank", "noopener,noreferrer");
-  } catch {
-    // The visible link remains as the fallback.
-  }
-}
-
 async function copyText(text: string): Promise<boolean> {
   try {
     const clipboard = (
@@ -122,7 +100,7 @@ export function installAuthPage(search: string, options: { now?: () => number } 
   if (code) {
     authCode.textContent = code;
     authCodeRow.classList.remove("hidden");
-    authStatus.textContent = "Enter this code if GitHub does not already show it.";
+    authStatus.textContent = "This is your code. Open the GitHub approval page when you are ready.";
   } else {
     authCodeRow.classList.add("hidden");
     authCode.textContent = "";
@@ -130,7 +108,7 @@ export function installAuthPage(search: string, options: { now?: () => number } 
   }
 
   authCopy.textContent = code
-    ? "Approve the lecture-transcripts app in the GitHub tab. This page never receives a credential."
+    ? "Approve the lecture-transcripts app on GitHub when you are ready. This page never receives a credential."
     : "Start the connection from the extension popup to get a code.";
   authKeychain.classList.toggle("hidden", !code);
   authFallback.classList.toggle("hidden", !code);
@@ -138,7 +116,6 @@ export function installAuthPage(search: string, options: { now?: () => number } 
   if (isSafeGitHubUrl(url)) {
     authGitHubLink.href = url;
     authGitHubLink.classList.remove("hidden");
-    openExternal(url);
   } else {
     authGitHubLink.classList.add("hidden");
     authGitHubLink.removeAttribute("href");
