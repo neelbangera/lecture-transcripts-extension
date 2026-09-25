@@ -9,6 +9,7 @@ import {
 import {
   EXPIRY_MILESTONE_ANNOUNCEMENTS,
   expiryMilestone,
+  formatCapturedAt,
   statusLabel,
   type ExpiryMilestone,
   type ExtensionSnapshot,
@@ -278,7 +279,7 @@ function renderAuthorization(status: UploaderStatus | null): void {
   authorization.classList.remove("hidden");
   authorizationKeychain.classList.remove("hidden");
   authorizationCopy.textContent = auth.userCode
-    ? "Approve the lecture-transcripts app in the browser tab that just opened. This popup never receives a credential."
+    ? "Your code page is open in a new tab. Approve the lecture-transcripts app on GitHub when you are ready. This popup never receives a credential."
     : "Finish the GitHub authorization in your browser. The local uploader owns the credential.";
 
   if (auth.userCode) {
@@ -343,7 +344,7 @@ function renderOverflow(notices: OverflowNotice[]): void {
     meta.className = "job-meta";
     meta.textContent = notice.staleLectureKey
       ? `was ${notice.staleLectureKey} · ${notice.lectureDate}`
-      : `${notice.lectureDate} · captured ${notice.capturedAt}`;
+      : `${notice.lectureDate} · captured ${formatCapturedAt(notice.capturedAt)}`;
     item.append(titleRow, meta);
     overflowList.append(item);
   }

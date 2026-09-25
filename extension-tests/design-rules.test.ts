@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import {
   EXPIRY_MILESTONE_ANNOUNCEMENTS,
   expiryMilestone,
+  formatCapturedAt,
 } from "../extension/src/status";
 
 const popupCss = readFileSync(
@@ -66,17 +67,78 @@ function tokensIn(block: string): Record<string, string> {
   return tokens;
 }
 
-function schemeTokens(): { light: Record<string, string>; dark: Record<string, string> } {
+/** Extract the `--token: rgba(r, g, b, a)` washes declared inside one block. */
+function washesIn(block: string): Record<string, [number, number, number, number]> {
+  const washes: Record<string, [number, number, number, number]> = {};
+  for (const match of block.matchAll(
+    /--([a-z-]+):\s*rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([0-9.]+)\s*\)\s*;/g,
+  )) {
+    washes[match[1]] = [
+      Number(match[2]),
+      Number(match[3]),
+      Number(match[4]),
+      Number(match[5]),
+    ];
+  }
+  return washes;
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  let normalized = hex.replace("#", "").toLowerCase();
+  if (normalized.length === 3) {
+    normalized = normalized
+      .split("")
+      .map((character) => character + character)
+      .join("");
+  }
+  return [
+    parseInt(normalized.slice(0, 2), 16),
+    parseInt(normalized.slice(2, 4), 16),
+    parseInt(normalized.slice(4, 6), 16),
+  ];
+}
+
+function rgbToHex([r, g, b]: [number, number, number]): string {
+  return `#${[r, g, b]
+    .map((value) => Math.round(value).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+/** Composite a translucent wash over an opaque backdrop into one hex. */
+function compositeWash(
+  wash: [number, number, number, number],
+  backdropHex: string,
+): string {
+  const [wr, wg, wb, alpha] = wash;
+  const [br, bg, bb] = hexToRgb(backdropHex);
+  return rgbToHex([
+    wr * alpha + br * (1 - alpha),
+    wg * alpha + bg * (1 - alpha),
+    wb * alpha + bb * (1 - alpha),
+  ]);
+}
+
+function schemeTokens(): {
+  light: Record<string, string>;
+  dark: Record<string, string>;
+  lightWashes: Record<string, [number, number, number, number]>;
+  darkWashes: Record<string, [number, number, number, number]>;
+} {
   const rootMatch = popupCss.match(/:root\s*\{([\s\S]*?)\n\}/);
   const darkMatch = popupCss.match(
     /@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([\s\S]*?)\n\s*\}/,
   );
   if (!rootMatch || !darkMatch) throw new Error("popup.css token blocks not found");
-  return { light: tokensIn(rootMatch[1]), dark: tokensIn(darkMatch[1]) };
+  return {
+    light: tokensIn(rootMatch[1]),
+    dark: tokensIn(darkMatch[1]),
+    lightWashes: washesIn(rootMatch[1]),
+    darkWashes: washesIn(darkMatch[1]),
+  };
 }
 
 describe("WCAG contrast on design tokens", () => {
-  const { light, dark } = schemeTokens();
+  const { light, dark, lightWashes, darkWashes } = schemeTokens();
 
   it("parses a full light and dark token set", () => {
     expect(Object.keys(light).length).toBeGreaterThan(10);
@@ -115,6 +177,45 @@ describe("WCAG contrast on design tokens", () => {
           contrastRatio(ring, surface),
           `${name} focus ring on ${label}`,
         ).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    it(`${name} scheme status chips meet AA over their wash`, () => {
+      const washes = name === "light" ? lightWashes : darkWashes;
+      const jobBg = tokens["job-bg"];
+      // Chips composite their semantic wash over the job row background, so
+      // the ink has to clear AA against the blended color, not the raw wash.
+      const chips: Array<[string, string, string]> = [
+        ["success chip", tokens["success"], "success-bg"],
+        ["warn chip", tokens["notice"], "warn-bg"],
+        ["error chip", tokens["danger"], "danger-bg"],
+      ];
+      for (const [label, ink, washToken] of chips) {
+        const wash = washes[washToken];
+        expect(wash, `${name} missing ${washToken}`).toBeTruthy();
+        const surface = compositeWash(wash, jobBg);
+        expect(
+          contrastRatio(ink, surface),
+          `${name} ${label} (${ink} on ${surface})`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+      // The neutral chip is ink on an opaque fill.
+      expect(
+        contrastRatio(tokens["pill-fg"], tokens["pill-bg"]),
+        `${name} neutral chip`,
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it(`${name} scheme notice inks meet AA on their surfaces`, () => {
+      for (const [label, ink] of [
+        ["success notice", tokens["success"]],
+        ["warn notice", tokens["notice"]],
+        ["error notice", tokens["danger"]],
+      ] as const) {
+        expect(
+          contrastRatio(ink, tokens["card-bg"]),
+          `${name} ${label} on card`,
+        ).toBeGreaterThanOrEqual(4.5);
       }
     });
   }
@@ -170,5 +271,11 @@ describe("expiry milestone announcements", () => {
     for (const text of Object.values(EXPIRY_MILESTONE_ANNOUNCEMENTS)) {
       expect(text.length).toBeGreaterThan(0);
     }
+  });
+
+  it("renders overflow capture times as compact UTC, never a raw ISO stamp", () => {
+    expect(formatCapturedAt("2026-09-21T18:02:00Z")).toBe("2026-09-21 18:02");
+    // A malformed stamp stays visible instead of being hidden by a guess.
+    expect(formatCapturedAt("not-a-stamp")).toBe("not-a-stamp");
   });
 });

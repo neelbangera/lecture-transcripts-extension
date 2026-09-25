@@ -244,6 +244,16 @@ export const EXPIRY_MILESTONE_ANNOUNCEMENTS: Record<ExpiryMilestone, string> = {
   expired: "The code expired.",
 };
 
+/**
+ * Compact UTC readout for overflow metadata: `2026-09-21T18:02:00Z` becomes
+ * `2026-09-21 18:02`. An unparseable stamp is returned unchanged rather than
+ * hidden, so a bad value stays inspectable.
+ */
+export function formatCapturedAt(capturedAt: string): string {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}):\d{2}Z$/.exec(capturedAt);
+  return match ? `${match[1]} ${match[2]}` : capturedAt;
+}
+
 export function errorLabel(category: string): string {
   return LABELS[category] ?? statusLabel(category);
 }

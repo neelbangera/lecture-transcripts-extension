@@ -13,10 +13,10 @@
   --secondary-fg: #26344c;
   --notice: #6b4b00;
   --job-bg: #f7f9fc;
-  --success: #1a7f37;
-  --danger: #d1242f;
-  --danger-bg: rgba(209, 36, 47, 0.08);
-  --success-bg: rgba(26, 127, 55, 0.08);
+  --success: #186b31;
+  --danger: #c2261f;
+  --danger-bg: rgba(194, 38, 31, 0.08);
+  --success-bg: rgba(24, 107, 49, 0.08);
   --warn-bg: rgba(107, 75, 0, 0.08);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg);
@@ -178,12 +178,21 @@ h2 { font-size: 14px; line-height: 1.3; }
 
 .job-title-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
 }
 
-.job-title { font-weight: 600; overflow-wrap: anywhere; flex: 1; min-width: 0; }
+/* The title keeps its natural width and never shrinks below 12ch; a status
+   chip that cannot share the line wraps beneath it instead of crushing the
+   lecture key into a vertical column of single characters. */
+.job-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  flex: 1 1 auto;
+  min-width: 12ch;
+}
 .job-meta { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 .job-actions { display: flex; gap: 6px; margin-top: 4px; }
 .job-actions .button { font-size: 11px; padding: 5px 8px; }
@@ -195,7 +204,11 @@ h2 { font-size: 14px; line-height: 1.3; }
   font-size: 11px;
   font-weight: 600;
   padding: 2px 7px;
-  white-space: nowrap;
+  flex: 0 0 auto;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
   letter-spacing: 0.01em;
 }
 

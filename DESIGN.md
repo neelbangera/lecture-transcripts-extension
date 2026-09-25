@@ -27,11 +27,11 @@ colors:
   inset-wash-dark: "#1f2731"
   caution-amber: "#6b4b00"
   caution-amber-dark: "#e3b341"
-  verified-green: "#1a7f37"
+  verified-green: "#186b31"
   verified-green-dark: "#3fb950"
-  redline: "#d1242f"
+  redline: "#c2261f"
   redline-dark: "#ff7b72"
-  redline-wash: "rgba(209, 36, 47, 0.08)"
+  redline-wash: "rgba(194, 38, 31, 0.08)"
   redline-wash-dark: "rgba(248, 81, 73, 0.15)"
   success-wash: "rgba(26, 127, 55, 0.08)"
   success-wash-dark: "rgba(63, 185, 80, 0.15)"
@@ -195,8 +195,8 @@ A cool, low-chroma operational palette with exactly one accent; the values share
 
 ### Status
 - **Caution Amber** (#6b4b00, dark #e3b341): Attention notices — pending handoffs, expiring authorization, warnings.
-- **Verified Green** (#1a7f37, dark #3fb950): Success notices only; the color of a durably accepted capture. Always paired with weight 600.
-- **Redline** (#d1242f, dark #ff7b72) / **Redline Wash** (rgba(209,36,47,0.08), dark rgba(248,81,73,0.15)): Errors, invalid fields, destructive controls, and their tinted backgrounds.
+- **Verified Green** (#186b31, dark #3fb950): Success notices only; the color of a durably accepted capture. Always paired with weight 600.
+- **Redline** (#c2261f, dark #ff7b72) / **Redline Wash** (rgba(194,38,31,0.08), dark rgba(248,81,73,0.15)): Errors, invalid fields, destructive controls, and their tinted backgrounds.
 
 ### Named Rules
 **The One Accent Rule.** Signal Blue is reserved for primary actions, links, and focus rings. Its rarity is what makes the next action findable; it is never chrome, never decoration, never a status.
@@ -281,7 +281,7 @@ Compact utilitarian controls: precise hit targets, immediate state changes, fact
 One-line outcome readouts, 12px text, minimum 16px tall so the layout never jumps: `notice-info` in Slate Mute, `notice-warn` in Caution Amber, `notice-success` in Verified Green at weight 600, `notice-error` in Redline. The unclassed resting tone of a `.notice` is Slate Mute (the info level); amber, green, and red only appear with their explicit modifier class. They live in `aria-live` regions — the color reports the outcome, the words state it. Device-flow countdowns are the exception: the per-second tick is `aria-live="off"` and only the three milestones (ready, under a minute, expired) go to a visually-hidden polite announcer.
 
 ### Job Rows (signature)
-Recessed Inset Wash rows (6px radius, 8px padding) in a tight grid list: title at 12px/600 on the left, a compact status chip on the right (10px/600, fully round, tinted wash background in the semantic color), metadata at 11px Slate Mute below, and smaller nested action buttons (11px, padding 5px 8px). Each row is one capture in the pipeline — the visual atom of the flight recorder. Status chips pair the semantic color with the status words so the queue is scannable at a glance.
+Recessed Inset Wash rows (6px radius, 8px padding) in a tight grid list: title at 12px/600 on the left, a compact status chip on the right (11px/600, fully round, tinted wash background in the semantic color), metadata at 11px Slate Mute below, and smaller nested action buttons (11px, padding 5px 8px). Each row is one capture in the pipeline — the visual atom of the flight recorder. Status chips pair the semantic color with the status words so the queue is scannable at a glance. A chip never shrinks its title into a vertical column: the title keeps at least 12ch and a chip that cannot share the line wraps beneath it.
 
 ### Code Chips (signature)
 Mono readouts on Inset Wash at 6px radius: device-flow codes at 16px/700 with 0.08em tracking in the popup (larger than any headline there — they must be transcribed), escalating to 28px/700 with 0.16em tracking, full-width and centered, on the authorization page. Extension IDs run 11px/500 in Slate Mute, truncated with ellipsis past 150px.
