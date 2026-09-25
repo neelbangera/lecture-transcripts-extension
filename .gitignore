@@ -26,3 +26,10 @@ coverage/
 
 # Unrelated local coursework artifact, not part of this project.
 /proj1.tar.gz
+
+# Machine-local editor/agent tooling and per-machine design sidecars. Hook
+# settings carry absolute home-directory paths and must never be committed.
+/.claude/
+/.codex/
+/.cursor/
+/.impeccable/config.local.json

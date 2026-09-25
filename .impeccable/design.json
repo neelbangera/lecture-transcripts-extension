@@ -1,0 +1,662 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-25T02:54:08Z",
+  "title": "Design System: Lecture Transcripts",
+  "extensions": {
+    "colorMeta": {
+      "signal-blue": {
+        "role": "primary",
+        "displayName": "Signal Blue",
+        "canonical": "#1f6feb",
+        "purpose": "Primary actions, authorization links, focus rings. The only accent.",
+        "tonalRamp": [
+          "oklch(15.0% 0.202 259.7)",
+          "oklch(26.4% 0.202 259.7)",
+          "oklch(37.9% 0.202 259.7)",
+          "oklch(49.3% 0.202 259.7)",
+          "oklch(60.7% 0.202 259.7)",
+          "oklch(72.1% 0.202 259.7)",
+          "oklch(83.6% 0.202 259.7)",
+          "oklch(95.0% 0.202 259.7)"
+        ]
+      },
+      "signal-blue-dark": {
+        "role": "primary",
+        "displayName": "Signal Blue (dark)",
+        "canonical": "#2f81f7",
+        "purpose": "Dark-scheme counterpart of Signal Blue.",
+        "tonalRamp": [
+          "oklch(15.0% 0.193 258.3)",
+          "oklch(26.4% 0.193 258.3)",
+          "oklch(37.9% 0.193 258.3)",
+          "oklch(49.3% 0.193 258.3)",
+          "oklch(60.7% 0.193 258.3)",
+          "oklch(72.1% 0.193 258.3)",
+          "oklch(83.6% 0.193 258.3)",
+          "oklch(95.0% 0.193 258.3)"
+        ]
+      },
+      "on-signal": {
+        "role": "neutral",
+        "displayName": "On-Signal",
+        "canonical": "#ffffff",
+        "purpose": "Text and icons on Signal Blue fills.",
+        "tonalRamp": [
+          "oklch(15.0% 0.000 89.9)",
+          "oklch(26.4% 0.000 89.9)",
+          "oklch(37.9% 0.000 89.9)",
+          "oklch(49.3% 0.000 89.9)",
+          "oklch(60.7% 0.000 89.9)",
+          "oklch(72.1% 0.000 89.9)",
+          "oklch(83.6% 0.000 89.9)",
+          "oklch(95.0% 0.000 89.9)"
+        ]
+      },
+      "cool-chassis": {
+        "role": "neutral",
+        "displayName": "Cool Chassis",
+        "canonical": "#f5f7fa",
+        "purpose": "Page and popup background — the chassis every panel mounts on.",
+        "tonalRamp": [
+          "oklch(15.0% 0.005 258.3)",
+          "oklch(26.4% 0.005 258.3)",
+          "oklch(37.9% 0.005 258.3)",
+          "oklch(49.3% 0.005 258.3)",
+          "oklch(60.7% 0.005 258.3)",
+          "oklch(72.1% 0.005 258.3)",
+          "oklch(83.6% 0.005 258.3)",
+          "oklch(95.0% 0.005 258.3)"
+        ]
+      },
+      "cool-chassis-dark": {
+        "role": "neutral",
+        "displayName": "Cool Chassis (dark)",
+        "canonical": "#12161d",
+        "purpose": "Dark-scheme chassis background.",
+        "tonalRamp": [
+          "oklch(15.0% 0.015 261.6)",
+          "oklch(26.4% 0.015 261.6)",
+          "oklch(37.9% 0.015 261.6)",
+          "oklch(49.3% 0.015 261.6)",
+          "oklch(60.7% 0.015 261.6)",
+          "oklch(72.1% 0.015 261.6)",
+          "oklch(83.6% 0.015 261.6)",
+          "oklch(95.0% 0.015 261.6)"
+        ]
+      },
+      "ink-readout": {
+        "role": "neutral",
+        "displayName": "Ink Readout",
+        "canonical": "#172033",
+        "purpose": "Primary text: headings, job titles, field values.",
+        "tonalRamp": [
+          "oklch(15.0% 0.039 264.4)",
+          "oklch(26.4% 0.039 264.4)",
+          "oklch(37.9% 0.039 264.4)",
+          "oklch(49.3% 0.039 264.4)",
+          "oklch(60.7% 0.039 264.4)",
+          "oklch(72.1% 0.039 264.4)",
+          "oklch(83.6% 0.039 264.4)",
+          "oklch(95.0% 0.039 264.4)"
+        ]
+      },
+      "ink-readout-dark": {
+        "role": "neutral",
+        "displayName": "Ink Readout (dark)",
+        "canonical": "#e6eaf2",
+        "purpose": "Dark-scheme primary text.",
+        "tonalRamp": [
+          "oklch(15.0% 0.012 264.5)",
+          "oklch(26.4% 0.012 264.5)",
+          "oklch(37.9% 0.012 264.5)",
+          "oklch(49.3% 0.012 264.5)",
+          "oklch(60.7% 0.012 264.5)",
+          "oklch(72.1% 0.012 264.5)",
+          "oklch(83.6% 0.012 264.5)",
+          "oklch(95.0% 0.012 264.5)"
+        ]
+      },
+      "slate-mute": {
+        "role": "neutral",
+        "displayName": "Slate Mute",
+        "canonical": "#687286",
+        "purpose": "Secondary text: subtitles, metadata, field labels, footer versions.",
+        "tonalRamp": [
+          "oklch(15.0% 0.033 264.3)",
+          "oklch(26.4% 0.033 264.3)",
+          "oklch(37.9% 0.033 264.3)",
+          "oklch(49.3% 0.033 264.3)",
+          "oklch(60.7% 0.033 264.3)",
+          "oklch(72.1% 0.033 264.3)",
+          "oklch(83.6% 0.033 264.3)",
+          "oklch(95.0% 0.033 264.3)"
+        ]
+      },
+      "slate-mute-dark": {
+        "role": "neutral",
+        "displayName": "Slate Mute (dark)",
+        "canonical": "#9aa7bb",
+        "purpose": "Dark-scheme secondary text.",
+        "tonalRamp": [
+          "oklch(15.0% 0.033 258.9)",
+          "oklch(26.4% 0.033 258.9)",
+          "oklch(37.9% 0.033 258.9)",
+          "oklch(49.3% 0.033 258.9)",
+          "oklch(60.7% 0.033 258.9)",
+          "oklch(72.1% 0.033 258.9)",
+          "oklch(83.6% 0.033 258.9)",
+          "oklch(95.0% 0.033 258.9)"
+        ]
+      },
+      "panel-white": {
+        "role": "neutral",
+        "displayName": "Panel White",
+        "canonical": "#ffffff",
+        "purpose": "Card and settings-section surfaces on the chassis.",
+        "tonalRamp": [
+          "oklch(15.0% 0.000 89.9)",
+          "oklch(26.4% 0.000 89.9)",
+          "oklch(37.9% 0.000 89.9)",
+          "oklch(49.3% 0.000 89.9)",
+          "oklch(60.7% 0.000 89.9)",
+          "oklch(72.1% 0.000 89.9)",
+          "oklch(83.6% 0.000 89.9)",
+          "oklch(95.0% 0.000 89.9)"
+        ]
+      },
+      "panel-white-dark": {
+        "role": "neutral",
+        "displayName": "Panel White (dark)",
+        "canonical": "#1a2029",
+        "purpose": "Dark-scheme card surface.",
+        "tonalRamp": [
+          "oklch(15.0% 0.019 258.4)",
+          "oklch(26.4% 0.019 258.4)",
+          "oklch(37.9% 0.019 258.4)",
+          "oklch(49.3% 0.019 258.4)",
+          "oklch(60.7% 0.019 258.4)",
+          "oklch(72.1% 0.019 258.4)",
+          "oklch(83.6% 0.019 258.4)",
+          "oklch(95.0% 0.019 258.4)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#dfe4ec",
+        "purpose": "1px structural borders on cards, fields, error lists.",
+        "tonalRamp": [
+          "oklch(15.0% 0.012 259.8)",
+          "oklch(26.4% 0.012 259.8)",
+          "oklch(37.9% 0.012 259.8)",
+          "oklch(49.3% 0.012 259.8)",
+          "oklch(60.7% 0.012 259.8)",
+          "oklch(72.1% 0.012 259.8)",
+          "oklch(83.6% 0.012 259.8)",
+          "oklch(95.0% 0.012 259.8)"
+        ]
+      },
+      "hairline-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)",
+        "canonical": "#2a3340",
+        "purpose": "Dark-scheme border color.",
+        "tonalRamp": [
+          "oklch(15.0% 0.026 257.5)",
+          "oklch(26.4% 0.026 257.5)",
+          "oklch(37.9% 0.026 257.5)",
+          "oklch(49.3% 0.026 257.5)",
+          "oklch(60.7% 0.026 257.5)",
+          "oklch(72.1% 0.026 257.5)",
+          "oklch(83.6% 0.026 257.5)",
+          "oklch(95.0% 0.026 257.5)"
+        ]
+      },
+      "chip-fill": {
+        "role": "neutral",
+        "displayName": "Chip Fill",
+        "canonical": "#e6eaf0",
+        "purpose": "Status pills, counts, term chips, inline code backgrounds.",
+        "tonalRamp": [
+          "oklch(15.0% 0.009 258.3)",
+          "oklch(26.4% 0.009 258.3)",
+          "oklch(37.9% 0.009 258.3)",
+          "oklch(49.3% 0.009 258.3)",
+          "oklch(60.7% 0.009 258.3)",
+          "oklch(72.1% 0.009 258.3)",
+          "oklch(83.6% 0.009 258.3)",
+          "oklch(95.0% 0.009 258.3)"
+        ]
+      },
+      "chip-fill-dark": {
+        "role": "neutral",
+        "displayName": "Chip Fill (dark)",
+        "canonical": "#232b36",
+        "purpose": "Dark-scheme chip surface.",
+        "tonalRamp": [
+          "oklch(15.0% 0.023 256.4)",
+          "oklch(26.4% 0.023 256.4)",
+          "oklch(37.9% 0.023 256.4)",
+          "oklch(49.3% 0.023 256.4)",
+          "oklch(60.7% 0.023 256.4)",
+          "oklch(72.1% 0.023 256.4)",
+          "oklch(83.6% 0.023 256.4)",
+          "oklch(95.0% 0.023 256.4)"
+        ]
+      },
+      "chip-ink": {
+        "role": "neutral",
+        "displayName": "Chip Ink",
+        "canonical": "#4f5d72",
+        "purpose": "Text inside pills and chips.",
+        "tonalRamp": [
+          "oklch(15.0% 0.038 258.4)",
+          "oklch(26.4% 0.038 258.4)",
+          "oklch(37.9% 0.038 258.4)",
+          "oklch(49.3% 0.038 258.4)",
+          "oklch(60.7% 0.038 258.4)",
+          "oklch(72.1% 0.038 258.4)",
+          "oklch(83.6% 0.038 258.4)",
+          "oklch(95.0% 0.038 258.4)"
+        ]
+      },
+      "chip-ink-dark": {
+        "role": "neutral",
+        "displayName": "Chip Ink (dark)",
+        "canonical": "#b6c2d4",
+        "purpose": "Dark-scheme chip text.",
+        "tonalRamp": [
+          "oklch(15.0% 0.029 258.4)",
+          "oklch(26.4% 0.029 258.4)",
+          "oklch(37.9% 0.029 258.4)",
+          "oklch(49.3% 0.029 258.4)",
+          "oklch(60.7% 0.029 258.4)",
+          "oklch(72.1% 0.029 258.4)",
+          "oklch(83.6% 0.029 258.4)",
+          "oklch(95.0% 0.029 258.4)"
+        ]
+      },
+      "quiet-fill": {
+        "role": "neutral",
+        "displayName": "Quiet Fill",
+        "canonical": "#e9edf3",
+        "purpose": "Secondary and icon button surfaces — available but not shouting.",
+        "tonalRamp": [
+          "oklch(15.0% 0.009 258.3)",
+          "oklch(26.4% 0.009 258.3)",
+          "oklch(37.9% 0.009 258.3)",
+          "oklch(49.3% 0.009 258.3)",
+          "oklch(60.7% 0.009 258.3)",
+          "oklch(72.1% 0.009 258.3)",
+          "oklch(83.6% 0.009 258.3)",
+          "oklch(95.0% 0.009 258.3)"
+        ]
+      },
+      "quiet-fill-dark": {
+        "role": "neutral",
+        "displayName": "Quiet Fill (dark)",
+        "canonical": "#242c37",
+        "purpose": "Dark-scheme secondary button surface.",
+        "tonalRamp": [
+          "oklch(15.0% 0.023 256.4)",
+          "oklch(26.4% 0.023 256.4)",
+          "oklch(37.9% 0.023 256.4)",
+          "oklch(49.3% 0.023 256.4)",
+          "oklch(60.7% 0.023 256.4)",
+          "oklch(72.1% 0.023 256.4)",
+          "oklch(83.6% 0.023 256.4)",
+          "oklch(95.0% 0.023 256.4)"
+        ]
+      },
+      "quiet-ink": {
+        "role": "neutral",
+        "displayName": "Quiet Ink",
+        "canonical": "#26344c",
+        "purpose": "Text and icons on quiet fills.",
+        "tonalRamp": [
+          "oklch(15.0% 0.047 260.9)",
+          "oklch(26.4% 0.047 260.9)",
+          "oklch(37.9% 0.047 260.9)",
+          "oklch(49.3% 0.047 260.9)",
+          "oklch(60.7% 0.047 260.9)",
+          "oklch(72.1% 0.047 260.9)",
+          "oklch(83.6% 0.047 260.9)",
+          "oklch(95.0% 0.047 260.9)"
+        ]
+      },
+      "quiet-ink-dark": {
+        "role": "neutral",
+        "displayName": "Quiet Ink (dark)",
+        "canonical": "#d5dce8",
+        "purpose": "Dark-scheme quiet text.",
+        "tonalRamp": [
+          "oklch(15.0% 0.018 261.3)",
+          "oklch(26.4% 0.018 261.3)",
+          "oklch(37.9% 0.018 261.3)",
+          "oklch(49.3% 0.018 261.3)",
+          "oklch(60.7% 0.018 261.3)",
+          "oklch(72.1% 0.018 261.3)",
+          "oklch(83.6% 0.018 261.3)",
+          "oklch(95.0% 0.018 261.3)"
+        ]
+      },
+      "inset-wash": {
+        "role": "neutral",
+        "displayName": "Inset Wash",
+        "canonical": "#f7f9fc",
+        "purpose": "Recessed readouts: job rows, form fields, code chips — one tonal step deeper than the card.",
+        "tonalRamp": [
+          "oklch(15.0% 0.005 258.3)",
+          "oklch(26.4% 0.005 258.3)",
+          "oklch(37.9% 0.005 258.3)",
+          "oklch(49.3% 0.005 258.3)",
+          "oklch(60.7% 0.005 258.3)",
+          "oklch(72.1% 0.005 258.3)",
+          "oklch(83.6% 0.005 258.3)",
+          "oklch(95.0% 0.005 258.3)"
+        ]
+      },
+      "inset-wash-dark": {
+        "role": "neutral",
+        "displayName": "Inset Wash (dark)",
+        "canonical": "#1f2731",
+        "purpose": "Dark-scheme recessed surface.",
+        "tonalRamp": [
+          "oklch(15.0% 0.022 254.2)",
+          "oklch(26.4% 0.022 254.2)",
+          "oklch(37.9% 0.022 254.2)",
+          "oklch(49.3% 0.022 254.2)",
+          "oklch(60.7% 0.022 254.2)",
+          "oklch(72.1% 0.022 254.2)",
+          "oklch(83.6% 0.022 254.2)",
+          "oklch(95.0% 0.022 254.2)"
+        ]
+      },
+      "caution-amber": {
+        "role": "status",
+        "displayName": "Caution Amber",
+        "canonical": "#6b4b00",
+        "purpose": "Attention notices: pending handoffs, expiring authorization, warnings.",
+        "tonalRamp": [
+          "oklch(15.0% 0.090 80.5)",
+          "oklch(26.4% 0.090 80.5)",
+          "oklch(37.9% 0.090 80.5)",
+          "oklch(49.3% 0.090 80.5)",
+          "oklch(60.7% 0.090 80.5)",
+          "oklch(72.1% 0.090 80.5)",
+          "oklch(83.6% 0.090 80.5)",
+          "oklch(95.0% 0.090 80.5)"
+        ]
+      },
+      "caution-amber-dark": {
+        "role": "status",
+        "displayName": "Caution Amber (dark)",
+        "canonical": "#e3b341",
+        "purpose": "Dark-scheme warning text.",
+        "tonalRamp": [
+          "oklch(15.0% 0.139 85.2)",
+          "oklch(26.4% 0.139 85.2)",
+          "oklch(37.9% 0.139 85.2)",
+          "oklch(49.3% 0.139 85.2)",
+          "oklch(60.7% 0.139 85.2)",
+          "oklch(72.1% 0.139 85.2)",
+          "oklch(83.6% 0.139 85.2)",
+          "oklch(95.0% 0.139 85.2)"
+        ]
+      },
+      "verified-green": {
+        "role": "status",
+        "displayName": "Verified Green",
+        "canonical": "#1a7f37",
+        "purpose": "Success notices only — a durably accepted capture. Always weight 600.",
+        "tonalRamp": [
+          "oklch(15.0% 0.140 148.0)",
+          "oklch(26.4% 0.140 148.0)",
+          "oklch(37.9% 0.140 148.0)",
+          "oklch(49.3% 0.140 148.0)",
+          "oklch(60.7% 0.140 148.0)",
+          "oklch(72.1% 0.140 148.0)",
+          "oklch(83.6% 0.140 148.0)",
+          "oklch(95.0% 0.140 148.0)"
+        ]
+      },
+      "verified-green-dark": {
+        "role": "status",
+        "displayName": "Verified Green (dark)",
+        "canonical": "#3fb950",
+        "purpose": "Dark-scheme success text.",
+        "tonalRamp": [
+          "oklch(15.0% 0.181 145.6)",
+          "oklch(26.4% 0.181 145.6)",
+          "oklch(37.9% 0.181 145.6)",
+          "oklch(49.3% 0.181 145.6)",
+          "oklch(60.7% 0.181 145.6)",
+          "oklch(72.1% 0.181 145.6)",
+          "oklch(83.6% 0.181 145.6)",
+          "oklch(95.0% 0.181 145.6)"
+        ]
+      },
+      "redline": {
+        "role": "status",
+        "displayName": "Redline",
+        "canonical": "#d1242f",
+        "purpose": "Errors, invalid fields, destructive controls.",
+        "tonalRamp": [
+          "oklch(15.0% 0.206 24.6)",
+          "oklch(26.4% 0.206 24.6)",
+          "oklch(37.9% 0.206 24.6)",
+          "oklch(49.3% 0.206 24.6)",
+          "oklch(60.7% 0.206 24.6)",
+          "oklch(72.1% 0.206 24.6)",
+          "oklch(83.6% 0.206 24.6)",
+          "oklch(95.0% 0.206 24.6)"
+        ]
+      },
+      "redline-dark": {
+        "role": "status",
+        "displayName": "Redline (dark)",
+        "canonical": "#ff7b72",
+        "purpose": "Dark-scheme error and destructive color.",
+        "tonalRamp": [
+          "oklch(15.0% 0.163 25.8)",
+          "oklch(26.4% 0.163 25.8)",
+          "oklch(37.9% 0.163 25.8)",
+          "oklch(49.3% 0.163 25.8)",
+          "oklch(60.7% 0.163 25.8)",
+          "oklch(72.1% 0.163 25.8)",
+          "oklch(83.6% 0.163 25.8)",
+          "oklch(95.0% 0.163 25.8)"
+        ]
+      },
+      "redline-wash": {
+        "role": "status",
+        "displayName": "Redline Wash",
+        "canonical": "rgba(209, 36, 47, 0.08)",
+        "purpose": "Tinted error backgrounds: danger-button hover, error list. No ramp — a translucent wash."
+      },
+      "redline-wash-dark": {
+        "role": "status",
+        "displayName": "Redline Wash (dark)",
+        "canonical": "rgba(248, 81, 73, 0.15)",
+        "purpose": "Dark-scheme error wash."
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Popup page title (18px). Options page steps up to 22px for its single h1."
+      },
+      "headline-page": {
+        "displayName": "Headline (page)",
+        "purpose": "Options-page h1 at 22px — the long-lived document title."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings inside cards at 14px (15px on the options page)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default 12px popup copy: notices, job rows, buttons, header summary."
+      },
+      "body-lg": {
+        "displayName": "Body Large",
+        "purpose": "Options-page form copy and input values at 13px."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Pills, counts, course legends at 11px/600 — compact and scannable."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Job metadata and footer versions at 11px/400 — the quietest legible tier."
+      },
+      "code-display": {
+        "displayName": "Code Display",
+        "purpose": "Device-flow authorization codes at 16px/700 with 0.08em tracking."
+      },
+      "code-inline": {
+        "displayName": "Code Inline",
+        "purpose": "Inline code and extension ID chips at 11px mono."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action accent: Connect GitHub, Save, authorizing links. 6px radius, 7px 10px padding, 12px system type.",
+      "html": "<button class=\"ds-btn-primary\">Connect GitHub</button>",
+      "css": ".ds-btn-primary { display: inline-block; border: 0; border-radius: 6px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; padding: 7px 10px; background: var(--primary-bg, #1f6feb); color: var(--primary-fg, #fff); }\n.ds-btn-primary:hover { filter: brightness(1.06); }\n.ds-btn-primary:active { filter: brightness(0.95); }\n.ds-btn-primary:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }\n.ds-btn-primary:disabled { cursor: not-allowed; opacity: 0.55; filter: none; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Available-but-not-primary actions: Refresh, Reset, Reload, Clear uploaded. Quiet fill on quiet ink.",
+      "html": "<button class=\"ds-btn-secondary\">Refresh</button>",
+      "css": ".ds-btn-secondary { display: inline-block; border: 0; border-radius: 6px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; padding: 7px 10px; background: var(--secondary-bg, #e9edf3); color: var(--secondary-fg, #26344c); }\n.ds-btn-secondary:hover { filter: brightness(0.95); }\n.ds-btn-secondary:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }\n.ds-btn-secondary:disabled { cursor: not-allowed; opacity: 0.55; filter: none; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive controls (Remove course, Discard) and validation failures. Transparent fill with a 1px Redline outline; hover tints Redline Wash.",
+      "html": "<button class=\"ds-btn-danger\">Remove course</button>",
+      "css": ".ds-btn-danger { display: inline-block; border: 1px solid var(--danger, #d1242f); border-radius: 6px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; padding: 7px 10px; background: transparent; color: var(--danger, #d1242f); }\n.ds-btn-danger:hover { background: var(--danger-bg, rgba(209, 36, 47, 0.08)); }\n.ds-btn-danger:focus-visible { outline: 2px solid var(--danger, #d1242f); outline-offset: 1px; }"
+    },
+    {
+      "name": "Icon Button",
+      "kind": "button",
+      "refersTo": "icon-button",
+      "description": "28x28 utility control in the popup header (settings gear). Quiet fill; brightens on hover; 16px inline SVG icon.",
+      "html": "<button class=\"ds-icon-btn\" aria-label=\"Settings\" title=\"Settings\"><svg viewBox=\"0 0 16 16\" width=\"16\" height=\"16\" aria-hidden=\"true\" focusable=\"false\"><path fill=\"currentColor\" d=\"M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z\"/><path fill=\"currentColor\" d=\"M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-1.64.892-3.433-.902-2.54-2.541l.159-.292a1.873 1.873 0 0 0 .52-1.255l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z\"/></svg></button>",
+      "css": ".ds-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; cursor: pointer; background: var(--secondary-bg, #e9edf3); color: var(--secondary-fg, #26344c); }\n.ds-icon-btn:hover { filter: brightness(0.95); }\n.ds-icon-btn:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Section container on the chassis: 1px hairline border, 8px radius, 12px padding, flat.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Upload queue</h3><p class=\"ds-card-copy\">No uploads queued.</p></div>",
+      "css": ".ds-card { background: var(--card-bg, #fff); border: 1px solid var(--card-border, #dfe4ec); border-radius: 8px; padding: 12px; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; }\n.ds-card-title { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--fg, #172033); }\n.ds-card-copy { margin: 4px 0 0; font-size: 12px; color: var(--muted, #687286); }"
+    },
+    {
+      "name": "Job Row",
+      "kind": "custom",
+      "refersTo": "job-row",
+      "description": "The flight recorder's atom: one capture in the pipeline. Recessed inset row with title, metadata, and small nested actions.",
+      "html": "<div class=\"ds-job\"><div class=\"ds-job-title\">Lecture 12 — Transactions</div><div class=\"ds-job-meta\">EECS 484 · 2026-fall · queued</div><div class=\"ds-job-actions\"><button class=\"ds-job-btn\">Retry</button><button class=\"ds-job-btn\">Discard</button></div></div>",
+      "css": ".ds-job { display: grid; gap: 4px; padding: 8px; border-radius: 6px; background: var(--job-bg, #f7f9fc); font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; color: var(--fg, #172033); }\n.ds-job-title { font-weight: 600; overflow-wrap: anywhere; }\n.ds-job-meta { color: var(--muted, #687286); font-size: 11px; overflow-wrap: anywhere; }\n.ds-job-actions { display: flex; gap: 6px; margin-top: 4px; }\n.ds-job-btn { border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 11px; padding: 5px 8px; background: var(--secondary-bg, #e9edf3); color: var(--secondary-fg, #26344c); }\n.ds-job-btn:hover { filter: brightness(0.95); }\n.ds-job-btn:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Compact state readout in the header and section headings: counts, drain state. Fully rounded chip fill.",
+      "html": "<span class=\"ds-pill\">idle</span> <span class=\"ds-pill\">3</span>",
+      "css": ".ds-pill { display: inline-block; border-radius: 999px; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 11px; font-weight: 600; padding: 4px 8px; background: var(--pill-bg, #e6eaf0); color: var(--pill-fg, #4f5d72); white-space: nowrap; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Form field with inset fill and hairline border; error state driven by aria-invalid.",
+      "html": "<label class=\"ds-field\">Course code<input class=\"ds-input\" type=\"text\" value=\"EECS 484\" /></label>",
+      "css": ".ds-field { display: grid; gap: 4px; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; color: var(--muted, #687286); }\n.ds-input { border: 1px solid var(--card-border, #dfe4ec); border-radius: 6px; background: var(--job-bg, #f7f9fc); color: var(--fg, #172033); font: inherit; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 13px; padding: 7px 8px; }\n.ds-input:focus-visible { outline: 2px solid var(--primary-bg, #1f6feb); outline-offset: 1px; }\n.ds-input[aria-invalid=\"true\"] { border-color: var(--danger, #d1242f); outline-color: var(--danger, #d1242f); }"
+    },
+    {
+      "name": "Code Display",
+      "kind": "custom",
+      "refersTo": "code-display",
+      "description": "Machine evidence in mono: device-flow codes at 16px/700 tracked 0.08em; IDs truncate with ellipsis.",
+      "html": "<code class=\"ds-code\">AB12-CD34</code>",
+      "css": ".ds-code { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 16px; font-weight: 700; letter-spacing: 0.08em; padding: 8px 10px; border-radius: 6px; background: var(--job-bg, #f7f9fc); color: var(--fg, #172033); overflow-wrap: anywhere; }"
+    },
+    {
+      "name": "Status Notice",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "One-line outcome readout in aria-live regions. Variants: info (slate mute), warn (caution amber), success (verified green, 600), error (redline).",
+      "html": "<p class=\"ds-notice ds-notice-success\">Lecture 12 uploaded</p>",
+      "css": ".ds-notice { min-height: 16px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; font-size: 12px; color: var(--notice, #6b4b00); }\n.ds-notice-info { color: var(--muted, #687286); }\n.ds-notice-warn { color: var(--notice, #6b4b00); }\n.ds-notice-success { color: var(--success, #1a7f37); font-weight: 600; }\n.ds-notice-error { color: var(--danger, #d1242f); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Flight Recorder",
+    "overview": "The extension chrome is the instrument panel of a capture pipeline that must never lose a recording. Every surface reports state the way a cockpit readout does: counts, connection status, queue depth, last outcome. Nothing on screen exists to please; everything exists to tell the operator what the pipeline has done and what it still owes. The result is utilitarian calm — dense, quiet, and impossible to misread in the two seconds a student spends checking whether the lecture actually uploaded.\n\nThis is a GitHub-adjacent operational aesthetic: system typography, hairline-bordered panels, one action blue, and status colors that mean exactly what they mean in a runbook. The popup is a fixed 390px canvas stacked with full-width sections; the options page widens to a calm 760px column without changing its vocabulary. Both ship as paired light/dark token sets so the panel reads correctly at 2am the night before an exam.",
+    "keyCharacteristics": [
+      "Flat instrument panel: hairline borders and tonal steps only — never shadows",
+      "Dense system-typography scale (11–18px) tuned for a fixed 390px popup",
+      "One action accent (Signal Blue), reserved for primary actions, links, and focus rings",
+      "Status as color-coded readouts — amber, green, red — always paired with plain words",
+      "Every surface color ships as a light/dark pair selected by prefers-color-scheme"
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Signal Blue is reserved for primary actions, links, and focus rings. Its rarity is what makes the next action findable; it is never chrome, never decoration, never a status.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scheme-Pair Rule",
+        "body": "Every surface color ships as a light/dark pair selected by prefers-color-scheme. Never build a screen from the light values alone — the 2am case is a first-class scene.",
+        "section": "colors"
+      },
+      {
+        "name": "The Words-First Rule",
+        "body": "Status colors only ever accompany plain words. Green means nothing without \"uploaded\"; red means nothing without the failure it reports.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono-Is-Evidence Rule",
+        "body": "Monospace marks machine facts — authorization codes, IDs, raw labels. Prose is never mono, and mono is never used for emphasis.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-by-Structure Rule",
+        "body": "Surfaces are separated by borders and tonal steps. No box-shadows, glows, gradients, or backdrop filters — a shadow in this system is a bug, not a style.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do separate surfaces with 1px Hairline borders and the Cool Chassis → Panel White → Inset Wash tonal ladder.",
+      "Do ship every color as a light/dark pair and let prefers-color-scheme pick; test both schemes.",
+      "Do reserve Signal Blue for primary actions, links, and focus rings — and give every interactive control that 2px focus outline at 1px offset.",
+      "Do use Verified Green, Caution Amber, and Redline only to report outcome state, always next to plain words.",
+      "Do hold the type scale: 11px labels/meta, 12px popup body, 13px options form copy, 14px (15px options) section titles, 18px (22px options) page titles.",
+      "Do render machine facts — codes, IDs, raw labels — in the mono stack."
+    ],
+    "donts": [
+      "Don't introduce box-shadows, glows, gradients, or backdrop filters; depth is borders and tonal steps only.",
+      "Don't use monospace for prose, or Signal Blue as decorative chrome.",
+      "Don't add webfonts or decorative type; the system stack is the identity.",
+      "Don't add motion for its own sake — state changes are instant today; introduce transitions only with a stated reason.",
+      "Don't override native form affordances beyond accent-color and focus outlines.",
+      "Don't let status colors appear without the words they color."
+    ]
+  }
+}
