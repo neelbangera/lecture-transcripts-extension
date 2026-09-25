@@ -33,6 +33,11 @@
       "pattern": "^[0-9a-f]{64}$",
       "maxLength": 64
     },
+    "lectureDate": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "maxLength": 10
+    },
     "wholeSecondTimestamp": {
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
@@ -227,6 +232,18 @@
             { "$ref": "#/$defs/remoteFileKind" },
             { "type": "null" }
           ]
+        },
+        "lectureDate": {
+          "anyOf": [
+            { "$ref": "#/$defs/lectureDate" },
+            { "type": "null" }
+          ]
+        },
+        "displayTitle": {
+          "anyOf": [
+            { "type": "string", "maxLength": 256 },
+            { "type": "null" }
+          ]
         }
       },
       "required": [
@@ -241,7 +258,9 @@
         "lastErrorCategory",
         "lastErrorHttpStatus",
         "remoteContentHash",
-        "remoteFileKind"
+        "remoteFileKind",
+        "lectureDate",
+        "displayTitle"
       ]
     }
   },
