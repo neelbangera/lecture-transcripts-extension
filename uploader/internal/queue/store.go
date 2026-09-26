@@ -651,6 +651,17 @@ func (j *Job) Summary() protocol.JobSummary {
 		kind := protocol.RemoteFileKind(*j.RemoteFileKind)
 		summary.RemoteFileKind = &kind
 	}
+	// Echo capture display metadata so the popup can name the row for a
+	// student. An empty DisplayTitle stays null so the UI can synthesize
+	// "Lecture N" from the resolved identity.
+	if j.Payload.LectureDate != "" {
+		value := j.Payload.LectureDate
+		summary.LectureDate = &value
+	}
+	if j.Payload.DisplayTitle != "" {
+		value := j.Payload.DisplayTitle
+		summary.DisplayTitle = &value
+	}
 	return summary
 }
 

@@ -52,6 +52,7 @@ const FIXTURE_INPUTS: TranscriptJobInput = {
   term: "Fall 2026",
   lectureNumber: 1,
   lectureDate: "2026-09-01",
+  displayTitle: "Intro, Smith",
   sourceUrl: "https://LECCAP.ENGIN.UMICH.EDU:443/leccap/player/r/sanitized01?session=removed#fragment",
   capturedAt: "2026-09-20T12:34:56.789Z",
   transcript:

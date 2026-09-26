@@ -389,6 +389,7 @@ export function createContentRuntimeParser(
           term: parsed.term,
           lectureNumber: parsed.lectureNumber,
           lectureDate: parsed.lectureDate,
+          displayTitle: parsed.displayTitle,
           sourceUrl: parsed.sourceUrl,
           capturedAt,
           transcript: parsed.transcript,

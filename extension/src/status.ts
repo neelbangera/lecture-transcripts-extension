@@ -119,6 +119,14 @@ export interface JobSummary {
   lastErrorHttpStatus: number | null;
   remoteContentHash: string | null;
   remoteFileKind: RemoteFileKind | null;
+  /**
+   * Capture display metadata echoed so the popup can name a row for a student
+   * instead of printing its `lectureKey`. Neither field is identity: they are
+   * absent for older rows and the UI synthesizes `Lecture N` when `displayTitle`
+   * is null.
+   */
+  lectureDate: string | null;
+  displayTitle: string | null;
 }
 
 export interface AuthorizationStatus {
@@ -163,6 +171,11 @@ export interface OverflowNotice {
    * stale remote path manually; the system never deletes a remote file.
    */
   staleLectureKey?: string;
+  /**
+   * The capture's human topic, or null when the title carried none. Display
+   * only: never an identity field.
+   */
+  displayTitle?: string | null;
 }
 
 export interface ExtensionSnapshot {
@@ -252,6 +265,58 @@ export const EXPIRY_MILESTONE_ANNOUNCEMENTS: Record<ExpiryMilestone, string> = {
 export function formatCapturedAt(capturedAt: string): string {
   const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}):\d{2}Z$/.exec(capturedAt);
   return match ? `${match[1]} ${match[2]}` : capturedAt;
+}
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** `2026-09-08` becomes `Sep 8, 2026`; anything unparseable passes through. */
+export function formatLectureDate(lectureDate: string | null): string {
+  if (!lectureDate) return "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(lectureDate);
+  if (!match) return lectureDate;
+  const month = MONTHS[Number(match[2]) - 1];
+  if (!month) return lectureDate;
+  return `${month} ${Number(match[3])}, ${match[1]}`;
+}
+
+/** Extract `003` from a `lectureKey` or `targetPath`, else null. */
+function numberFromReference(reference: string): number | null {
+  const match = /(\d{3})$/.exec(reference.replace(/\.[a-z]+$/, ""));
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isInteger(value) && value >= 1 && value <= 999 ? value : null;
+}
+
+/**
+ * The student-facing row headline: the capture's topic when it has one, and
+ * the resolved identity (`Lecture 6` / `Discussion 2`) when the title was a
+ * lag form with no topic. Never prints the lectureKey.
+ */
+export function displayTitleFor(
+  kind: "lecture" | "discussion",
+  lectureNumber: number,
+  displayTitle: string | null | undefined,
+): string {
+  const topic = (displayTitle ?? "").trim();
+  const noun = kind === "discussion" ? "Discussion" : "Lecture";
+  return topic === "" ? `${noun} ${lectureNumber}` : topic;
+}
+
+/**
+ * Read the kind and number back out of a queue row. `targetPath` is
+ * authoritative for the path (`eecs484/discussions/003.md` is a discussion)
+ * and `lectureKey` is the fallback number source.
+ */
+export function identityFromSummary(job: JobSummary): {
+  kind: "lecture" | "discussion";
+  lectureNumber: number;
+} {
+  const kind = job.targetPath.includes("/discussions/") ? "discussion" : "lecture";
+  const lectureNumber = numberFromReference(job.lectureKey) ?? numberFromReference(job.targetPath) ?? 1;
+  return { kind, lectureNumber };
 }
 
 export function errorLabel(category: string): string {

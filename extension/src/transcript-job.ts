@@ -21,6 +21,7 @@ export const MAX_FIELD_CHARACTERS = {
   courseName: 256,
   term: 32,
   lectureDate: 10,
+  displayTitle: 256,
   capturedAt: 20,
   contentHash: 64,
 } as const;
@@ -44,6 +45,7 @@ const TRANSCRIPT_JOB_FIELDS = [
   "term",
   "lectureNumber",
   "lectureDate",
+  "displayTitle",
   "sourceUrl",
   "capturedAt",
   "transcript",
@@ -66,6 +68,12 @@ export interface TranscriptJob {
   readonly term: string;
   readonly lectureNumber: number;
   readonly lectureDate: string;
+  /**
+   * The recording's human topic with its identity prefix removed, or "" when
+   * the title carries none. Display only: never an identity field, never part
+   * of `contentHash` or `lectureKey`, and never logged.
+   */
+  readonly displayTitle: string;
   readonly sourceUrl: string;
   readonly capturedAt: string;
   readonly transcript: string;
@@ -80,6 +88,8 @@ export interface TranscriptJobInput {
   readonly term: string;
   readonly lectureNumber: number;
   readonly lectureDate: string;
+  /** Display-only topic; null/absent/empty all serialize as "". */
+  readonly displayTitle?: string | null;
   readonly sourceUrl: string;
   readonly capturedAt?: string | Date;
   readonly transcript: string;
@@ -211,6 +221,7 @@ function canonicalJobObject(job: TranscriptJob): TranscriptJob {
     term: job.term,
     lectureNumber: job.lectureNumber,
     lectureDate: job.lectureDate,
+    displayTitle: job.displayTitle,
     sourceUrl: job.sourceUrl,
     capturedAt: job.capturedAt,
     transcript: job.transcript,
@@ -287,6 +298,19 @@ export function sourceUrlInfo(sourceUrl: string): SourceUrlInfo {
     publishUrl: sanitizeSourceUrlForPublish(canonicalUrl),
     logValue: `${parsed.host}${parsed.pathname}`,
   };
+}
+
+/**
+ * Normalize the display-only topic: collapse whitespace, cap at 256
+ * characters, and use "" for absent. Never touches identity or hashing.
+ */
+function normalizeDisplayTitle(value: string | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  return value
+    .normalize("NFC")
+    .replace(/[\t\r\n ]+/g, " ")
+    .trim()
+    .slice(0, MAX_FIELD_CHARACTERS.displayTitle);
 }
 
 function formatCapturedAt(value: string | Date | undefined): string {
@@ -387,6 +411,7 @@ export function validateTranscriptJob(value: unknown): TranscriptJobValidationRe
     "courseName",
     "term",
     "lectureDate",
+    "displayTitle",
     "sourceUrl",
     "capturedAt",
     "transcript",
@@ -423,6 +448,7 @@ export function validateTranscriptJob(value: unknown): TranscriptJobValidationRe
     "courseName",
     "term",
     "contentHash",
+    "displayTitle",
   ] as const) {
     const fieldValue = value[field] as string;
     const maxCharacters = MAX_FIELD_CHARACTERS[field];
@@ -433,6 +459,14 @@ export function validateTranscriptJob(value: unknown): TranscriptJobValidationRe
         field,
       );
     }
+  }
+
+  if (/[\r\n\t\u2028\u2029]/.test(value.displayTitle as string)) {
+    return validationFailure(
+      "rejected_invalid_schema",
+      "displayTitle must be a single line",
+      "displayTitle",
+    );
   }
 
   const sourceUrl = value.sourceUrl as string;
@@ -676,6 +710,7 @@ export function createTranscriptJob(input: TranscriptJobInput): TranscriptJob {
     term: normalizedTerm,
     lectureNumber: input.lectureNumber,
     lectureDate: input.lectureDate,
+    displayTitle: normalizeDisplayTitle(input.displayTitle),
     sourceUrl,
     capturedAt: formatCapturedAt(input.capturedAt),
     transcript: forms.transcript,

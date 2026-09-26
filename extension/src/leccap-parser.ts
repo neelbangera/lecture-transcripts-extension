@@ -14,6 +14,7 @@ import {
   parseRecordingBadge,
   parseRecordingTime,
   parseTitleIdentity,
+  topicFromTitle,
   type OverviewCardFact,
   type RecordingKind,
 } from "./identity-derivation";
@@ -150,6 +151,12 @@ export interface ParsedLecture {
    * or from the overview-sequence derivation used for lagging titles.
    */
   numberSource: "title" | "derived";
+  /**
+   * The recording's human topic with its identity prefix removed, or null when
+   * the title carries none. Display only: never an identity field, never part
+   * of `contentHash` or `lectureKey`.
+   */
+  displayTitle: string | null;
 }
 
 export interface RejectedLecture {
@@ -864,6 +871,7 @@ interface ResolvedNumericIdentity {
   term: string;
   lectureNumber: number;
   numberSource: "title" | "derived";
+  displayTitle: string | null;
 }
 
 function extractCourseIdentity(
@@ -956,6 +964,7 @@ function resolveNumericIdentity(
       ...course,
       lectureNumber: titleIdentity.lectureNumber,
       numberSource: "title",
+      displayTitle: topicFromTitle(title),
     };
   }
   if (!numberElement || !titleIdentity) {
@@ -979,6 +988,7 @@ function resolveNumericIdentity(
       ...course,
       lectureNumber: cardIdentity.lectureNumber,
       numberSource: "title",
+      displayTitle: topicFromTitle(targetCard!.title),
     };
   }
   const derived = deriveIdentityFromOverview(overview.cards, sourceUrl, title);
@@ -994,6 +1004,9 @@ function resolveNumericIdentity(
     ...course,
     lectureNumber: derived.lectureNumber,
     numberSource: "derived",
+    // A derived identity comes from a lagging title, which carries no topic;
+    // the UI synthesizes "Lecture N" / "Discussion N" from the number.
+    displayTitle: null,
   };
 }
 
@@ -1104,5 +1117,6 @@ export async function parseLecturePage(
     stableSnapshotCount,
     discussionSection,
     numberSource: identity.numberSource,
+    displayTitle: identity.displayTitle,
   };
 }

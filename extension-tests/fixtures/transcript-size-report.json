@@ -3,9 +3,9 @@
   "method": {
     "transcriptBytes": "UTF-8 bytes of the normalized plain transcript (NFC, LF, per-line whitespace rules, blank-line collapse) per the plan's normative normalization, computed from the rendered capture rows in source order",
     "timestampedTranscriptBytes": "UTF-8 bytes of the normalized timestamped form, serialized one line per row as \"[verbatim .transcript-time] .transcript-text\"",
-    "serializedJobBytes": "UTF-8 length of compact canonical TranscriptJob JSON (schema property order, standard escaping, no insignificant whitespace) with real sample values",
+    "serializedJobBytes": "UTF-8 length of compact canonical TranscriptJob JSON (schema property order, standard escaping, no insignificant whitespace) with real sample values (including the optional displayTitle field, serialized as an empty string in these title-less samples so the canonical field order is stable)",
     "nativeMessageBytes": "UTF-8 length of the complete compact submit_job JSON payload including a worst-case 64-character requestId envelope, excluding the four-byte frame prefix",
-    "statusPageBytes": "UTF-8 length of a compact status response containing 50 worst-case bounded JobSummary objects (max-length lectureKey 128, targetPath 512, lastErrorCategory 64, longest status string, 20-digit counts), full worst-case counts object for all 15 keys, and max-length auth fields (64-char userCode, two 2048-byte HTTPS URIs); identical worst-case construction for every sample",
+    "statusPageBytes": "UTF-8 length of a compact status response containing 50 worst-case bounded JobSummary objects (max-length lectureKey 128, targetPath 512, lastErrorCategory 64, longest status string, 20-digit counts), full worst-case counts object for all 15 keys, and max-length auth fields (64-char userCode, two 2048-byte HTTPS URIs); identical worst-case construction for every sample; the worst-case summary also carries lectureDate (10) and displayTitle (256) display metadata",
     "sample2": "sample 2 comes from the live lecture-02 observation, which recorded raw DOM-derived UTF-8 text sizes but not the full text. Its values are upper bounds: raw pre-normalization sizes for the two transcript fields (normalization only removes whitespace on this content, and NFC was verified to be a no-op on sample 1), plus the sample-1 JSON escape overhead ratio (0.040852) applied and the same fixed envelope/field overhead, rounded up"
   },
   "samples": [
@@ -16,9 +16,9 @@
       "lectureNumber": 1,
       "transcriptBytes": 46513,
       "timestampedTranscriptBytes": 58893,
-      "serializedJobBytes": 110112,
-      "nativeMessageBytes": 110239,
-      "statusPageBytes": 63155,
+      "serializedJobBytes": 110130,
+      "nativeMessageBytes": 110257,
+      "statusPageBytes": 78205,
       "renderTimeMs": null,
       "rows": 1473,
       "timestampRange": "00:00 - 1:22:58"
@@ -30,9 +30,9 @@
       "lectureNumber": 2,
       "transcriptBytes": 49177,
       "timestampedTranscriptBytes": 59523,
-      "serializedJobBytes": 113541,
-      "nativeMessageBytes": 113672,
-      "statusPageBytes": 63155,
+      "serializedJobBytes": 113559,
+      "nativeMessageBytes": 113690,
+      "statusPageBytes": 78205,
       "renderTimeMs": null,
       "upperBound": true,
       "rows": 1577,
@@ -42,9 +42,9 @@
   "observedMaxima": {
     "transcriptBytes": 49177,
     "timestampedTranscriptBytes": 59523,
-    "serializedJobBytes": 113541,
-    "nativeMessageBytes": 113672,
-    "statusPageBytes": 63155,
+    "serializedJobBytes": 113559,
+    "nativeMessageBytes": 113690,
+    "statusPageBytes": 78205,
     "renderTimeMs": null
   },
   "approvedLimits": {

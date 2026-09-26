@@ -26,6 +26,7 @@ func validTestJob() TranscriptJob {
 		Term:                  "2026-fall",
 		LectureNumber:         1,
 		LectureDate:           "2026-09-01",
+		DisplayTitle:          "Intro, Smith",
 		SourceURL:             "https://leccap.engin.umich.edu/leccap/player/r/abc123",
 		CapturedAt:            "2026-09-20T12:34:56Z",
 		Transcript:            testTranscript(),

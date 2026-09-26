@@ -89,10 +89,38 @@ export function parseTitleIdentity(title: string): TitleIdentity {
   return null;
 }
 
+export const MAX_DISPLAY_TITLE_LENGTH = 256;
+
+/**
+ * The recording's human topic with its identity prefix removed.
+ *
+ * `01 Intro, Smith` -> `Intro, Smith`; `Lecture: 5` -> null; `Discussion 2,
+ * Smith` -> `Smith`; a lag form (`Lecture recorded on ...`) -> null. Display
+ * only: this never feeds the lectureKey, the content hash, or a repository
+ * path, and the UI synthesizes `Lecture N` / `Discussion N` when it is null.
+ */
+export function topicFromTitle(title: string): string | null {
+  const text = title.normalize("NFC").replace(/[\t\r\n ]+/g, " ").trim();
+  if (text === "") return null;
+  const identity = parseTitleIdentity(text);
+  if (!identity) return null;
+  // A lagging title carries no topic: the UI names it from the resolved number.
+  if (identity.lectureNumber === null) return null;
+
+  const rest = text
+    .replace(NUMERIC_TITLE_PREFIX, "")
+    .replace(LECTURE_NUMBER_TITLE, "")
+    .replace(DISCUSSION_NUMBER_TITLE, "")
+    .replace(/^[\s,:;\-\u2013\u2014\u2022]+/, "")
+    .trim();
+  return rest === "" ? null : rest.slice(0, MAX_DISPLAY_TITLE_LENGTH);
+}
+
 /** Badge category and optional discussion section; the badge number is never an identity. */
 export function parseRecordingBadge(badgeText: string): {
   kind: RecordingKind | null;
   discussionSection: string | null;
+
 } {
   const text = badgeText.normalize("NFC").replace(/[\t\r\n ]+/g, " ").trim();
   const section = DISCUSSION_SECTION_BADGE_RE.exec(text);

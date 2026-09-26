@@ -28,14 +28,18 @@ const (
 // struct field order, which is used for size measurements and cross-language
 // fixtures.
 type TranscriptJob struct {
-	SchemaVersion         int    `json:"schemaVersion"`
-	Kind                  string `json:"kind"`
-	LectureKey            string `json:"lectureKey"`
-	CourseSlug            string `json:"courseSlug"`
-	CourseName            string `json:"courseName"`
-	Term                  string `json:"term"`
-	LectureNumber         int    `json:"lectureNumber"`
-	LectureDate           string `json:"lectureDate"`
+	SchemaVersion int    `json:"schemaVersion"`
+	Kind          string `json:"kind"`
+	LectureKey    string `json:"lectureKey"`
+	CourseSlug    string `json:"courseSlug"`
+	CourseName    string `json:"courseName"`
+	Term          string `json:"term"`
+	LectureNumber int    `json:"lectureNumber"`
+	LectureDate   string `json:"lectureDate"`
+	// DisplayTitle is the recording's human topic with its identity prefix
+	// removed, or "" when the title carries none. Display only: it is never an
+	// identity field, never part of ContentHash or LectureKey, and never logged.
+	DisplayTitle          string `json:"displayTitle"`
 	SourceURL             string `json:"sourceUrl"`
 	CapturedAt            string `json:"capturedAt"`
 	Transcript            string `json:"transcript"`

@@ -148,8 +148,8 @@ func DecodeRequest(data []byte) (Request, error) {
 // timestampedTranscript).
 var transcriptJobKeys = []string{
 	"schemaVersion", "kind", "lectureKey", "courseSlug", "courseName", "term",
-	"lectureNumber", "lectureDate", "sourceUrl", "capturedAt", "transcript",
-	"timestampedTranscript", "contentHash",
+	"lectureNumber", "lectureDate", "displayTitle", "sourceUrl", "capturedAt",
+	"transcript", "timestampedTranscript", "contentHash",
 }
 
 func decodeJob(data []byte) (TranscriptJob, error) {
@@ -209,6 +209,11 @@ func ValidateJob(job TranscriptJob) error {
 		return validationError(ErrorRejectedInvalidSchema)
 	}
 	if !validCalendarDate(job.LectureDate) {
+		return validationError(ErrorRejectedInvalidSchema)
+	}
+	// DisplayTitle is display-only and may be empty, but when present it is a
+	// bounded single line: no newline and at most 256 characters.
+	if runeLen(job.DisplayTitle) > 256 || strings.ContainsAny(job.DisplayTitle, "\r\n\t\u2028\u2029") {
 		return validationError(ErrorRejectedInvalidSchema)
 	}
 	canonicalSource, sourceErr := CanonicalizeSourceURL(job.SourceURL)
@@ -543,6 +548,12 @@ func validateJobSummary(job JobSummary) error {
 	if job.RemoteFileKind != nil && !IsRemoteFileKind(*job.RemoteFileKind) {
 		return validationError(ErrorRejectedInvalidSchema)
 	}
+	if job.LectureDate != nil && !validCalendarDate(*job.LectureDate) {
+		return validationError(ErrorRejectedInvalidSchema)
+	}
+	if job.DisplayTitle != nil && (runeLen(*job.DisplayTitle) > 256 || strings.ContainsAny(*job.DisplayTitle, "\r\n\t\u2028\u2029")) {
+		return validationError(ErrorRejectedInvalidSchema)
+	}
 	return nil
 }
 
@@ -709,6 +720,7 @@ var (
 		"jobId", "lectureKey", "contentHash", "status", "attemptCount",
 		"nextAttemptAt", "updatedAt", "targetPath", "lastErrorCategory",
 		"lastErrorHttpStatus", "remoteContentHash", "remoteFileKind",
+		"lectureDate", "displayTitle",
 	}
 )
 

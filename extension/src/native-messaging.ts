@@ -253,6 +253,8 @@ function isJobSummary(value: unknown): value is JobSummary {
     "lastErrorHttpStatus",
     "remoteContentHash",
     "remoteFileKind",
+    "lectureDate",
+    "displayTitle",
   ] as const;
   return (
     hasExactKeys(value, keys) &&
@@ -267,7 +269,9 @@ function isJobSummary(value: unknown): value is JobSummary {
     (value.lastErrorCategory === null || (typeof value.lastErrorCategory === "string" && value.lastErrorCategory.length <= 64)) &&
     (value.lastErrorHttpStatus === null || (typeof value.lastErrorHttpStatus === "number" && Number.isInteger(value.lastErrorHttpStatus) && value.lastErrorHttpStatus >= 100 && value.lastErrorHttpStatus <= 599)) &&
     (value.remoteContentHash === null || (typeof value.remoteContentHash === "string" && HASH_PATTERN.test(value.remoteContentHash))) &&
-    (value.remoteFileKind === null || isRemoteFileKind(value.remoteFileKind))
+    (value.remoteFileKind === null || isRemoteFileKind(value.remoteFileKind)) &&
+    (value.lectureDate === null || (typeof value.lectureDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.lectureDate))) &&
+    (value.displayTitle === null || (typeof value.displayTitle === "string" && value.displayTitle.length <= 256 && !/[\r\n\t\u2028\u2029]/.test(value.displayTitle)))
   );
 }
 

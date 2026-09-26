@@ -28,6 +28,8 @@ function summary(jobId: number, status: QueueStatus): JobSummary {
     lastErrorHttpStatus: null,
     remoteContentHash: null,
     remoteFileKind: null,
+    lectureDate: "2026-09-01",
+    displayTitle: "Intro, Smith",
   };
 }
 

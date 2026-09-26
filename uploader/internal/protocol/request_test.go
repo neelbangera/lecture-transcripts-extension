@@ -164,7 +164,8 @@ func TestDecodeRequestSubmitJob(t *testing.T) {
 				"job": map[string]any{
 					"schemaVersion": 1, "lectureKey": "eecs484/2026-fall/001", "courseSlug": "eecs484",
 					"courseName": "EECS 484", "term": "2026-fall", "lectureNumber": 1,
-					"lectureDate": "2026-09-01", "sourceUrl": "https://leccap.engin.umich.edu/a",
+					"lectureDate": "2026-09-01", "displayTitle": "Intro",
+					"sourceUrl":  "https://leccap.engin.umich.edu/a",
 					"capturedAt": "2026-09-20T12:34:56Z", "transcript": testTranscript(),
 					"timestampedTranscript": "", "contentHash": strings.Repeat("a", 64), "extra": true,
 				},
@@ -291,7 +292,8 @@ func TestDecodeRequestMissingJobField(t *testing.T) {
 		"job": map[string]any{
 			"schemaVersion": 1, "lectureKey": "eecs484/2026-fall/001", "courseSlug": "eecs484",
 			"courseName": "EECS 484", "term": "2026-fall", "lectureNumber": 1,
-			"lectureDate": "2026-09-01", "sourceUrl": "https://leccap.engin.umich.edu/a",
+			"lectureDate": "2026-09-01", "displayTitle": "Intro",
+			"sourceUrl":  "https://leccap.engin.umich.edu/a",
 			"capturedAt": "2026-09-20T12:34:56Z", "transcript": testTranscript(),
 			"contentHash": strings.Repeat("a", 64),
 		},

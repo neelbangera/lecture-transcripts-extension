@@ -397,7 +397,7 @@ func TestMarshalCanonical(t *testing.T) {
 
 	fieldOrder := []string{
 		"schemaVersion", "lectureKey", "courseSlug", "courseName", "term",
-		"lectureNumber", "lectureDate", "sourceUrl", "capturedAt", "transcript",
+		"lectureNumber", "lectureDate", "displayTitle", "sourceUrl", "capturedAt", "transcript",
 		"timestampedTranscript", "contentHash",
 	}
 	position := -1

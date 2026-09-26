@@ -150,6 +150,7 @@ describe("TranscriptJob", () => {
       courseName: 256,
       term: 32,
       lectureDate: 10,
+      displayTitle: 256,
       capturedAt: 20,
       contentHash: 64,
     });

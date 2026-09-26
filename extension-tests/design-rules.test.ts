@@ -15,8 +15,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   EXPIRY_MILESTONE_ANNOUNCEMENTS,
+  displayTitleFor,
   expiryMilestone,
   formatCapturedAt,
+  formatLectureDate,
+  identityFromSummary,
 } from "../extension/src/status";
 
 const popupCss = readFileSync(
@@ -277,5 +280,66 @@ describe("expiry milestone announcements", () => {
     expect(formatCapturedAt("2026-09-21T18:02:00Z")).toBe("2026-09-21 18:02");
     // A malformed stamp stays visible instead of being hidden by a guess.
     expect(formatCapturedAt("not-a-stamp")).toBe("not-a-stamp");
+  });
+});
+
+describe("student-facing row naming", () => {
+  it("shows the lecture topic when the capture has one", () => {
+    expect(displayTitleFor("lecture", 3, "Intro, Smith")).toBe("Intro, Smith");
+    expect(displayTitleFor("discussion", 2, "Smith")).toBe("Smith");
+  });
+
+  it("synthesizes the resolved identity when the title was a lag form", () => {
+    expect(displayTitleFor("lecture", 6, null)).toBe("Lecture 6");
+    expect(displayTitleFor("discussion", 2, "")).toBe("Discussion 2");
+    expect(displayTitleFor("lecture", 6, "   ")).toBe("Lecture 6");
+  });
+
+  it("formats lecture dates for a student rather than as ISO", () => {
+    expect(formatLectureDate("2026-09-08")).toBe("Sep 8, 2026");
+    expect(formatLectureDate("2026-01-31")).toBe("Jan 31, 2026");
+    expect(formatLectureDate(null)).toBe("");
+    expect(formatLectureDate("not-a-date")).toBe("not-a-date");
+  });
+
+  it("reads the kind and number back out of a queue row", () => {
+    const base = {
+      jobId: 1,
+      contentHash: "a".repeat(64),
+      status: "queued",
+      attemptCount: 0,
+      nextAttemptAt: null,
+      updatedAt: null,
+      lastErrorCategory: null,
+      lastErrorHttpStatus: null,
+      remoteContentHash: null,
+      remoteFileKind: null,
+      lectureDate: "2026-09-08",
+      displayTitle: "Intro, Smith",
+    } as const;
+    expect(
+      identityFromSummary({
+        ...base,
+        lectureKey: "eecs484/2026-fall/003",
+        targetPath: "eecs484/003.md",
+      }),
+    ).toEqual({ kind: "lecture", lectureNumber: 3 });
+    expect(
+      identityFromSummary({
+        ...base,
+        lectureKey: "eecs484/2026-fall/002",
+        targetPath: "eecs484/discussions/002.md",
+      }),
+    ).toEqual({ kind: "discussion", lectureNumber: 2 });
+  });
+
+  it("never prints a lectureKey as the row headline", () => {
+    // The topic wins; the synthesized fallback names the identity in words.
+    for (const headline of [
+      displayTitleFor("lecture", 3, "Intro, Smith"),
+      displayTitleFor("lecture", 3, null),
+    ]) {
+      expect(headline).not.toMatch(/[a-z]\w*\/\d{4}-/);
+    }
   });
 });

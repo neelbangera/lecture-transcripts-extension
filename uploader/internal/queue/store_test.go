@@ -770,6 +770,46 @@ func TestStatusPagePagination(t *testing.T) {
 	}
 }
 
+// TestSummaryEchoesDisplayMetadata proves the queue surfaces the capture's
+// display metadata so the popup can name a row for a student instead of
+// printing its lectureKey. An empty display title stays null so the UI can
+// synthesize "Lecture N" from the resolved identity.
+func TestSummaryEchoesDisplayMetadata(t *testing.T) {
+	store := newStore(t)
+
+	titled := testJob(1)
+	titled.DisplayTitle = "Intro, Smith"
+	titled.LectureDate = "2026-02-12"
+	enqueueJob(t, store, titled)
+
+	untitled := testJob(2)
+	untitled.DisplayTitle = ""
+	enqueueJob(t, store, untitled)
+
+	page, _, err := store.StatusPage(nil, 50)
+	if err != nil {
+		t.Fatalf("StatusPage: %v", err)
+	}
+	if len(page) != 2 {
+		t.Fatalf("page = %d summaries, want 2", len(page))
+	}
+
+	// StatusPage sorts by jobID DESC, so row 0 is the untitled job.
+	if page[0].DisplayTitle != nil {
+		t.Fatalf("untitled DisplayTitle = %v, want nil", *page[0].DisplayTitle)
+	}
+	if page[0].LectureDate == nil || *page[0].LectureDate != "2026-02-12" {
+		t.Fatalf("untitled LectureDate = %v, want 2026-02-12", page[0].LectureDate)
+	}
+
+	if page[1].DisplayTitle == nil || *page[1].DisplayTitle != "Intro, Smith" {
+		t.Fatalf("titled DisplayTitle = %v, want Intro, Smith", page[1].DisplayTitle)
+	}
+	if page[1].LectureDate == nil || *page[1].LectureDate != "2026-02-12" {
+		t.Fatalf("titled LectureDate = %v, want 2026-02-12", page[1].LectureDate)
+	}
+}
+
 func TestCountsTrackEveryStatus(t *testing.T) {
 	store := newStore(t)
 	enqueueJob(t, store, testJob(1))

@@ -10,6 +10,8 @@ import (
 func validTestJobSummary() JobSummary {
 	updatedAt := "2026-09-20T12:34:56Z"
 	httpStatus := 404
+	lectureDate := "2026-09-01"
+	displayTitle := "Intro, Smith"
 	return JobSummary{
 		JobID:               7,
 		LectureKey:          "eecs484/2026-fall/001",
@@ -23,6 +25,8 @@ func validTestJobSummary() JobSummary {
 		LastErrorHTTPStatus: &httpStatus,
 		RemoteContentHash:   nil,
 		RemoteFileKind:      nil,
+		LectureDate:         &lectureDate,
+		DisplayTitle:        &displayTitle,
 	}
 }
 

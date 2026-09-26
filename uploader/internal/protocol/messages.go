@@ -272,6 +272,11 @@ type JobSummary struct {
 	LastErrorHTTPStatus *int            `json:"lastErrorHttpStatus"`
 	RemoteContentHash   *string         `json:"remoteContentHash"`
 	RemoteFileKind      *RemoteFileKind `json:"remoteFileKind"`
+	// LectureDate and DisplayTitle are capture display metadata echoed back so
+	// the popup can name a queue row for a student instead of printing the
+	// lectureKey. They are not identity fields and never carry transcript text.
+	LectureDate  *string `json:"lectureDate"`
+	DisplayTitle *string `json:"displayTitle"`
 }
 
 type StatusMessage struct {
