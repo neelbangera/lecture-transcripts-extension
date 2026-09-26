@@ -65,6 +65,7 @@ schema order and is used for byte measurements and cross-language fixtures:
 | 6 | `Term` | `term` | `^[0-9]{4}-(winter\|spring\|summer\|fall)$`, ≤32 runes | pattern + length |
 | 7 | `LectureNumber` | `lectureNumber` | integer `1..999` | range; also drives `zeroPadLecture` for the key check |
 | 8 | `LectureDate` | `lectureDate` | `YYYY-MM-DD` | must parse as a real calendar date (`time.Parse("2006-01-02")` round-trips) |
+| 8a | `DisplayTitle` | `displayTitle` | single line, ≤256 runes, may be empty | display-only topic with the identity prefix removed; never an identity field, never part of `ContentHash` or `LectureKey`, never logged. A CR/LF/TAB/line-separator is `rejected_invalid_schema`. |
 | 9 | `SourceURL` | `sourceUrl` | canonical URL ≤2048 UTF-8 bytes | `CanonicalizeSourceURL` must succeed (`rejected_unsafe_url`) |
 | 10 | `CapturedAt` | `capturedAt` | `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$` | parses to the identical whole-second UTC string |
 | 11 | `Transcript` | `transcript` | valid UTF-8, ≤460800 bytes, ≥50 non-whitespace runes | invalid UTF-8/short → `rejected_invalid_schema`; over byte cap → `rejected_oversized` |

@@ -224,7 +224,11 @@ func (s *Store) StatusPage(beforeJobID *int64, limit int) ([]protocol.JobSummary
 - `JobSummary` is built by `Job.Summary()` and carries only bounded fields:
   `jobId`, `lectureKey`, `contentHash`, `status`, `attemptCount`,
   `nextAttemptAt`, `updatedAt`, `targetPath`, `lastErrorCategory`,
-  `lastErrorHttpStatus`, `remoteContentHash`, `remoteFileKind`.
+  `lastErrorHttpStatus`, `remoteContentHash`, `remoteFileKind`,
+  `lectureDate`, `displayTitle`. The last two are the capture's display
+  metadata echoed from the job payload so the popup can name a row for a
+  student; an empty `displayTitle` is emitted as `null` so the UI synthesizes
+  `Lecture N` from the resolved identity. Neither is an identity field.
 
 ### Write-once paths
 
