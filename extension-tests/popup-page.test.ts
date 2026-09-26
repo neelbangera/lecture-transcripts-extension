@@ -39,6 +39,8 @@ const JOB: JobSummary = {
   lastErrorHttpStatus: null,
   remoteContentHash: null,
   remoteFileKind: null,
+  lectureDate: "2026-09-08",
+  displayTitle: "Intro, Smith",
 };
 
 function makeSnapshot(
@@ -300,6 +302,40 @@ describe("popup GitHub authorization UX", () => {
     expect(element("authorization-link").classList.contains("hidden")).toBe(true);
     expect(element("authorization-code-row").classList.contains("hidden")).toBe(false);
     expect(copiedTexts).toEqual(["ABCD-1234"]);
+  });
+});
+
+describe("popup queue row naming", () => {
+  it("shows the lecture topic as the row headline, never the lectureKey", async () => {
+    await mountPopup(() => ({ ok: true, snapshot: makeSnapshot({ jobs: [JOB] }) }));
+    const title = element<HTMLElement>("job-list").querySelector(".job-title");
+    expect(title?.textContent).toBe("Intro, Smith");
+    expect(title?.textContent).not.toContain("EECS 484/2026-fall");
+  });
+
+  it("synthesizes the resolved identity when the capture had no topic", async () => {
+    await mountPopup(() => ({
+      ok: true,
+      snapshot: makeSnapshot({
+        jobs: [{ ...JOB, displayTitle: null, targetPath: "eecs484/discussions/002.md" }],
+      }),
+    }));
+    const title = element<HTMLElement>("job-list").querySelector(".job-title");
+    expect(title?.textContent).toBe("Discussion 2");
+  });
+
+  it("shows a human date and a truncated hash in the row meta", async () => {
+    await mountPopup(() => ({
+      ok: true,
+      snapshot: makeSnapshot({
+        jobs: [{ ...JOB, remoteContentHash: "f258b922005fbd9a94f3dae78f841a9e5a7573a4c4e3223900bf0e2d1749c423" }],
+      }),
+    }));
+    const meta = element<HTMLElement>("job-list").querySelector(".job-meta");
+    expect(meta?.textContent).toContain("Sep 8, 2026");
+    expect(meta?.textContent).toContain("f258b922…");
+    expect(meta?.textContent).not.toContain("f258b922005fbd9a");
+    expect(element<HTMLElement>("job-list").textContent).toContain("Copy hash");
   });
 });
 

@@ -8,8 +8,11 @@ import {
 } from "./job-actions";
 import {
   EXPIRY_MILESTONE_ANNOUNCEMENTS,
+  displayTitleFor,
   expiryMilestone,
   formatCapturedAt,
+  formatLectureDate,
+  identityFromSummary,
   statusLabel,
   type ExpiryMilestone,
   type ExtensionSnapshot,
@@ -334,7 +337,27 @@ function renderOverflow(notices: OverflowNotice[]): void {
     titleRow.className = "job-title-row";
     const title = document.createElement("span");
     title.className = "job-title";
-    title.textContent = notice.lectureKey;
+    const noticeNumber = identityFromSummary({
+      jobId: 0,
+      lectureKey: notice.lectureKey,
+      contentHash: "",
+      status: "rejected_queue_full",
+      attemptCount: 0,
+      nextAttemptAt: null,
+      updatedAt: null,
+      targetPath: notice.lectureKey,
+      lastErrorCategory: null,
+      lastErrorHttpStatus: null,
+      remoteContentHash: null,
+      remoteFileKind: null,
+      lectureDate: notice.lectureDate,
+      displayTitle: notice.displayTitle ?? null,
+    });
+    title.textContent = displayTitleFor(
+      noticeNumber.kind,
+      noticeNumber.lectureNumber,
+      notice.displayTitle,
+    );
     const chip = document.createElement("span");
     const chipVariant = notice.reason === "stale_derived_identity" ? "warn" : "error";
     chip.className = `job-status job-status-${chipVariant}`;
@@ -342,9 +365,10 @@ function renderOverflow(notices: OverflowNotice[]): void {
     titleRow.append(title, chip);
     const meta = document.createElement("span");
     meta.className = "job-meta";
+    const date = formatLectureDate(notice.lectureDate);
     meta.textContent = notice.staleLectureKey
-      ? `was ${notice.staleLectureKey} · ${notice.lectureDate}`
-      : `${notice.lectureDate} · captured ${formatCapturedAt(notice.capturedAt)}`;
+      ? `was ${notice.staleLectureKey}${date ? ` · ${date}` : ""}`
+      : [date, `captured ${formatCapturedAt(notice.capturedAt)}`].filter(Boolean).join(" · ");
     item.append(titleRow, meta);
     overflowList.append(item);
   }
@@ -357,9 +381,14 @@ function renderJob(job: JobSummary): HTMLLIElement {
   const titleRow = document.createElement("div");
   titleRow.className = "job-title-row";
 
+  const identity = identityFromSummary(job);
   const title = document.createElement("span");
   title.className = "job-title";
-  title.textContent = job.lectureKey;
+  title.textContent = displayTitleFor(
+    identity.kind,
+    identity.lectureNumber,
+    job.displayTitle,
+  );
 
   const chip = document.createElement("span");
   chip.className = `job-status job-status-${jobChipVariant(job.status)}`;
@@ -369,43 +398,54 @@ function renderJob(job: JobSummary): HTMLLIElement {
 
   const meta = document.createElement("span");
   meta.className = "job-meta";
+  const date = formatLectureDate(job.lectureDate);
   const remote = job.remoteFileKind === "malformed"
     ? "remote file is malformed"
     : job.remoteContentHash
-      ? `remote hash ${job.remoteContentHash}`
+      ? `remote hash ${job.remoteContentHash.slice(0, 8)}…`
       : job.remoteFileKind
         ? `remote ${job.remoteFileKind}`
         : "";
-  meta.textContent = [job.targetPath, remote].filter(Boolean).join(" · ");
+  meta.textContent = [date, job.targetPath, remote].filter(Boolean).join(" · ");
   item.append(titleRow, meta);
 
   const canRetry = canRetryJob(job.status);
   const canDiscard = canDiscardJob(job.status);
-  if (canRetry || canDiscard) {
-    const actions = document.createElement("div");
-    actions.className = "job-actions";
-    if (canRetry) {
-      const retry = document.createElement("button");
-      retry.className = "button secondary";
-      retry.type = "button";
-      retry.textContent = "Retry";
-      retry.addEventListener("click", () => {
-        void retryJob(job);
-      });
-      actions.append(retry);
-    }
-    if (canDiscard) {
-      const discard = document.createElement("button");
-      discard.className = "button danger";
-      discard.type = "button";
-      discard.textContent = "Discard local row";
-      discard.addEventListener("click", () => {
-        void discardJob(job);
-      });
-      actions.append(discard);
-    }
-    item.append(actions);
+  const actions = document.createElement("div");
+  actions.className = "job-actions";
+  if (canRetry) {
+    const retry = document.createElement("button");
+    retry.className = "button secondary";
+    retry.type = "button";
+    retry.textContent = "Retry";
+    retry.addEventListener("click", () => {
+      void retryJob(job);
+    });
+    actions.append(retry);
   }
+  if (canDiscard) {
+    const discard = document.createElement("button");
+    discard.className = "button danger";
+    discard.type = "button";
+    discard.textContent = "Discard local row";
+    discard.addEventListener("click", () => {
+      void discardJob(job);
+    });
+    actions.append(discard);
+  }
+  if (job.remoteContentHash) {
+    const copyHash = document.createElement("button");
+    copyHash.className = "button secondary";
+    copyHash.type = "button";
+    copyHash.textContent = "Copy hash";
+    copyHash.addEventListener("click", () => {
+      void copyText(job.remoteContentHash as string).then((copied) => {
+        flashButton(copyHash, copied ? "Copied" : "Copy failed");
+      });
+    });
+    actions.append(copyHash);
+  }
+  if (actions.childElementCount > 0) item.append(actions);
   return item;
 }
 
