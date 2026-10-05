@@ -1,115 +1,88 @@
-# Lecture Transcripts Extension
+# Lecture Transcripts
 
-Personal Chrome extension and macOS uploader for saving an explicitly opened
-Leccap transcript as a write-once Markdown lecture file in a configured GitHub
-repository.
+A Chrome extension that saves transcripts from the University of Michigan's
+Leccap recordings to a GitHub repository as Markdown, organized by course.
+A local macOS uploader handles GitHub access and uploads.
 
-The Phase 1 scope is deliberately narrow: one Chrome installation, one Mac,
-one authenticated Leccap session, one GitHub account, and one destination
-repository. A recognized Leccap lecture page captures when it loads or when its
-in-page URL changes: the content script opens the transcript control itself when
-needed, and a page that is not a recognized lecture page does nothing. The
-extension sends only selected transcript text and validated lecture metadata to
-the local uploader. GitHub credentials stay in the uploader's macOS Keychain,
-and the uploader owns the durable retry queue.
+It saves plain and timestamped transcripts, retries temporary upload failures,
+and skips recordings you've already saved. Existing files are never overwritten.
+GitHub credentials stay in the macOS Keychain.
 
-## Status
+## Requirements
 
-Status: `IMPLEMENTED_THROUGH_PACKAGING / LIVE_ITEMS_OUTSTANDING`.
+- An Apple silicon Mac and Chrome.
+- Access to your course recordings on Leccap.
+- Node.js 22 or later, npm, and Go 1.24.x.
+- Xcode Command Line Tools (`xcode-select --install`).
+- A GitHub account with access to the destination repository.
 
-Implemented and tested in this tree:
+## Installation
 
-- the capture-side TypeScript (parser, normalizer, job builder, content runtime,
-  outbox, Native Messaging client, popup) with the versioned protocol;
-- the Go uploader packages for machine-local config, durable SQLite queue,
-  sanitized rotating logs, retry backoff, GitHub App device flow and Keychain
-  storage, GitHub Contents write-once publishing, Markdown rendering, the
-  serial processor, and the `lecture-uploader` Native Messaging executable;
-- the extension build, uploader build, host install/uninstall scripts, and
-  their packaging self-tests;
-- the Stage 0 evidence packet and fixtures described in
-  [docs/STAGE_0_REPORT.md](docs/STAGE_0_REPORT.md).
+### 1. Build
 
-Remaining before personal use:
+```sh
+git clone https://github.com/neelbangera/lecture-transcripts-extension.git
+cd lecture-transcripts-extension
+```
 
-- the per-sample render-time measurement is still a live owner-side item
-  (recipe in [docs/STAGE_0_REPORT.md](docs/STAGE_0_REPORT.md));
-- the machine-local GitHub provisioning packet (App client ID, numeric
-  repository ID, initialized `main` branch, loaded extension ID) is owner-side
-  setup and is never committed.
-
-No credential, repository ID, token, or extension ID belongs in this
-repository; use `<loaded-extension-id>`-style placeholders in notes and issues.
-
-## Prerequisites
-
-- macOS with the Xcode Command Line Tools installed and selected (`xcode-select
-  --install`, then `xcode-select -p`); the Keychain adapter uses cgo.
-- Chrome desktop.
-- Node.js 22 LTS and npm.
-- Go 1.24.x.
-
-## Build and test
-
-From the repository root:
+Before building, set `ExpectedOwner` and `ExpectedRepo` in
+[config.go](uploader/internal/config/config.go) to your GitHub repository's owner
+and name. These values must match your local configuration. Uploads go to `main`.
 
 ```sh
 npm ci
-npm run typecheck
-npm test
 npm run build
-```
-
-`npm run build` writes the loadable unpacked extension to `dist/extension/`.
-
-The uploader module is under `uploader/`:
-
-```sh
-cd uploader
-go test ./...
-```
-
-Packaging self-tests (temporary `HOME`, stubbed `security`):
-
-```sh
-sh scripts/tests/run.sh
-```
-
-Build the macOS uploader and install the Native Messaging host:
-
-```sh
 scripts/build-uploader.sh
-scripts/install-native-host.sh <loaded-extension-id>
 ```
 
-See [docs/SETUP.md](docs/SETUP.md) for the complete install runbook, the GitHub
-App and machine-local config steps, and the remaining live items.
+Keep this folder in its current location after installing; Chrome uses its path
+to identify the extension and find the uploader.
 
-## Documentation
+### 2. Add the extension to Chrome
 
-- [docs/SETUP.md](docs/SETUP.md) — prerequisites, build, unpacked loading,
-  GitHub App, machine-local config, host installation, extension-ID drift.
-- [docs/SECURITY.md](docs/SECURITY.md) — permissions, Keychain records, queue
-  and log modes, redaction, URL sanitization, write-once conflicts, reset.
-- [docs/TESTING.md](docs/TESTING.md) — unit suites, fixture packet,
-  offline/restart/duplicate/conflict/retry checks, real-machine checks.
-- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — host-not-found,
-  protocol mismatch, authorization, repository, queue, retry, log, conflict,
-  oversized, and extension-ID-drift recovery.
-- [TECHNICAL_PLAN.md](TECHNICAL_PLAN.md) — normative behavior, limits, status
-  names, and schemas.
-- [PHASE_1_DECISIONS.md](PHASE_1_DECISIONS.md) — rationale and rejected
-  alternatives.
+1. Open `chrome://extensions` and enable **Developer mode**.
+2. Click **Load unpacked** and select `dist/extension` inside the project folder.
+3. Copy the extension ID shown on its card.
+4. Run the command below from the project folder, replacing
+   `<loaded-extension-id>` with the ID you copied:
 
-## Design guardrails
+```sh
+scripts/install-native-host.sh "<loaded-extension-id>"
+```
 
-- The technical plan is the implementation authority; the historical proposal
-  is not.
-- The extension has no GitHub token, refresh token, or private key.
-- Jobs are delivered at least once and deduplicated by deterministic
-  `lectureKey` plus framed `contentHash`.
-- A remote lecture file is write-once: the same hash is unchanged, while a
-  different or malformed existing file is a conflict and is never overwritten
-  automatically.
-- Do not place real Leccap page captures, credentials, queue databases,
-  rendered host manifests, or build output under version control.
+Fully quit and reopen Chrome, then pin **Lecture Transcripts** to the toolbar.
+
+### 3. Connect GitHub
+
+Follow the [GitHub setup instructions](docs/SETUP.md#create-the-destination-repository-and-github-app)
+to create a GitHub App with **Device Flow** enabled and **Contents: Read and
+write**, install it on the destination repository, and create your local
+`~/Library/Application Support/LectureTranscripts/config.json`. Use your
+repository's owner, name, and numeric ID throughout the guide.
+The repository needs at least one commit on `main`.
+
+Open the extension popup, click **Connect GitHub**, and follow the approval
+steps. Choose **Always Allow** if macOS asks for Keychain access. The popup will
+show **GitHub connected** when setup is complete.
+
+## Usage
+
+Add your courses and terms in **Settings**, then open a supported Leccap lecture
+or discussion recording while signed in. Capture is automatic by default;
+check the popup for upload progress.
+
+In **Settings**, you can manage courses and terms, turn off notifications, or
+disable **Automatic capture**. With automatic capture off, click Leccap's
+**Show Transcript** button to save a recording.
+
+Saved files are organized by course, for example `eecs484/001.md` and
+`eecs484/timestamped/001.md`. Discussions go in a `discussions` folder; only the
+first captured section of each discussion is saved.
+
+Uploads resume when Chrome reconnects to the uploader. If an existing file
+differs from a new capture, the popup reports a conflict for you to review.
+
+For help, see the [full setup guide](docs/SETUP.md),
+[troubleshooting](docs/TROUBLESHOOTING.md), or
+[security notes](docs/SECURITY.md). Development details are in
+[ARCHITECTURE.md](ARCHITECTURE.md).
