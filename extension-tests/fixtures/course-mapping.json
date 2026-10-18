@@ -16,6 +16,7 @@
   ],
   "notes": {
     "pageCourseText": "the course capture group from the observed header label 'EECS 484 - Fall 2026' (courseSelector regex group 1)",
+    "courseRecognition": "matching accepts an exact pageCourseText or a page label whose leading base course code equals the mapping courseName, verified 2026-09-27: the EECS 491 site button reads 'EECS 491 001 / 002 / 011 / 012 / 013 / 014 / 015 / 016 - Fall 2026', so multi-section sites append a section list to the base code; labels that match no mapping and no base code still fail closed as rejected_ambiguous_metadata",
     "scope": "this is the personal allowlist as of 2026-09-22: EECS 484 and EECS 491 Fall 2026 are the supported course/term pairs. Adding a course means adding an entry here with a verified page observation; unmapped labels fail closed as rejected_ambiguous_metadata.",
     "slugRule": "courseSlug must match ^[a-z0-9]+$ per the plan's identity rules"
   }

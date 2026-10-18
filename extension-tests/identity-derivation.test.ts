@@ -14,6 +14,7 @@ function card(partial: Partial<OverviewCardFact> & { href: string; title: string
     recTime: "16:30",
     kind: "lecture",
     discussionSection: null,
+    courseSection: null,
     ...partial,
   };
 }
@@ -74,18 +75,50 @@ describe("parseRecordingBadge", () => {
     expect(parseRecordingBadge("Lecture - 001")).toEqual({
       kind: "lecture",
       discussionSection: null,
+      courseSection: null,
     });
     expect(parseRecordingBadge("Discussion - 012")).toEqual({
       kind: "discussion",
       discussionSection: "012",
+      courseSection: null,
     });
     expect(parseRecordingBadge("Discussion - 12")).toEqual({
       kind: "discussion",
       discussionSection: null,
+      courseSection: null,
     });
     expect(parseRecordingBadge("Office hours")).toEqual({
       kind: null,
       discussionSection: null,
+      courseSection: null,
+    });
+  });
+
+  it("reads a section-only course badge without inventing a category", () => {
+    expect(parseRecordingBadge("EECS 491 012", "EECS 491")).toEqual({
+      kind: null,
+      discussionSection: null,
+      courseSection: "012",
+    });
+    expect(parseRecordingBadge("EECS 491 001", "EECS 491")).toEqual({
+      kind: null,
+      discussionSection: null,
+      courseSection: "001",
+    });
+    expect(parseRecordingBadge("EECS 491 012")).toEqual({
+      kind: null,
+      discussionSection: null,
+      courseSection: null,
+    });
+    expect(parseRecordingBadge("MATH 425 012", "EECS 491")).toEqual({
+      kind: null,
+      discussionSection: null,
+      courseSection: null,
+    });
+    expect(parseRecordingBadge("EECS 491 12", "EECS 491")).toEqual({
+      kind: null,
+      discussionSection: null,
+      courseSection: null,
     });
   });
 });
@@ -102,6 +135,52 @@ describe("parseRecordingTime", () => {
 });
 
 describe("deriveIdentityFromOverview", () => {
+  it("scopes a section-badged sequence to the badge section", () => {
+    const cards = [
+      card({ href: "h1", title: "Lecture recorded on 8/31/2026", lectureDate: "2026-08-31", recTime: "10:30", kind: null, courseSection: "001" }),
+      card({ href: "h2", title: "Lecture recorded on 9/2/2026", lectureDate: "2026-09-02", recTime: "10:30", kind: null, courseSection: "001" }),
+      card({ href: "h3", title: "Lecture recorded on 9/9/2026", lectureDate: "2026-09-09", recTime: "10:30", kind: null, courseSection: "001" }),
+      card({ href: "h4", title: "Lecture recorded on 9/11/2026", lectureDate: "2026-09-11", recTime: "11:30", kind: null, courseSection: "011" }),
+      card({ href: "h5", title: "Lecture recorded on 9/11/2026", lectureDate: "2026-09-11", recTime: "12:30", kind: null, courseSection: "012" }),
+      card({ href: "h6", title: "Lecture recorded on 9/14/2026", lectureDate: "2026-09-14", recTime: "10:30", kind: null, courseSection: "001" }),
+    ];
+    expect(deriveIdentityFromOverview(cards, "h6", "Lecture recorded on 9/14/2026")).toEqual({
+      ok: true,
+      kind: "lecture",
+      lectureNumber: 4,
+    });
+  });
+
+  it("forces the discussion kind for the preferred discussion section badge", () => {
+    const cards = [
+      card({ href: "d1", title: "Lecture recorded on 9/11/2026", lectureDate: "2026-09-11", recTime: "12:30", kind: null, courseSection: "012" }),
+      card({ href: "d2", title: "Lecture recorded on 9/18/2026", lectureDate: "2026-09-18", recTime: "12:30", kind: null, courseSection: "012" }),
+      card({ href: "d3", title: "Lecture recorded on 9/25/2026", lectureDate: "2026-09-25", recTime: "12:30", kind: null, courseSection: "012" }),
+    ];
+    expect(
+      deriveIdentityFromOverview(cards, "d2", "Lecture recorded on 9/18/2026", {
+        forcedKind: "discussion",
+      }),
+    ).toEqual({
+      ok: true,
+      kind: "discussion",
+      lectureNumber: 2,
+    });
+  });
+
+  it("keeps the kind-scoped sequence for category badges", () => {
+    const cards = [
+      card({ href: "k1", title: "Lecture recorded on 9/1/2026", lectureDate: "2026-09-01", recTime: "16:30", kind: "lecture" }),
+      card({ href: "k2", title: "Discussion recorded on 9/2/2026", lectureDate: "2026-09-02", recTime: "17:30", kind: "discussion", discussionSection: "012" }),
+      card({ href: "k3", title: "Lecture recorded on 9/3/2026", lectureDate: "2026-09-03", recTime: "16:30", kind: "lecture" }),
+    ];
+    expect(deriveIdentityFromOverview(cards, "k3", "Lecture recorded on 9/3/2026")).toEqual({
+      ok: true,
+      kind: "lecture",
+      lectureNumber: 2,
+    });
+  });
+
   const sequence = [
     card({ href: "https://leccap.engin.umich.edu/leccap/player/r/a", title: "01 Intro", lectureDate: "2026-09-01" }),
     card({ href: "https://leccap.engin.umich.edu/leccap/player/r/b", title: "02 ER Model", lectureDate: "2026-09-03" }),

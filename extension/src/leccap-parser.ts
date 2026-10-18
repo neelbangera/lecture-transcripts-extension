@@ -236,7 +236,22 @@ function textOf(element: Element | null): string {
 }
 
 function normalizedMetadataText(value: string): string {
-  return value.normalize("NFC").replace(/[\t\r\n ]+/g, " ").trim();
+  // \s folds every Unicode whitespace variant (nbsp, thin space, ideographic
+  // space, ...) that rendered headers emit invisibly alongside plain spaces.
+  return value.normalize("NFC").replace(/\s+/gu, " ").trim();
+}
+
+const BASE_COURSE_CODE_RE = /^([A-Za-z]{2,4}\s+\d{3}[A-Za-z]?)(?=$|[\s,/])/;
+
+/**
+ * The leading course code of a page label: the anchor that lets a header like
+ * "EECS 491 001 / 002 / 011 - Fall 2026" resolve to the "EECS 491" mapping
+ * instead of failing on the appended section list. Returns null for labels
+ * that do not start with a course code.
+ */
+function baseCourseCode(label: string): string | null {
+  const match = BASE_COURSE_CODE_RE.exec(label);
+  return match ? match[1] : null;
 }
 
 function queryOne(root: ParentNode, selector: string): Element | null {
@@ -655,6 +670,7 @@ function inventoryOverviewCards(
   source: LectureDateSource,
   overviewUrl: string,
   term: string,
+  courseName: string | undefined,
 ): OverviewCardFact[] {
   const cards: OverviewCardFact[] = [];
   for (const element of cardElements) {
@@ -673,6 +689,7 @@ function inventoryOverviewCards(
     const recTime = dateElement ? parseRecordingTime(dateText) : null;
     const badge = parseRecordingBadge(
       normalizedMetadataText(textOf(queryOne(element, RECORDING_BADGE_SELECTOR))),
+      courseName,
     );
     cards.push({
       href,
@@ -681,6 +698,7 @@ function inventoryOverviewCards(
       recTime,
       kind: badge.kind,
       discussionSection: badge.discussionSection,
+      courseSection: badge.courseSection,
     });
   }
   return cards;
@@ -692,6 +710,7 @@ async function resolveOverview(
   term: string,
   selectors: SelectorFixture,
   fetchOverview: OverviewFetcher | undefined,
+  courseName: string | undefined,
 ): Promise<ResolvedOverview | RejectedLecture> {
   const source = selectors.lectureDateSource;
   if (source.page === "lecture_page") {
@@ -852,15 +871,17 @@ async function resolveOverview(
     );
   }
   // The badge is a category/section label, never an identity input: only the
-  // observed "Discussion - 0NN" shape is retained, everything else is null.
+  // observed "Discussion - 0NN" shape retains a section, and a section-only
+  // label ("EECS 491 012") retains its section for preferred-section matching.
   const badge = parseRecordingBadge(
     normalizedMetadataText(textOf(queryOne(matches[0], RECORDING_BADGE_SELECTOR))),
+    courseName,
   );
   return {
     lectureDate: parsed,
     recTime: parseRecordingTime(dateText),
-    discussionSection: badge.discussionSection,
-    cards: inventoryOverviewCards(cards, source, overviewUrl, term),
+    discussionSection: badge.discussionSection ?? badge.courseSection,
+    cards: inventoryOverviewCards(cards, source, overviewUrl, term, courseName),
   };
 }
 
@@ -917,11 +938,17 @@ function extractCourseIdentity(
   }
   const term = `${year}-${normalizedSeason}`;
   const normalizedPageCourseText = normalizedMetadataText(pageCourseText);
-  const matchingMappings = mappings.filter(
-    (mapping) =>
-      normalizedMetadataText(mapping.pageCourseText) === normalizedPageCourseText &&
-      mapping.supportedTerms.filter((supportedTerm) => supportedTerm === term).length === 1,
-  );
+  const pageBaseCourseCode = baseCourseCode(normalizedPageCourseText);
+  const matchingMappings = mappings.filter((mapping) => {
+    const labelMatches =
+      normalizedMetadataText(mapping.pageCourseText) === normalizedPageCourseText ||
+      (pageBaseCourseCode !== null &&
+        normalizedMetadataText(mapping.courseName) === pageBaseCourseCode);
+    return (
+      labelMatches &&
+      mapping.supportedTerms.filter((supportedTerm) => supportedTerm === term).length === 1
+    );
+  });
   if (matchingMappings.length !== 1) {
     return reject(
       "rejected_ambiguous_metadata",
@@ -954,6 +981,7 @@ function resolveNumericIdentity(
   course: { courseName: string; courseSlug: string; term: string },
   overview: ResolvedOverview,
   sourceUrl: string,
+  preferredDiscussionSection: string | null,
 ): ResolvedNumericIdentity | RejectedLecture {
   const numberElement = queryOne(document, selectors.lectureNumberSelector.selector);
   const title = textOf(numberElement);
@@ -991,7 +1019,16 @@ function resolveNumericIdentity(
       displayTitle: topicFromTitle(targetCard!.title),
     };
   }
-  const derived = deriveIdentityFromOverview(overview.cards, sourceUrl, title);
+  const forcedKind =
+    targetCard?.courseSection != null &&
+    preferredDiscussionSection !== null &&
+    preferredDiscussionSection !== "" &&
+    targetCard.courseSection === preferredDiscussionSection
+      ? "discussion"
+      : null;
+  const derived = deriveIdentityFromOverview(overview.cards, sourceUrl, title, {
+    forcedKind,
+  });
   if (!derived.ok) {
     return reject("rejected_ambiguous_metadata", derived.reason, {
       courseName: course.courseName,
@@ -1068,6 +1105,7 @@ export async function parseLecturePage(
     course.term,
     selectors,
     options.fetchOverview,
+    course.courseName,
   );
   if ("supported" in overview) {
     return {
@@ -1077,12 +1115,17 @@ export async function parseLecturePage(
       lectureNumber: null,
     };
   }
+  const preferredDiscussionSection =
+    options.courseMappings.find(
+      (mapping) => mapping.courseSlug === course.courseSlug,
+    )?.preferredDiscussionSection ?? null;
   const identity = resolveNumericIdentity(
     document,
     selectors,
     course,
     overview,
     sourceUrl,
+    preferredDiscussionSection,
   );
   if ("supported" in identity) {
     return {

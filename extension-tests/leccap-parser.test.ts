@@ -235,6 +235,78 @@ describe("Leccap parser against the Stage 0 packet", () => {
     });
   });
 
+  it("recognizes a multi-section course header by its base course code", async () => {
+    const { document } = makeDocument(
+      readFixture("lecture-page.html").replace(
+        "<span>EECS 484 - Fall 2026</span>",
+        "<span>EECS 484 001 / 002 / 011 / 012 - Fall 2026</span>",
+      ),
+    );
+    const result = await parseLecturePage(document, {
+      selectors,
+      courseMappings: courseFixture.courseMappings,
+      sourceUrl: lectureUrl,
+      fetchOverview: fixtureFetcher(readFixture("overview-page.html")),
+    });
+    expect(result).toMatchObject({
+      supported: true,
+      courseName: "EECS 484",
+      courseSlug: "eecs484",
+      term: "2026-fall",
+    });
+  });
+
+  it("does not let a near-miss course code claim a mapping", async () => {
+    const { document } = makeDocument(
+      readFixture("lecture-page.html").replace(
+        "<span>EECS 484 - Fall 2026</span>",
+        "<span>EECS 4841 - Fall 2026</span>",
+      ),
+    );
+    const result = await parseLecturePage(document, {
+      selectors,
+      courseMappings: courseFixture.courseMappings,
+      sourceUrl: lectureUrl,
+      fetchOverview: fixtureFetcher(readFixture("overview-page.html")),
+    });
+    expect(result).toMatchObject({
+      supported: false,
+      status: "rejected_ambiguous_metadata",
+      courseName: "EECS 4841",
+      term: "2026-fall",
+    });
+  });
+
+  it("derives a section-scoped identity from section-only badges and lag titles", async () => {
+    const overviewHtml = readFixture("overview-page.html")
+      .replaceAll("Lecture - 001", "EECS 484 001")
+      .replaceAll("Discussion - 012", "EECS 484 011")
+      .replace(
+        /(<div class="rec-title"><span>)[^<]*(<\/span>)/g,
+        '$1Lecture recorded on 9/1/2026$2',
+      );
+    const { document } = makeDocument(
+      readFixture("lecture-page.html").replace(
+        'content-header-recording-title">01 Intro, [REDACTED]',
+        'content-header-recording-title">Lecture recorded on 9/1/2026',
+      ),
+    );
+    const result = await parseLecturePage(document, {
+      selectors,
+      courseMappings: courseFixture.courseMappings,
+      sourceUrl: lectureUrl,
+      fetchOverview: fixtureFetcher(overviewHtml),
+    });
+    expect(result).toMatchObject({
+      supported: true,
+      kind: "lecture",
+      courseSlug: "eecs484",
+      lectureNumber: 1,
+      numberSource: "derived",
+      lectureDate: "2026-09-01",
+    });
+  });
+
   it("rejects an unsafe source URL before any metadata or overview lookup", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const result = await parseFixture(

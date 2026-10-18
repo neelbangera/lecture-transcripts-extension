@@ -26,6 +26,11 @@ export interface OverviewCardFact {
   readonly kind: RecordingKind | null;
   /** Badge section digits for "Discussion - 0NN"; never an identity field. */
   readonly discussionSection: string | null;
+  /**
+   * Badge section digits for a section-only label ("EECS 491 012") that names
+   * the course without a lecture/discussion category word; null otherwise.
+   */
+  readonly courseSection: string | null;
 }
 
 export type TitleIdentity =
@@ -117,17 +122,34 @@ export function topicFromTitle(title: string): string | null {
 }
 
 /** Badge category and optional discussion section; the badge number is never an identity. */
-export function parseRecordingBadge(badgeText: string): {
+export function parseRecordingBadge(
+  badgeText: string,
+  courseName?: string,
+): {
   kind: RecordingKind | null;
   discussionSection: string | null;
+  courseSection: string | null;
 
 } {
   const text = badgeText.normalize("NFC").replace(/[\t\r\n ]+/g, " ").trim();
   const section = DISCUSSION_SECTION_BADGE_RE.exec(text);
-  if (section) return { kind: "discussion", discussionSection: section[1] };
-  if (LECTURE_CATEGORY_BADGE_RE.test(text)) return { kind: "lecture", discussionSection: null };
-  if (DISCUSSION_CATEGORY_BADGE_RE.test(text)) return { kind: "discussion", discussionSection: null };
-  return { kind: null, discussionSection: null };
+  if (section) {
+    return { kind: "discussion", discussionSection: section[1], courseSection: null };
+  }
+  if (LECTURE_CATEGORY_BADGE_RE.test(text)) {
+    return { kind: "lecture", discussionSection: null, courseSection: null };
+  }
+  if (DISCUSSION_CATEGORY_BADGE_RE.test(text)) {
+    return { kind: "discussion", discussionSection: null, courseSection: null };
+  }
+  if (courseName !== undefined) {
+    const normalizedCourse = courseName.normalize("NFC").replace(/[\t\r\n ]+/g, " ").trim();
+    const prefix = `${normalizedCourse} `;
+    if (normalizedCourse !== "" && text.startsWith(prefix) && /^\d{3}$/.test(text.slice(prefix.length))) {
+      return { kind: null, discussionSection: null, courseSection: text.slice(prefix.length) };
+    }
+  }
+  return { kind: null, discussionSection: null, courseSection: null };
 }
 
 /** Parse the rec-date start-time tail ("• 4:29 PM") as HH:MM 24h. */
@@ -157,6 +179,15 @@ export type DerivedIdentityResult =
   | { readonly ok: true; readonly kind: RecordingKind; readonly lectureNumber: number }
   | { readonly ok: false; readonly reason: string };
 
+export interface DeriveIdentityOptions {
+  /**
+   * Kind override for section-only badges: when the target card's badge
+   * section equals the mapping's preferred discussion section, the recording
+   * is a discussion even though its lag title says "Lecture recorded on".
+   */
+  forcedKind?: RecordingKind | null;
+}
+
 /**
  * Resolve a lagging unnumbered title from the overview sequence.
  *
@@ -165,11 +196,17 @@ export type DerivedIdentityResult =
  * N + 1; an unnumbered card takes next and advances it by one. The target
  * card's assigned number is the identity. Lecture-kind derivation also
  * requires one shared start time.
+ *
+ * When the target card carries a section-only badge, the sequence is scoped
+ * to that badge section instead of the kind: multi-section sites label every
+ * recording with its section and use one generic lag title, so the section is
+ * the only reliable grouping boundary.
  */
 export function deriveIdentityFromOverview(
   cards: readonly OverviewCardFact[],
   targetHref: string,
   targetTitle: string,
+  options: DeriveIdentityOptions = {},
 ): DerivedIdentityResult {
   const titleIdentity = parseTitleIdentity(targetTitle);
   if (!titleIdentity || titleIdentity.lectureNumber !== null) {
@@ -187,21 +224,20 @@ export function deriveIdentityFromOverview(
     };
   }
   const target = targets[0];
-  const kind = target.kind;
-  if (kind === null) {
-    return {
-      ok: false,
-      reason: "the correlated overview badge is not a lecture or discussion category",
-    };
-  }
-  if (kind !== titleIdentity.kind) {
+  const kind = target.kind ?? options.forcedKind ?? titleIdentity.kind;
+  if (target.kind !== null && kind !== titleIdentity.kind) {
     return {
       ok: false,
       reason: "the recording title and overview badge category disagree",
     };
   }
 
-  const sequence = cards.filter((card) => card.kind === kind).sort(compareCards);
+  const sectionScoped = target.courseSection !== null;
+  const sequence = (
+    sectionScoped
+      ? cards.filter((card) => card.courseSection === target.courseSection)
+      : cards.filter((card) => card.kind === kind)
+  ).sort(compareCards);
   let next = 1;
   let assigned: number | null = null;
   const sequenceTimes = new Set<string>();
@@ -221,7 +257,7 @@ export function deriveIdentityFromOverview(
         reason: "the same-kind overview sequence has an unrecognized recording title",
       };
     }
-    if (identity.kind !== kind) {
+    if (!sectionScoped && identity.kind !== kind) {
       return {
         ok: false,
         reason: "the same-kind overview sequence has a recording title of another kind",
