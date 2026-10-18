@@ -152,6 +152,18 @@ export function parseRecordingBadge(
   return { kind: null, discussionSection: null, courseSection: null };
 }
 
+/**
+ * Kind implied by a section-only badge section: 00x sections are lectures and
+ * 01x sections are discussions (observed EECS 491 numbering). Other sections
+ * imply nothing.
+ */
+export function kindForCourseSection(section: string | null): RecordingKind | null {
+  if (section === null) return null;
+  if (/^00\d$/.test(section)) return "lecture";
+  if (/^01\d$/.test(section)) return "discussion";
+  return null;
+}
+
 /** Parse the rec-date start-time tail ("• 4:29 PM") as HH:MM 24h. */
 export function parseRecordingTime(recDateText: string): string | null {
   const match = REC_TIME_RE.exec(recDateText);
@@ -181,9 +193,9 @@ export type DerivedIdentityResult =
 
 export interface DeriveIdentityOptions {
   /**
-   * Kind override for section-only badges: when the target card's badge
-   * section equals the mapping's preferred discussion section, the recording
-   * is a discussion even though its lag title says "Lecture recorded on".
+   * Kind override for section-only badges: a 01x badge section (or the
+   * mapping's preferred discussion section) is a discussion and a 00x section
+   * is a lecture, even though every lag title says "Lecture recorded on".
    */
   forcedKind?: RecordingKind | null;
 }

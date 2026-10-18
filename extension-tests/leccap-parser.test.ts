@@ -307,6 +307,36 @@ describe("Leccap parser against the Stage 0 packet", () => {
     });
   });
 
+  it("classifies a 01x section-only badge as a discussion despite a lecture lag title", async () => {
+    const overviewHtml = readFixture("overview-page.html")
+      .replaceAll("Lecture - 001", "EECS 484 013")
+      .replaceAll("Discussion - 012", "EECS 484 001")
+      .replace(
+        /(<div class="rec-title"><span>)[^<]*(<\/span>)/g,
+        '$1Lecture recorded on 9/1/2026$2',
+      );
+    const { document } = makeDocument(
+      readFixture("lecture-page.html").replace(
+        'content-header-recording-title">01 Intro, [REDACTED]',
+        'content-header-recording-title">Lecture recorded on 9/1/2026',
+      ),
+    );
+    const result = await parseLecturePage(document, {
+      selectors,
+      courseMappings: courseFixture.courseMappings,
+      sourceUrl: lectureUrl,
+      fetchOverview: fixtureFetcher(overviewHtml),
+    });
+    expect(result).toMatchObject({
+      supported: true,
+      kind: "discussion",
+      courseSlug: "eecs484",
+      lectureNumber: 1,
+      numberSource: "derived",
+      discussionSection: "013",
+    });
+  });
+
   it("rejects an unsafe source URL before any metadata or overview lookup", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const result = await parseFixture(

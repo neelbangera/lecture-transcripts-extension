@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveIdentityFromOverview,
+  kindForCourseSection,
   parseRecordingBadge,
   parseRecordingTime,
   parseTitleIdentity,
@@ -120,6 +121,17 @@ describe("parseRecordingBadge", () => {
       discussionSection: null,
       courseSection: null,
     });
+  });
+});
+
+describe("kindForCourseSection", () => {
+  it("reads 00x as lecture and 01x as discussion sections", () => {
+    expect(kindForCourseSection("001")).toBe("lecture");
+    expect(kindForCourseSection("002")).toBe("lecture");
+    expect(kindForCourseSection("011")).toBe("discussion");
+    expect(kindForCourseSection("016")).toBe("discussion");
+    expect(kindForCourseSection("021")).toBeNull();
+    expect(kindForCourseSection(null)).toBeNull();
   });
 });
 

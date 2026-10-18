@@ -11,6 +11,7 @@
 
 import {
   deriveIdentityFromOverview,
+  kindForCourseSection,
   parseRecordingBadge,
   parseRecordingTime,
   parseTitleIdentity,
@@ -986,9 +987,22 @@ function resolveNumericIdentity(
   const numberElement = queryOne(document, selectors.lectureNumberSelector.selector);
   const title = textOf(numberElement);
   const titleIdentity = parseTitleIdentity(title);
+  // A section-only badge decides the kind (00x lecture, 01x discussion) even
+  // when the title says "Lecture"; multi-section sites title every recording
+  // that way, so the title kind alone would upload other discussion sections
+  // as lectures and bypass the preferred-section skip.
+  const targetCard = overview.cards.find((card) => card.href === sourceUrl);
+  const sectionKind =
+    kindForCourseSection(targetCard?.courseSection ?? null) ??
+    (targetCard?.courseSection != null &&
+    preferredDiscussionSection !== null &&
+    preferredDiscussionSection !== "" &&
+    targetCard.courseSection === preferredDiscussionSection
+      ? "discussion"
+      : null);
   if (titleIdentity && titleIdentity.lectureNumber !== null) {
     return {
-      kind: titleIdentity.kind,
+      kind: sectionKind ?? titleIdentity.kind,
       ...course,
       lectureNumber: titleIdentity.lectureNumber,
       numberSource: "title",
@@ -1008,26 +1022,18 @@ function resolveNumericIdentity(
   }
   // A lagging page title can still resolve from an already-updated overview
   // card title ("Lecture: N") without needing the sequence walk.
-  const targetCard = overview.cards.find((card) => card.href === sourceUrl);
   const cardIdentity = targetCard ? parseTitleIdentity(targetCard.title) : null;
   if (cardIdentity && cardIdentity.lectureNumber !== null) {
     return {
-      kind: titleIdentity.kind,
+      kind: sectionKind ?? titleIdentity.kind,
       ...course,
       lectureNumber: cardIdentity.lectureNumber,
       numberSource: "title",
       displayTitle: topicFromTitle(targetCard!.title),
     };
   }
-  const forcedKind =
-    targetCard?.courseSection != null &&
-    preferredDiscussionSection !== null &&
-    preferredDiscussionSection !== "" &&
-    targetCard.courseSection === preferredDiscussionSection
-      ? "discussion"
-      : null;
   const derived = deriveIdentityFromOverview(overview.cards, sourceUrl, title, {
-    forcedKind,
+    forcedKind: sectionKind,
   });
   if (!derived.ok) {
     return reject("rejected_ambiguous_metadata", derived.reason, {
