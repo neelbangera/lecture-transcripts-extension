@@ -15,6 +15,10 @@ repo_root=$(CDPATH= cd "$script_dir/../.." && pwd)
 install_script=$repo_root/scripts/install-native-host.sh
 uninstall_script=$repo_root/scripts/uninstall-native-host.sh
 build_script=$repo_root/scripts/build-uploader.sh
+package_script=$repo_root/scripts/package-release.sh
+install_command=$repo_root/scripts/Install.command
+uninstall_command=$repo_root/scripts/Uninstall.command
+install_note=$repo_root/scripts/INSTALL.txt
 template=$repo_root/native-host/com.neelbangera.lecturetranscripts.json.in
 
 host_name=com.neelbangera.lecturetranscripts
@@ -238,6 +242,136 @@ assert_output_has "build dry-run reports the package.json version" "version=$exp
 assert_output_has "build dry-run reports the dist/native output path" "dist/native/lecture-uploader"
 expect_status ok "build --dry-run accepts an explicit version" sh "$build_script" --dry-run --version 9.9.9
 assert_output_has "build dry-run reports the explicit version" "version=9.9.9"
+
+printf '# stable host registration\n'
+stable_bin="$fake_home/Library/Application Support/LectureTranscripts/bin/lecture-uploader"
+stable_ext="$fake_home/Library/Application Support/LectureTranscripts/extension"
+cat > "$fake_binary" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+chmod 0755 "$fake_binary"
+mkdir -p "$(dirname "$stable_bin")" "$stable_ext"
+cp "$fake_binary" "$stable_bin"
+chmod 0700 "$stable_bin"
+printf '{"manifest_version":3}\n' > "$stable_ext/manifest.json"
+expect_status ok "install --stable accepts a valid ID" env HOME="$fake_home" sh "$install_script" "$valid_id" --stable
+assert_file_has "$manifest" "$stable_bin" "stable install points the host at the per-user binary"
+assert_file_has "$manifest" "chrome-extension://$valid_id/" "stable install renders the exact origin"
+expect_status fail "install --stable rejects unknown options" env HOME="$fake_home" sh "$install_script" "$valid_id" --stable --bogus
+rm -f "$stable_bin"
+expect_status fail "install --stable fails without a stable binary" env HOME="$fake_home" sh "$install_script" "$valid_id" --stable
+cp "$fake_binary" "$stable_bin"
+chmod 0700 "$stable_bin"
+
+printf '# stable uninstall gating\n'
+mkdir -p "$stable_ext"
+printf '{}\n' > "$stable_ext/manifest.json"
+mkdir -p "$data_dir"
+printf 'fake queue\n' > "$data_dir/queue.sqlite3"
+printf '{}\n' > "$data_dir/config.json"
+: > "$security_log"
+expect_status ok "uninstall --stable removes staged files" env HOME="$fake_home" PATH="$stub_bin:$PATH" sh "$uninstall_script" --stable
+assert_absent "$manifest" "stable uninstall removes the manifest"
+assert_absent "$stable_bin" "stable uninstall removes the stable binary"
+assert_absent "$stable_ext" "stable uninstall removes the staged extension"
+assert_exists "$data_dir/queue.sqlite3" "stable uninstall keeps the queue database"
+assert_exists "$data_dir/config.json" "stable uninstall keeps the machine-local config"
+if [ -s "$security_log" ]; then fail "stable uninstall never calls security"; else pass "stable uninstall never calls security"; fi
+mkdir -p "$(dirname "$stable_bin")" "$stable_ext" "$data_dir"
+cp "$fake_binary" "$stable_bin"
+printf '{}\n' > "$stable_ext/manifest.json"
+printf 'fake queue\n' > "$data_dir/queue.sqlite3"
+printf '{}\n' > "$data_dir/config.json"
+expect_status ok "reinstall stable binary before reset" env HOME="$fake_home" sh "$install_script" "$valid_id" --stable
+expect_status ok "uninstall --stable --reset clears state" env HOME="$fake_home" PATH="$stub_bin:$PATH" sh "$uninstall_script" --stable --reset
+assert_absent "$data_dir/queue.sqlite3" "stable reset removes the queue database"
+assert_absent "$data_dir/config.json" "stable reset removes the machine-local config"
+assert_absent "$stable_ext" "stable reset removes the staged extension"
+expect_status ok "uninstall --extension-dir removes one staged dir" env HOME="$fake_home" PATH="$stub_bin:$PATH" sh "$uninstall_script" --extension-dir "$stable_ext" --binary "$fake_binary"
+expect_status fail "uninstall rejects a relative --extension-dir" env HOME="$fake_home" sh "$uninstall_script" --extension-dir relative/path
+
+printf '# package-release validation\n'
+expect_status fail "package rejects a missing app client ID" sh "$package_script" --app-install-url https://github.com/apps/example/installations/new
+expect_status fail "package rejects a placeholder client ID" sh "$package_script" --app-client-id REPLACE_WITH_REAL_ID --app-install-url https://github.com/apps/example/installations/new --version 9.9.9
+expect_status fail "package rejects a non-github install URL" sh "$package_script" --app-client-id Iv1.abc123def456 --app-install-url https://example.com/app --version 9.9.9
+expect_status fail "package rejects an invalid version" sh "$package_script" --app-client-id Iv1.abc123def456 --app-install-url https://github.com/apps/example/installations/new --version 'bad version!'
+if sh -n "$package_script" && sh -n "$install_command" && sh -n "$uninstall_command"; then
+    pass "release scripts pass sh -n"
+else
+    fail "release scripts pass sh -n"
+fi
+if [ -x "$package_script" ] && [ -x "$install_command" ] && [ -x "$uninstall_command" ]; then
+    pass "release scripts are executable"
+else
+    fail "release scripts are executable (0755)"
+fi
+assert_file_has "$install_note" "LectureTranscripts/bin/lecture-uploader" "install note names the stable binary path"
+assert_file_has "$install_note" "LectureTranscripts/extension" "install note names the stable extension path"
+if grep -q 'spctl --master-disable\|sudo spctl' "$install_note" "$install_command" "$package_script"; then
+    fail "release bundle never tells users to disable Gatekeeper"
+else
+    pass "release bundle never tells users to disable Gatekeeper"
+fi
+if grep -qi 'gatekeeper' "$install_note"; then
+    pass "install note documents Gatekeeper behavior"
+else
+    fail "install note documents Gatekeeper behavior"
+fi
+if grep -q 'sudo ' "$install_command" "$uninstall_command"; then
+    fail "bundle installers require no sudo"
+else
+    pass "bundle installers require no sudo"
+fi
+if grep -q 'chrome-extension://\*' "$install_command"; then
+    fail "bundle installer contains no wildcard origin"
+else
+    pass "bundle installer contains no wildcard origin"
+fi
+
+printf '# full release packaging\n'
+release_out=$work/release-out
+expect_status ok "package builds versioned assets" sh "$package_script" --app-client-id Iv1.abc123def456 --app-install-url https://github.com/apps/example/installations/new --out-dir "$release_out"
+assert_exists "$release_out/lecture-transcripts-extension-v$expected_version.zip" "extension zip is published"
+assert_exists "$release_out/lecture-transcripts-macos-arm64-v$expected_version.zip" "mac zip is published"
+assert_exists "$release_out/release.json" "release.json is published"
+assert_exists "$release_out/SHA256SUMS" "SHA256SUMS is published"
+if command -v python3 >/dev/null 2>&1; then
+    if python3 -c 'import json; d=json.load(open("'"$release_out"'/release.json")); assert d["productVersion"]=="'"$expected_version"'" and d["protocolVersion"]==1 and d["platform"]=="darwin" and d["arch"]=="arm64" and d["appClientId"]=="Iv1.abc123def456"'; then
+        pass "release.json carries product/protocol/platform/app metadata"
+    else
+        fail "release.json carries product/protocol/platform/app metadata"
+    fi
+    if (cd "$release_out" && shasum -a 256 -c SHA256SUMS >/dev/null 2>&1); then
+        pass "SHA256SUMS verifies the published assets"
+    else
+        fail "SHA256SUMS verifies the published assets"
+    fi
+fi
+mac_unpack=$work/mac-unpack
+mkdir -p "$mac_unpack"
+if command -v unzip >/dev/null 2>&1 && unzip -q "$release_out/lecture-transcripts-macos-arm64-v$expected_version.zip" -d "$mac_unpack"; then
+    pass "mac zip unpacks"
+    assert_exists "$mac_unpack/lecture-uploader" "mac bundle contains the uploader"
+    assert_exists "$mac_unpack/extension/manifest.json" "mac bundle contains extension assets"
+    assert_exists "$mac_unpack/Install.command" "mac bundle contains Install.command"
+    assert_exists "$mac_unpack/Uninstall.command" "mac bundle contains Uninstall.command"
+    assert_exists "$mac_unpack/com.neelbangera.lecturetranscripts.json.in" "mac bundle contains the host template"
+    assert_exists "$mac_unpack/INSTALL.txt" "mac bundle contains the installation note"
+    assert_exists "$mac_unpack/release.json" "mac bundle contains release.json"
+    if [ -x "$mac_unpack/lecture-uploader" ] && [ -x "$mac_unpack/Install.command" ]; then
+        pass "mac bundle preserves executable bits"
+    else
+        fail "mac bundle preserves executable bits"
+    fi
+    if grep -rIqE 'ghu_[A-Za-z0-9]+|BEGIN [A-Z ]*PRIVATE KEY' "$mac_unpack"; then
+        fail "mac bundle contains no secret material"
+    else
+        pass "mac bundle contains no secret material"
+    fi
+else
+    fail "mac zip unpacks (unzip missing or corrupt)"
+fi
 
 printf '\n%s passed, %s failed\n' "$passed" "$failed"
 [ "$failed" -eq 0 ] || exit 1

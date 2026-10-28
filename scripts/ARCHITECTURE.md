@@ -25,7 +25,16 @@ and the rendered per-user Chrome host manifest.
   real loaded extension ID; it never invents or defaults either.
 - `scripts/uninstall-native-host.sh` removes the files the scripts installed;
   `--reset` additionally removes the queue, config, and Keychain records.
-- `scripts/tests/run.sh` tests the three shell scripts without touching the
+  `--stable` / `--extension-dir` target the D2 per-user install locations.
+- `scripts/package-release.sh` assembles versioned extension + macOS archives,
+  `release.json`, and `SHA256SUMS` from one tag with matching product/protocol
+  versions; it never embeds secrets.
+- `scripts/Install.command` / `Uninstall.command` are the double-clickable D2
+  bundle entry points: stage to stable per-user paths, validate the unpacked
+  extension ID, run `lecture-uploader --setup`, render the exact single-origin
+  host manifest only after setup succeeds, and roll back on cancel/failure.
+  `scripts/INSTALL.txt` is the short installation note shipped in the bundle.
+- `scripts/tests/run.sh` tests the shell scripts without touching the
   real home directory or Keychain.
 - No script talks to GitHub or Leccap, and none may print a credential, raw
   capture, or real extension ID.
@@ -148,7 +157,8 @@ and the rendered per-user Chrome host manifest.
   `--reset` announcement-before-removal, full removal, and Keychain calls;
   `build-uploader.sh` version validation and `--dry-run` output.
 - Prints `N passed, M failed` and exits `1` if any check failed. Current tree:
-  `59 passed, 0 failed` (verified while writing this document).
+  `107 passed, 0 failed` (stable-path, release-validation, and full-packaging
+  checks included).
 
 ## Data flow
 
@@ -173,8 +183,11 @@ scripts/uninstall-native-host.sh [--reset]
 | --- | --- |
 | `build-extension.mjs` | Validate/embed the Stage 0 selector fixture, bundle the four extension entries with esbuild, copy HTML/CSS/icons, inject the `package.json` version into the manifest, write `dist/extension/` |
 | `build-uploader.sh` | macOS/cgo/arm64 build of `dist/native/lecture-uploader` with `-X main.version`; `--version` and `--dry-run` |
-| `install-native-host.sh` | Validate the loaded extension ID and binary, render the host manifest to the Chrome Native Messaging Hosts directory with mode `0600` and exactly one allowed origin |
-| `uninstall-native-host.sh` | Remove the installed manifest and binary; `--reset` additionally removes queue, config, and Keychain records after announcing them |
+| `install-native-host.sh` | Validate the loaded extension ID and binary, render the host manifest to the Chrome Native Messaging Hosts directory with mode `0600` and exactly one allowed origin (`--stable` uses the per-user binary) |
+| `uninstall-native-host.sh` | Remove the installed manifest and binary; `--reset` additionally removes queue, config, and Keychain records after announcing them (`--stable` / `--extension-dir` cover staged D2 files) |
+| `package-release.sh` | Build both components from one tag, verify product/protocol versions, stage the macOS bundle, and write versioned zips + `release.json` + `SHA256SUMS` |
+| `Install.command` / `Uninstall.command` | Bundle installer/uninstaller: stable staging, ID validation, guided setup, single-origin host commit, rollback; uninstall preserves state by default |
+| `INSTALL.txt` | Short installation note shipped in the Mac bundle (stable paths, Gatekeeper, no sudo) |
 | `tests/run.sh` | Packaging self-tests with temporary `HOME` and stubbed `security` |
 | `ARCHITECTURE.md` | This document |
 
@@ -187,7 +200,7 @@ scripts/build-uploader.sh --dry-run
 scripts/build-uploader.sh
 scripts/install-native-host.sh <loaded-extension-id>
 sh scripts/tests/run.sh
-sh -n scripts/build-uploader.sh scripts/install-native-host.sh scripts/uninstall-native-host.sh scripts/tests/run.sh
+sh -n scripts/build-uploader.sh scripts/install-native-host.sh scripts/uninstall-native-host.sh scripts/package-release.sh scripts/Install.command scripts/Uninstall.command scripts/tests/run.sh
 ```
 
 - `extension-tests/build-smoke.test.ts` invokes `build-extension.mjs` itself,

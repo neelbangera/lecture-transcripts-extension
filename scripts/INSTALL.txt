@@ -1,0 +1,31 @@
+Lecture Transcripts — Mac install (D2 unsigned bundle)
+
+You need: an Apple silicon Mac, desktop Chrome, one GitHub account, and one
+existing repository with at least one commit on `main`. No Node, Go, Xcode,
+source checkout, hand-written JSON, or self-made GitHub App is required.
+
+1. Unzip lecture-transcripts-macos-arm64-v<VERSION>.zip (this folder).
+2. Double-click Install.command. It runs in Terminal: it stages the uploader to
+   ~/Library/Application Support/LectureTranscripts/bin/lecture-uploader and
+   the extension to .../LectureTranscripts/extension/, then runs guided setup
+   (repository choice + GitHub Device Flow) and registers the Chrome host.
+   No sudo is needed. Close Chrome when asked so setup cannot race the host.
+3. When shown the extension path, open chrome://extensions, enable Developer
+   mode, click Load unpacked, and select the staged extension directory.
+   Copy the 32-character extension ID (letters a-p) back into Terminal.
+4. Enter a github.com repository URL or OWNER/REPO. Install the maintainer App
+   on only that repository when asked, approve the device codes, and let setup
+   verify Contents access on `main` and write config.json.
+5. Restart Chrome, open the extension, confirm GitHub connected, and capture a
+   permitted Leccap lecture.
+
+Gatekeeper: this D2 bundle is unsigned, so macOS may gate the binary or the
+.command on first open (e.g. "cannot be opened" / "unidentified developer").
+Right-click the file and choose Open, or allow it in System Settings, then run
+again. Do not disable Gatekeeper. A signed/notarized installer is D3.
+
+Updates preserve config, credentials, queue, and extension state. Changing the
+destination repository or App requires an explicit reset that also clears
+pending extension handoffs; setup refuses silent redirects. Uninstall keeps
+local state by default; double-click Uninstall.command (asks before any reset).
+Never deletes GitHub files or repositories.

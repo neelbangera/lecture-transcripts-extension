@@ -2,7 +2,11 @@
 # Install the per-user Chrome Native Messaging host manifest for this project.
 #
 # Usage:
-#   scripts/install-native-host.sh <extension-id> [--binary ABSOLUTE_PATH]
+#   scripts/install-native-host.sh <extension-id> [--binary ABSOLUTE_PATH] [--stable]
+#
+# --stable uses the D2 per-user install locations
+# (~/Library/Application Support/LectureTranscripts/bin/lecture-uploader) instead
+# of dist/native/lecture-uploader. Source checkouts keep the default.
 #
 # <extension-id> is the 32-character ID of the actually loaded unpacked
 # extension from chrome://extensions. It is required, validated against
@@ -23,7 +27,7 @@ fail() {
 }
 
 usage() {
-    printf 'usage: %s <extension-id> [--binary ABSOLUTE_PATH]\n' "$0" >&2
+    printf 'usage: %s <extension-id> [--binary ABSOLUTE_PATH] [--stable]\n' "$0" >&2
 }
 
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
@@ -32,12 +36,17 @@ template=$repo_root/native-host/$manifest_name.in
 binary_path=$repo_root/dist/native/lecture-uploader
 
 extension_id=
+stable=no
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --binary)
             [ "$#" -ge 2 ] || fail "--binary requires an absolute path argument"
             binary_path=$2
             shift 2
+            ;;
+        --stable)
+            stable=yes
+            shift
             ;;
         --help|-h)
             usage
@@ -53,6 +62,10 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+if [ "$stable" = "yes" ]; then
+    binary_path="$HOME/Library/Application Support/LectureTranscripts/bin/lecture-uploader"
+fi
 
 if [ -z "$extension_id" ]; then
     usage
@@ -124,6 +137,19 @@ else
 fi
 
 print_next_steps() {
+    if [ "$stable" = "yes" ]; then
+        cat <<EOF
+
+Next steps (stable install):
+  1. Fully quit and reopen Chrome so it reads the new Native Messaging host registration.
+  2. Load the unpacked extension from $HOME/Library/Application Support/LectureTranscripts/extension if it is not loaded yet; the installed ID is $extension_id.
+     Moving or reloading the unpacked extension from a different path can change its ID; rerun with the new ID.
+  3. Run the installed uploader setup if config is missing:
+       "$binary_path" --setup --app-client-id <public-app-client-id> --repository OWNER/REPO
+     then authorize GitHub; choose Always Allow if macOS prompts for Keychain access.
+EOF
+        return
+    fi
     cat <<EOF
 
 Next steps:

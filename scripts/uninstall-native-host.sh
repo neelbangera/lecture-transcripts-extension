@@ -2,7 +2,12 @@
 # Remove the files created by the packaging scripts for this project.
 #
 # Usage:
-#   scripts/uninstall-native-host.sh [--reset] [--binary ABSOLUTE_PATH]
+#   scripts/uninstall-native-host.sh [--reset] [--binary ABSOLUTE_PATH] [--extension-dir DIR] [--stable]
+#
+# --stable targets the D2 per-user install locations (stable binary + staged
+# extension) instead of dist/native/lecture-uploader. --extension-dir removes
+# one staged extension directory in addition to the manifest + binary; without
+# it the source checkout behavior is unchanged.
 #
 # Without --reset this removes only:
 #   - the rendered Native Messaging host manifest
@@ -27,7 +32,7 @@ fail() {
 }
 
 usage() {
-    printf 'usage: %s [--reset] [--binary ABSOLUTE_PATH]\n' "$0" >&2
+    printf 'usage: %s [--reset] [--binary ABSOLUTE_PATH] [--extension-dir DIR] [--stable]\n' "$0" >&2
 }
 
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
@@ -42,6 +47,8 @@ queue_lock=$data_dir/queue.lock
 config_path=$data_dir/config.json
 
 reset=no
+extension_dir=
+stable=no
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --reset)
@@ -53,6 +60,15 @@ while [ "$#" -gt 0 ]; do
             binary_path=$2
             shift 2
             ;;
+        --extension-dir)
+            [ "$#" -ge 2 ] || fail "--extension-dir requires an argument"
+            extension_dir=$2
+            shift 2
+            ;;
+        --stable)
+            stable=yes
+            shift
+            ;;
         --help|-h)
             usage
             exit 0
@@ -62,6 +78,18 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+if [ "$stable" = "yes" ]; then
+    binary_path="$HOME/Library/Application Support/LectureTranscripts/bin/lecture-uploader"
+    extension_dir="$HOME/Library/Application Support/LectureTranscripts/extension"
+fi
+
+if [ -n "$extension_dir" ]; then
+    case "$extension_dir" in
+        /*) : ;;
+        *) fail "--extension-dir must be an absolute path: $extension_dir" ;;
+    esac
+fi
 
 case "$binary_path" in
     /*) : ;;
@@ -94,6 +122,15 @@ if [ -f "$binary_path" ]; then
     printf 'uninstall-native-host: removed %s\n' "$binary_path"
 else
     printf 'uninstall-native-host: no built uploader at %s\n' "$binary_path"
+fi
+
+if [ -n "$extension_dir" ]; then
+    if [ -d "$extension_dir" ]; then
+        rm -rf "$extension_dir"
+        printf 'uninstall-native-host: removed %s\n' "$extension_dir"
+    else
+        printf 'uninstall-native-host: no staged extension at %s\n' "$extension_dir"
+    fi
 fi
 
 if [ "$reset" = "yes" ]; then

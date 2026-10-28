@@ -1,0 +1,109 @@
+# Draft release workflow for Lecture Transcripts (D2).
+#
+# Trigger: version tags like v0.1.0. Builds the extension + macOS uploader on
+# macos-14 (arm64), runs typecheck/unit/packaging checks, assembles versioned
+# assets with scripts/package-release.sh, and uploads them to a DRAFT GitHub
+# Release. Draft releases stay unpublished until the maintainer completes the
+# checklist in docs/RELEASING.md (real Mac/Chrome/Leccap acceptance, Gatekeeper
+# observation, public App provisioning).
+#
+# Secrets (managed, never committed):
+#   RELEASE_APP_CLIENT_ID  - verified public GitHub App client ID
+#   RELEASE_APP_INSTALL_URL - verified public GitHub App installation URL
+#
+# Permissions are minimal: contents:read to checkout, contents:write only to
+# create the draft release. No signing/notarization credentials here (D3).
+
+name: draft-release
+
+on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-draft:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4.2.2
+
+      - name: Verify tag matches package.json
+        run: |
+          set -eu
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -n 1)
+          [ -n "$pkg" ] || { echo "could not read package.json version" >&2; exit 1; }
+          [ "$tag" = "$pkg" ] || { echo "tag v$tag does not match package.json $pkg; bump package.json first" >&2; exit 1; }
+          echo "version=$tag"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4.1.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Set up Go
+        uses: actions/setup-go@v5.1.0
+        with:
+          go-version: "1.24.x"
+
+      - name: Verify Xcode toolchain
+        run: |
+          set -eu
+          xcode-select -p
+          xcrun --find clang
+          go version
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Typecheck + extension tests
+        run: |
+          set -eu
+          npm run typecheck
+          npm test
+
+      - name: Uploader tests
+        run: |
+          set -eu
+          cd uploader
+          go vet ./...
+          go test ./... -count=1
+
+      - name: Packaging self-tests
+        run: sh scripts/tests/run.sh
+
+      - name: Assemble release assets
+        env:
+          RELEASE_APP_CLIENT_ID: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          RELEASE_APP_INSTALL_URL: ${{ secrets.RELEASE_APP_INSTALL_URL }}
+        run: |
+          set -eu
+          : "${RELEASE_APP_CLIENT_ID:?RELEASE_APP_CLIENT_ID secret is required}"
+          : "${RELEASE_APP_INSTALL_URL:?RELEASE_APP_INSTALL_URL secret is required}"
+          sh scripts/package-release.sh \
+            --app-client-id "$RELEASE_APP_CLIENT_ID" \
+            --app-install-url "$RELEASE_APP_INSTALL_URL" \
+            --out-dir dist/release
+          ls -la dist/release
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2.2.1
+        with:
+          draft: true
+          generate_release_notes: false
+          files: |
+            dist/release/lecture-transcripts-extension-v*.zip
+            dist/release/lecture-transcripts-macos-arm64-v*.zip
+            dist/release/release.json
+            dist/release/SHA256SUMS
+          body: |
+            Draft D2 bundle — unpublished until docs/RELEASING.md checklist passes.
+            Install: unzip the macos-arm64 archive, run Install.command, load the staged extension, approve Device Flow, restart Chrome.
+            Unsigned: Gatekeeper may gate the binary/.command on first open. Do not disable Gatekeeper.
