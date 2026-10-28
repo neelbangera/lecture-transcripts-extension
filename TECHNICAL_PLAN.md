@@ -53,6 +53,8 @@ The extension service worker is allowed to sleep. A named one-minute Chrome alar
 
 ## Scope and non-goals
 
+The first-version boundaries below describe the current implementation. The approved next phase, **Easier installation and distribution**, expands distribution to independent users and replaces the fixed repository target. Its requirements take precedence over the first-version provisioning and packaging rules only for that work; it does not change capture, protocol, queue, or publishing contracts.
+
 The first version is for one person, one Mac, one Chrome installation, one authenticated Leccap session, one GitHub account, and one destination repository. Sharing the recordings and transcripts is expressly permitted. The destination repository may be private initially and may be made public later, so the output format and logs must be safe in either mode.
 
 The system is activated when a recognized lecture page loads or its in-page URL changes: the content script opens the transcript control itself when the transcript is closed, captures when it is already visible, expanded, and populated, closes the transcript again after the capture reaches a terminal outcome when it opened it, and otherwise waits for the configured completion contract. A page that is not a recognized lecture page does nothing. It must not crawl Leccap or guess a repository path from incomplete metadata. The first version assumes that course, term, lecture number, and date are available from authenticated page metadata, but those fields do not have to live in the same DOM: the lecture page may provide course/term/title while its linked course overview provides the recording date. Stage 0 must record the source and correlation rule for every field and choose how any overview lookup occurs at runtime. The personal course set has no guest lectures or split recordings.
@@ -66,6 +68,37 @@ The following are not first-version goals:
 - Automatically replacing or merging an existing lecture file.
 - Updating course README files on every upload.
 - Uploading while Chrome is completely closed. The durable queue resumes the next time the native host connects; a separately running background agent would be a later feature.
+
+## Easier installation and distribution
+
+Approved on 2026-10-04. Status: **planned; not implemented**. The implementation handoff is [docs/DISTRIBUTION_PLAN.md](docs/DISTRIBUTION_PLAN.md), with execution order in [IMPLEMENTATION.md](IMPLEMENTATION.md).
+
+### Goal and scope
+
+Users should install Lecture Transcripts without cloning the repository, compiling code, editing Go constants, writing configuration JSON, or creating their own GitHub App. Distribute prebuilt Chrome extension assets and an Apple silicon macOS uploader through versioned GitHub Releases, then provide a guided installer. Later, publish the extension through the Chrome Web Store and distribute a signed, notarized Mac installer.
+
+Each installation still uses one Mac, Chrome profile, GitHub account, and selected repository on initialized `main`. Independent users configure their own installations; this phase does not add a hosted backend, concurrent repository profiles, account switching, cross-machine queue synchronization, other operating systems, or broader Leccap page support.
+
+### Required contracts
+
+1. **Configurable destination.** Replace the fixed owner/repository checks with validated user-selected values. Keep config schema version 1, positive numeric `repositoryId`, strict field validation, and the `main` branch requirement. Verify the authenticated repository's numeric ID, full name, and readable Contents on `main` before reporting connected. The repository must already exist; setup never creates it or modifies its README.
+2. **Shared public GitHub App.** A maintainer provisions an App that users can install on their chosen repository. Enable Device Flow and request Contents read/write, with GitHub's implicit Metadata read access and no additional optional permissions. Device Flow keeps all tokens in the uploader/Keychain; no client secret or App private key is distributed. The public App client ID and installation URL may be included in release metadata.
+3. **Repository discovery during setup.** Accept a GitHub repository URL or `OWNER/REPO` and discover its numeric ID, including for private repositories. Normal authorization still requests `repository_id`. Investigate the bootstrap before implementing it: a temporary authorization without a known repository ID may be used only for discovery, must never publish, and must not become the stored publishing credential. If GitHub offers no supported way to narrow that credential, setup must obtain a second, repository-restricted authorization. Do not silently widen the credential's access to simplify setup.
+4. **Guided local installation.** Ship executable assets and a setup entry point that copies the uploader and extension to stable per-user paths, validates the loaded extension ID, renders one exact Native Messaging allowed origin, performs authorization, and writes complete config. It requires no administrator access or developer toolchain. CLI setup must dispatch before the native stdio loop; normal Native Messaging stdout remains framed messages only.
+5. **Stable locations.** Install the executable at `~/Library/Application Support/LectureTranscripts/bin/lecture-uploader` and unpacked extension at `~/Library/Application Support/LectureTranscripts/extension/`. Keep existing config, queue, log, Keychain, and Chrome host-manifest locations. The downloaded archive and source checkout must not be runtime dependencies.
+6. **Safe updates and destination changes.** Reinstallation/update preserves config, credentials, queue rows, and extension state, and rejects incompatible versions before activation. Stop Chrome/native-host processes before replacing files; stage and validate replacements and retain the previous installation for rollback. Existing queue rows are not bound to a repository, and terminal rows also affect deduplication. Block destination or App identity changes until the user explicitly resets the uploader state and clears pending extension handoffs. Never silently redirect old jobs, discard data, or delete remote files.
+7. **Release provenance.** Build both components from one tag with matching product/protocol versions. Publish versioned archives, release metadata, SHA-256 checksums, and clear platform requirements. Checksums detect corruption; they are not a substitute for code signing. No automatic updater or execution of downloaded scripts is introduced in this phase.
+8. **Extension identity and macOS distribution.** The first release may require manual unpacked loading and ID copying. A later fixed extension identity must come from a verified manifest public key/store record, never a guessed ID. Public extension keys/IDs are distributable metadata; individual development IDs remain local. Signing/notarization credentials remain outside the repository. Do not promise an unsigned download will open without Gatekeeper intervention, or recommend disabling Gatekeeper.
+
+### Delivery order and acceptance
+
+| Milestone | Deliverable | Gate |
+| --- | --- | --- |
+| D1: configurable setup | General repository validation, private-repository discovery spike, uploader setup mode, public App provisioning requirements | Verified target binding, private/public repository coverage, and a documented restricted authorization flow |
+| D2: downloadable installation | Prebuilt release bundle, guided installer/uninstaller, stable local paths, checksums, draft release workflow | Clean supported Mac installs without Node, Go, Xcode, a checkout, source edits, manual JSON, or creating an App; update/reset/rollback checks pass |
+| D3: published installation | Chrome Web Store identity and signed/notarized Mac installer | Real store, Gatekeeper, Native Messaging, and Keychain checks pass; final user guide matches the published artifacts |
+
+Before publishing D2, verify initial capture, offline recovery, duplicate/conflict handling, exact host origin, canceled setup, wrong account/repository, missing `main`, repeated install, preserved queue state, and blocked destination changes. Release checks require the actual supported Mac and Chrome; fake fixtures alone do not satisfy them. Existing Stage 0 live evidence requirements remain in force. Update README and operational guides to release installation only after usable artifacts exist. Until then, [docs/SETUP.md](docs/SETUP.md) remains the source-installation runbook.
 
 ## Implementation readiness
 
@@ -129,7 +162,7 @@ The fuller rationale for these choices is preserved in [PHASE_1_DECISIONS.md](PH
 | Automatic handoff after activation | Manual copy/paste or an upload button for every lecture | After the transcript is opened, no second upload click is required. |
 | Local uploader owns GitHub access | Extension calls GitHub directly | No token, refresh token, or private key in the extension. |
 | GitHub App web authorization plus Keychain | Token pasted into or stored by the extension; plaintext credential file | The uploader owns device authorization and stores the user credential in Keychain. The App is installed only on the destination repository and requests only Contents read/write. |
-| Personal local deployment | Hosted backend, multi-user accounts, or distributable extension | Do not add multi-user abstractions without an explicit scope change. |
+| Independent local deployment | Hosted backend or shared multi-user account service | Distribution to independent users is approved in § Easier installation and distribution; each local installation retains one configured target. |
 | Uploader-owned durable queue plus bounded handoff outbox | In-memory state or two independent retry queues | The extension may retain only unacknowledged handoffs for replay; the uploader owns all acknowledged jobs, retry state, and GitHub state. |
 | Native Messaging boundary | Permanent unauthenticated loopback HTTP server | A loopback server is development-only and must be authenticated and bounded. |
 | At-least-once delivery with deduplication | Promise of exactly-once delivery | Use deterministic `lectureKey` and `contentHash`; retries must be safe. |
@@ -1144,11 +1177,32 @@ This is the complete planned file set for the implementation. “Create” means
 
 | File | Action | Rationale |
 | --- | --- | --- |
+| `docs/DISTRIBUTION_PLAN.md` | Add for the next phase | Implementation handoff for configurable setup, release artifacts, installation lifecycle, maintainer inputs, and release acceptance. |
 | `docs/STAGE_0_REPORT.md` | Create after Stage 0 | Records the human evidence, measured maxima, full course inventory, and verified App/repository provisioning without secrets; it was the implementation gate artifact and now records the two outstanding live items (render-time measurement and machine-local provisioning). |
 | `docs/SETUP.md` | Create | Gives the owner installation, fixed-path extension loading, initialized-main-branch/repository configuration, Xcode/Keychain prerequisites, alarm behavior, and web authorization steps. |
 | `docs/SECURITY.md` | Create | Documents permissions, Keychain/device-flow storage, local queue data, logging restrictions, source-URL sanitization, remote-hash trust, and reset behavior. |
 | `docs/TESTING.md` | Create | Documents unit, integration, fixture, offline, duplicate, conflict, and end-to-end tests. |
 | `docs/TROUBLESHOOTING.md` | Create | Explains disconnected auth/wrong-account failures, Native Messaging failures and unpacked-ID drift, alarm-delayed retries, log location, queued jobs, overflow recapture, rejected metadata, and permanent conflicts. |
+
+### Next-phase distribution file inventory
+
+These are planned additions/changes, not evidence that release installation exists. Add any further source paths to this inventory before implementing them.
+
+| File or area | Action | Responsibility |
+| --- | --- | --- |
+| `uploader/internal/config/{config.go,config_test.go,config.example.json}` | Change | Validate general destinations while retaining the strict config schema and initialized `main` requirement. |
+| `uploader/internal/auth/{web_flow.go,auth.go,auth_test.go}` | Change | Discovery support, target verification, repository-restricted final credentials, and canceled setup behavior. |
+| `uploader/internal/setup/setup.go`, `setup_test.go` | Add | Setup orchestration, repository input parsing, complete config persistence, existing-state protection, recovery. |
+| `uploader/cmd/lecture-uploader/main.go`, `setup.go` | Change/add | Dispatch `--setup` separately from Native Messaging and provide human-readable prompts. |
+| `scripts/package-release.sh` | Add | Assemble matching versioned extension/Mac archives, metadata, and checksums from built assets. |
+| `scripts/Install.command`, `scripts/Uninstall.command`, `scripts/INSTALL.txt` | Add | Downloaded-bundle entry points for per-user install/update/uninstall plus the short installation note shipped in the bundle; explicit reset remains separate. |
+| `scripts/install-native-host.sh`, `uninstall-native-host.sh`, `build-uploader.sh` | Change | Support stable installed paths, retain source workflows, and preserve state by default. |
+| `scripts/tests/run.sh` | Change | Isolated-home installation, update, rollback, origin, and uninstall/reset coverage. |
+| `extension/src/{background.ts,extension-storage.ts,popup.ts}`, `extension/popup.html`, `extension-tests/{background.test.ts,extension-storage.test.ts,popup-page.test.ts}` | Change as needed for setup/reset | Provide an explicit destination-change reset that clears pending handoffs; keep the existing connection-only reset, which preserves queued jobs, distinct. |
+| `.github/workflows/release.yml` | Add | Tagged build/package checks and draft release assets; credentials come from managed CI secrets. |
+| `extension/manifest.json`, `scripts/build-extension.mjs` | Change at D3 | Embed a verified public extension key/identity and compatible release version. |
+| `README.md`, `docs/{SETUP.md,SECURITY.md,TESTING.md,TROUBLESHOOTING.md}`, related directory architecture docs | Change alongside delivery | Document actual release installation, public App permissions, update/reset behavior, and real platform limitations. |
+| `docs/RELEASING.md` | Add at D2 | Maintainer release runbook: build, verify, publish, rollback, and later signing/store submission. |
 
 ### Generated and machine-local artifacts
 

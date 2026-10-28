@@ -1,50 +1,34 @@
 # Repository Implementation Plan
 
-> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+Current work: easier installation and distribution. Approved 2026-10-04; implementation has not started.
 
-Status: partial implementation; the capture-side TypeScript and Native Messaging contract exist, but the extension bundle and most of the Go uploader are not complete.
-
-This is the entry point for an implementation agent. Read this file first, then read the `IMPLEMENTATION.md` in the directory being changed. The normative product and wire contracts remain in `TECHNICAL_PLAN.md`; these directory plans explain how to finish the current tree without inventing a second design.
+Read [TECHNICAL_PLAN.md](TECHNICAL_PLAN.md#easier-installation-and-distribution) for the requirements and [docs/DISTRIBUTION_PLAN.md](docs/DISTRIBUTION_PLAN.md) for the handoff. The technical plan remains authoritative. Read each affected directory's architecture document before changing its code; older directory task plans describe the original implementation and must not override the new distribution phase.
 
 ## Current baseline
 
-- Git branch: `main`; keep unrelated user changes intact.
-- Stage 0 fixtures are committed for `EECS 484 / 2026-fall`.
-- The Stage 0 render-time fields are still pending live measurement.
-- Machine-local GitHub provisioning is intentionally outside the repository.
-- `npm test` currently cannot collect the parser suite because `jsdom` is missing.
-- `npm run typecheck` currently fails on missing Node/jsdom types and parser typing errors.
-- `npm run build` currently fails because `scripts/build-extension.mjs` does not exist.
-- `go test ./...` only covers the currently existing host/protocol packages; both report no test files.
+- The extension, macOS uploader, Native Messaging protocol, durable queue, Keychain auth, publishing, and source build/install scripts exist.
+- Setup currently requires developer tools, a checkout, fixed-repository source edits, a user-created GitHub App, local JSON, and a copied extension ID.
+- No release installer or published extension identity is claimed by this plan.
+- Existing Stage 0 live evidence and real-machine provisioning checks still apply. Keep unrelated work intact.
 
 ## Execution order
 
-1. **Restore the development baseline.** Add the missing test dependencies, fix TypeScript errors, and add the extension build entrypoint.
-2. **Make the extension runnable.** Add the production content bootstrap, embed verified selectors/course configuration at build time, and produce `dist/extension/`.
-3. **Lock the shared contracts.** Add cross-language protocol/vector tests before implementing the uploader.
-4. **Complete the uploader foundation.** Implement config, SQLite queue, and the executable Native Messaging host.
-5. **Complete publishing.** Implement Keychain/device-flow auth, GitHub Contents writes, Markdown rendering, retry, and the serial processor.
-6. **Package and verify.** Add host-install/build scripts, documentation, fake end-to-end tests, then perform the real machine-local setup.
+1. **Resolve discovery.** Verify a private-repository setup flow that discovers the numeric ID and produces a repository-restricted final credential. Record the API sequence, cleanup behavior, and any second authorization before implementing the wizard.
+2. **Generalize local configuration.** Accept a validated user destination while preserving the config schema, initialized `main`, target verification, and strict failure behavior.
+3. **Add guided setup.** Implement uploader `--setup`, public App metadata input, authorization, safe config persistence, and protection against redirecting existing queue/outbox state. Keep human-readable CLI output outside Native Messaging.
+4. **Package and install.** Build matching prebuilt assets, install to stable per-user locations, adapt host install/uninstall, and add upgrade/rollback checks. Preserve all durable state by default.
+5. **Prepare releases.** Add a tagged draft-release workflow, checksums, metadata, and a maintainer runbook. Provision the real public App before a functional release is published.
+6. **Verify and document the release.** Perform the required implementation checks and real Mac/Chrome acceptance. Replace source-first user instructions only when the release artifacts work.
+7. **Finish published distribution.** Use a verified Chrome Web Store identity and signed/notarized Mac installer for the later three-step installation flow.
 
-Do not broaden the course allowlist, change status names, relax byte limits, upload on page visit, or add credentials to the extension without first updating the authoritative plan and decision log.
+## Constraints
 
-## Global acceptance criteria
+- New source paths must appear in the technical plan's next-phase inventory before being added.
+- Preserve capture behavior, byte limits, hash/protocol contracts, queue ownership, and write-once publishing.
+- Keep one account and repository per installation. No hosted service or automatic updater is part of this work.
+- Never distribute tokens, client secrets, App private keys, or signing credentials. Verified public App/extension metadata is permitted.
+- Do not fabricate external provisioning, live page measurements, store identity, or signing evidence.
 
-- `npm ci && npm run typecheck && npm test && npm run build` succeeds.
-- `go test ./...` includes meaningful tests for every uploader package.
-- The unpacked extension loads and only captures after transcript activation.
-- The extension sends only a validated transcript job through Native Messaging.
-- The uploader survives restart, deduplicates jobs, retries transient failures, and never overwrites a different remote lecture file.
-- GitHub credentials remain in macOS Keychain and never enter extension storage, logs, or protocol payloads.
-- The real end-to-end setup is blocked until the render-time measurement, repository/App provisioning, and loaded extension ID are verified.
+## Done when
 
-## Agent workflow
-
-For each task:
-
-1. Read the local directory plan and the relevant section of `TECHNICAL_PLAN.md`.
-2. Inspect existing code/tests before editing.
-3. Make the smallest contract-preserving change.
-4. Add or update tests in the nearest test directory.
-5. Run the local checks listed in that directory plan and then the global checks above.
-6. Update the relevant status/documentation only when the implementation actually changed.
+Each milestone meets the gates in [the distribution guide](docs/DISTRIBUTION_PLAN.md#checks-required-before-release). In particular, D2 must work on a clean supported Mac without developer tools, source edits, manual JSON, or creating a GitHub App, and updates must preserve queued transcripts and connection state. D3 adds verified store installation and signed/notarized Mac distribution. Planned work must stay labeled as planned until its checks have passed.

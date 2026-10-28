@@ -156,7 +156,9 @@ Root-level files:
 | `TECHNICAL_PLAN.md` | Normative product, wire, queue, auth, and packaging contracts; the implementation authority |
 | `PHASE_1_DECISIONS.md` | Rationale and rejected alternatives; must agree with the plan |
 | `TECHNICAL_IMPLEMENTATION_PROPOSAL.md` | Historical superseded proposal; never an authority |
-| `README.md` | Entry point: status, prerequisites, build/test commands, documentation links |
+| `README.md` | User entry point: purpose, current installation, everyday use, and documentation links |
+| `IMPLEMENTATION.md` | Execution order for the approved installation/distribution phase |
+| `docs/DISTRIBUTION_PLAN.md` | Planned release artifacts, guided setup, lifecycle, external inputs, and acceptance gates |
 | `ARCHITECTURE.md` | This file: system overview and directory index |
 | `package.json` | Node >=22 metadata, `build`/`test`/`typecheck` scripts, dev dependencies (esbuild, Vitest, jsdom, TypeScript, `@types/chrome`) |
 | `package-lock.json` | Locked JavaScript dependency versions |
@@ -182,7 +184,7 @@ existing `IMPLEMENTATION.md` is listed as the current entry point.
 | `protocol/` | Canonical JSON schemas and cross-language test vectors | [`protocol/ARCHITECTURE.md`](protocol/ARCHITECTURE.md) (this branch) | [`protocol/IMPLEMENTATION.md`](protocol/IMPLEMENTATION.md) |
 | `scripts/` | Extension build, uploader build, host install/uninstall, packaging self-tests | [`scripts/ARCHITECTURE.md`](scripts/ARCHITECTURE.md) (this branch) | — |
 | `native-host/` | Native Messaging host manifest template | [`native-host/ARCHITECTURE.md`](native-host/ARCHITECTURE.md) (this branch) | — |
-| `docs/` | Owner-facing setup, security, testing, troubleshooting, Stage 0 evidence | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (this branch) | [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) |
+| `docs/` | User setup, security, testing, troubleshooting, Stage 0 evidence, and distribution planning | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (this branch) | [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) |
 | `uploader/` | Go module for the macOS uploader | [`uploader/ARCHITECTURE.md`](uploader/ARCHITECTURE.md) | [`uploader/IMPLEMENTATION.md`](uploader/IMPLEMENTATION.md) |
 | `uploader/cmd/` | `lecture-uploader` executable assembly | [`uploader/cmd/ARCHITECTURE.md`](uploader/cmd/ARCHITECTURE.md) | — |
 | `uploader/internal/` | Internal packages; dependency order `protocol <- host`, `config -> queue/auth/github/logging`, `queue+auth+github+markdown+retry -> processor`, `processor+host -> cmd` | [`uploader/internal/ARCHITECTURE.md`](uploader/internal/ARCHITECTURE.md) | [`uploader/internal/IMPLEMENTATION.md`](uploader/internal/IMPLEMENTATION.md) |

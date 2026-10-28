@@ -1,31 +1,29 @@
 # Documentation Implementation Plan
 
-> Status: historical task plan. Current design: see `ARCHITECTURE.md` in this directory.
+Current work: documentation for easier installation. The distribution phase is planned; existing source setup remains available.
 
-## Goal
+## Entry points
 
-Make the documentation describe the repository that actually exists and give the owner enough information to install, operate, secure, test, and recover the finished system.
+- [../TECHNICAL_PLAN.md](../TECHNICAL_PLAN.md#easier-installation-and-distribution): authoritative distribution requirements and file inventory.
+- [DISTRIBUTION_PLAN.md](DISTRIBUTION_PLAN.md): setup flow, milestones, release inputs, lifecycle, and acceptance checks.
+- [../IMPLEMENTATION.md](../IMPLEMENTATION.md): implementation execution order.
+- [SETUP.md](SETUP.md): current source-installation instructions.
 
-## Current state
+## Documentation to deliver with implementation
 
-- `TECHNICAL_PLAN.md` is the normative contract and its readiness section now reflects the implemented tree.
-- `docs/STAGE_0_REPORT.md` says Stage 0 is code-ready with render-time measurement and machine-local provisioning outstanding.
-- `README.md` documents status, prerequisites, build/test, and links to the guides.
-- `SETUP.md`, `SECURITY.md`, `TESTING.md`, and `TROUBLESHOOTING.md` are in the tree.
+| Milestone | Documentation work |
+| --- | --- |
+| D1 | Record the verified private-repository discovery/authorization sequence; explain general config validation and safe destination changes |
+| D2 | Add `RELEASING.md` with exact packaging, artifact verification, draft/publish, rollback, and clean-machine evidence; update SETUP with the shipped guided installer |
+| D2 | Update README to the actual download/install/connect flow; move developer prerequisites to the source-building section |
+| D2 | Update SECURITY, TESTING, and TROUBLESHOOTING for the public App, stable paths, installer failures, queue preservation, and explicit reset |
+| D3 | Document the real store identity, signed/notarized Mac package, and supported install/update/uninstall flow |
 
-## Work items
-
-1. Reconcile the readiness/status sections of `TECHNICAL_PLAN.md`, `PHASE_1_DECISIONS.md`, `README.md`, and the Stage 0 report.
-2. Keep all product behavior, limits, statuses, paths, and security decisions in `TECHNICAL_PLAN.md`; do not silently redefine them in a guide.
-3. Add `docs/SETUP.md` covering prerequisites, build, unpacked Chrome loading, GitHub App/device flow setup, machine-local config, Native Messaging installation, and extension-ID drift.
-4. Add `docs/SECURITY.md` covering permissions, Keychain storage, queue/database modes, log redaction, URL sanitization, remote-hash trust, reset, and private/public repository considerations.
-5. Add `docs/TESTING.md` covering unit, fixture, offline, restart, duplicate, conflict, retry, and end-to-end checks.
-6. Add `docs/TROUBLESHOOTING.md` covering host-not-found, protocol mismatch, authorization, unavailable repository, pending handoffs, queue-full notices, retries, and permanent conflicts.
-7. Record the real render-time values and provisioning verification only after the owner performs those steps. Never commit client IDs, repository IDs, tokens, extension IDs, or raw authenticated captures.
+Keep the user guide short and factual. It must describe Lecture Transcripts for general users and link to detailed troubleshooting only where needed. Do not claim downloadable artifacts, a public App, or store/signing approval exists until verified.
 
 ## Done when
 
-- No document calls the implemented repository “design-only.”
-- A new owner can follow the setup guide without guessing a path, permission, or status meaning.
-- Documentation contains no secrets or private page captures.
-- Every command in the README is executable from a clean checkout.
+- A user can follow the instructions for a published release without guessing values or editing source/config manually.
+- Every operational command describes shipped functionality; planned commands are confined to clearly marked planning documents.
+- Guide behavior agrees with the technical plan and actual release checks.
+- Public product metadata is distinguished from user-specific IDs and secrets. No raw captures or credentials enter the documentation.

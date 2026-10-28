@@ -34,12 +34,17 @@ Shell syntax check for every script:
 sh -n scripts/build-uploader.sh
 sh -n scripts/install-native-host.sh
 sh -n scripts/uninstall-native-host.sh
+sh -n scripts/package-release.sh
+sh -n scripts/Install.command
+sh -n scripts/Uninstall.command
 sh -n scripts/tests/run.sh
 ```
 
-Current baseline: `npm test` runs 16 files / 224 tests, `go test ./...` passes in
-all 10 uploader packages, `npm run typecheck` is clean, `npm run build` writes
-`dist/extension/`, and `sh scripts/tests/run.sh` reports 59 passed / 0 failed.
+Current baseline: `npm test` runs 19 files / 290 tests, `go test ./...` passes in
+all 11 uploader packages (including `internal/setup`), `npm run typecheck` is
+clean, `npm run build` writes `dist/extension/`, and `sh scripts/tests/run.sh`
+reports 107 passed / 0 failed (including stable-path install/uninstall/reset
+and full release-packaging checks).
 
 ## Browser-side unit tests
 
@@ -145,7 +150,7 @@ machine-local setup above.
 
 ## Packaging self-tests
 
-`sh scripts/tests/run.sh` runs 59 checks with a temporary `HOME` and a stubbed
+`sh scripts/tests/run.sh` runs 107 checks with a temporary `HOME` and a stubbed
 `security` command, so it never touches the real home directory or Keychain. It
 covers:
 
@@ -159,7 +164,13 @@ covers:
   queue database, config, and lock, and never calls `security`;
 - `--reset` announcement order and removal of the queue database, WAL, lock,
   config, manifest, and binary, plus Keychain deletion;
-- `scripts/build-uploader.sh` argument validation and `--dry-run` output.
+- `scripts/build-uploader.sh` argument validation and `--dry-run` output;
+- stable-path install/uninstall/reset (`--stable`, `--extension-dir`), staged
+  extension removal, and state preservation;
+- `scripts/package-release.sh` argument validation, `sh -n` + executable bits
+  for the release scripts, Gatekeeper/sudo/origin static checks, and a full
+  packaging run (versioned zips, `release.json` metadata, `SHA256SUMS`
+  verification, bundle contents, executable bits, no secret material).
 
 ## Checks that require the owner's real machine
 

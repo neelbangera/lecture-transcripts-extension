@@ -4,6 +4,8 @@
 
 ## Phase 1 baseline
 
+This baseline records the original implementation scope. Decision 22 and the technical plan's **Easier installation and distribution** section approve the next phase for independent users; they supersede the original fixed-target/distribution restriction for that work.
+
 Phase 1 is a personal tool for one Mac, one Chrome installation, and one authenticated Leccap session. The user must open or expand the transcript on a lecture page. That action activates capture for the current lecture; merely visiting a Leccap page does not.
 
 If the transcript is already visibly expanded and populated when the content script starts, that state is treated as the same explicit activation. A collapsed or merely preloaded transcript is not.
@@ -268,6 +270,18 @@ Rejected the server and mutable runtime file because a personal extension must w
 Selected: the Stage 0 selector fixture is validated at build time and embedded in the production bundle. The same artifact remains available to parser tests; no runtime path or network fetch is required.
 
 Guardrail: changing selectors requires a new verified fixture and a Stage 0/plan update, not a hand-edited production constant.
+
+### 22. Prebuilt releases and guided setup for independent users
+
+Approved 2026-10-04. Status: planned, not implemented.
+
+Selected: distribute prebuilt extension/Mac assets through GitHub Releases, accept one user-selected repository per local installation, and provide guided setup using a maintainer-operated public GitHub App. Later, publish through the Chrome Web Store and ship a signed, notarized Mac installer. This is the explicit scope change required by decision 5.
+
+Reason: source builds, fixed repository constants, manual JSON, and creating an App make installation unnecessarily difficult for general users.
+
+Guardrails: retain local Native Messaging, uploader-owned Keychain credentials and durable queue, exact extension origins, verified repository identity, initialized `main`, and write-once output. No hosted account service, simultaneous target profiles, or broader page support is introduced. Public App client ID and published extension key/ID may be release metadata; secrets and user-specific configuration remain local. Existing queue and extension handoffs must never be silently redirected when the destination changes.
+
+The implementation milestones, discovery authorization gate, lifecycle rules, and required external inputs are recorded in [docs/DISTRIBUTION_PLAN.md](docs/DISTRIBUTION_PLAN.md).
 
 ## Decisions resolved in the technical plan
 

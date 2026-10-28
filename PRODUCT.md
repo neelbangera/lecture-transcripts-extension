@@ -10,7 +10,7 @@ web
 
 Primary user: a UMich student watching Leccap lecture recordings during a semester, who opens a lecture's transcript and wants it saved for study and review without manual file handling.
 
-Eventual audience: classmates in the same UMich/Leccap setting who must eventually be able to set this up and use it without hand-holding — which means setup must eventually avoid terminal/developer steps (today's command-line runbook is owner-side interim).
+Audience: UMich students using supported Leccap pages, each with their own local installation and GitHub repository. Installation should not require programming tools or creating a GitHub App. Prebuilt releases and guided setup are the approved next phase; store installation and a signed Mac installer follow later.
 
 ## Product Purpose
 
@@ -42,13 +42,14 @@ Constraints and limits (durable):
 - Jobs are delivered at least once and deduplicated by deterministic `lectureKey` plus framed `contentHash`; remote lecture files are write-once and never automatically overwritten on conflict.
 - Unmapped course/term labels and ambiguous lecture identity fail closed.
 - Byte caps: transcripts ≤ 460,800 B, serialized job ≤ 972,800 B, Native Messaging payload ≤ 1,048,576 B.
-- No credentials, repository IDs, tokens, extension IDs, or raw Leccap captures belong in the repository.
+- No credentials, user repository IDs, tokens, development extension IDs, or raw Leccap captures belong in the repository. Verified public App client ID and published extension key/ID may be distributed as product metadata.
 - Leccap is the only capture source; host permissions are limited to it.
 
-Open decisions (explicitly undecided):
+Installation roadmap (approved, not implemented):
 
-- How multi-machine / multi-user expansion is delivered (architecture and UX must not paint into a single-owner corner, per confirmed direction).
-- How the no-terminal setup for classmates is packaged (what replaces today's build/install runbook).
+- Prebuilt extension and Apple silicon Mac uploader in GitHub Releases, a guided installer, user-selected repository configuration, and a maintainer-operated public GitHub App.
+- Later: Chrome Web Store installation and a signed, notarized Mac installer. No hosted service, simultaneous repository profiles, or queue synchronization is part of this phase.
+- Requirements and release gates: [docs/DISTRIBUTION_PLAN.md](docs/DISTRIBUTION_PLAN.md).
 
 ## Brand Commitments
 
@@ -70,7 +71,7 @@ Open decisions (explicitly undecided):
 2. Write-once trust: never overwrite a published lecture file; surface conflicts to the human instead of resolving them silently.
 3. The browser is untrusted with credentials: the security boundary is the Keychain-backed local uploader, and future features must not move tokens into the extension.
 4. Fail closed on uncertainty: unmapped courses, ambiguous identity, and malformed content refuse the capture rather than guessing.
-5. Leave room to grow: eventual classmates (no terminal, no hand-holding) and multi-machine/multi-user are real destinations — avoid single-owner assumptions in UX and architecture.
+5. Make setup accessible: distribute ready-to-use assets for independent users, keep configuration out of source code, and preserve queued work during updates.
 
 ## Accessibility & Inclusion
 

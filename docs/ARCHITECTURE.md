@@ -2,8 +2,8 @@
 
 ## Purpose
 
-`docs/` is the owner-facing explanation layer for the installed system. It maps
-the questions an owner or agent asks — how to install, what the security
+`docs/` explains the installed system and clearly marked upcoming work. It maps
+the questions a user or contributor asks — how to install, what the security
 boundary is, what to run, what a failure means — to the one guide that answers
 each. The guides explain the contracts; they never define them.
 
@@ -25,9 +25,11 @@ each. The guides explain the contracts; they never define them.
 - `docs/render-time-snippet.js` is the one executable artifact in this
   directory: a DevTools console snippet for the live Stage 0 render-time
   measurement. It is not loaded by the extension.
-- Every guide must remain free of secrets and raw captures. Real values —
-  GitHub App client ID, numeric repository ID, access/refresh token, loaded
-  extension ID, session URL, cookie — never appear. Use placeholders such as
+- Every guide must remain free of secrets and raw captures. User-specific
+  repository IDs, access/refresh tokens, development extension IDs, session
+  URLs, and cookies never appear. Verified public App client IDs and published
+  extension keys/IDs may be documented as product metadata under the approved
+  distribution plan. Until provisioned, use placeholders such as
   `<loaded-extension-id>`, `<github-app-client-id>`, and
   `<numeric-repository-id>`.
 
@@ -39,6 +41,7 @@ each. The guides explain the contracts; they never define them.
   | --- | --- |
   | What is this project and what is its current status? | [`../README.md`](../README.md) |
   | How do I build, load, configure, authorize, install, and verify it? | [`SETUP.md`](SETUP.md) |
+  | What is planned for easier installation, and how should it be implemented? | [`DISTRIBUTION_PLAN.md`](DISTRIBUTION_PLAN.md) |
   | What is the security boundary: permissions, Keychain, queue/log modes, redaction, URL sanitization, conflicts, resets? | [`SECURITY.md`](SECURITY.md) |
   | What test layers exist, what do they cover, and what must be checked by hand on the real machine? | [`TESTING.md`](TESTING.md) |
   | A specific symptom is happening; how do I recover? | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
@@ -47,9 +50,10 @@ each. The guides explain the contracts; they never define them.
   | How do I measure render time on a real page? | [`render-time-snippet.js`](render-time-snippet.js) and the recipe in `STAGE_0_REPORT.md` |
   | How is the documentation tree organized and what outranks what? | this file |
 
-- **Secrets and captures.** No committed document may contain a real client ID,
-  repository ID, token, device code, cookie, session value, loaded extension
-  ID, raw authenticated page capture, or rendered host manifest. Fixtures are
+- **Secrets and captures.** No committed document may contain user-specific
+  repository IDs, tokens, device codes, cookies, session values, development
+  extension IDs, raw authenticated page captures, or rendered host manifests.
+  Verified public product metadata is allowed as described above. Fixtures are
   sanitized (`extension-tests/fixtures/`); raw captures are gitignored at the
   repository root.
 - **Placeholders.** Values the owner supplies are written as `<...>` and are
@@ -58,8 +62,9 @@ each. The guides explain the contracts; they never define them.
 - **Status names.** `docs/` uses the exact machine statuses and user labels
   from `TECHNICAL_PLAN.md` § Canonical status vocabulary and
   `extension/src/status.ts`; it does not translate or rename them.
-- **Paths and commands.** Paths and commands in the guides are executable from
-  a clean checkout; `README.md` and `docs/IMPLEMENTATION.md` require this.
+- **Paths and commands.** Operational instructions must work with the current
+  checkout or stated published release. Planning guides may describe future
+  commands/paths only when clearly labeled as planned.
 
 ## Data flow
 
@@ -82,6 +87,7 @@ and `docs/TESTING.md`. No other document is generated from runtime data.
 | File | Role |
 | --- | --- |
 | `SETUP.md` | Complete install runbook: prerequisites, build/test commands, unpacked loading and ID capture, extension settings, GitHub App and repository provisioning, machine-local config shape, uploader build, host installation, authorization, verification, extension-ID drift, uninstall/reset |
+| `DISTRIBUTION_PLAN.md` | Planned handoff for prebuilt releases, configurable setup, public App provisioning, stable installation paths, upgrade/reset behavior, store/signing work, and release gates |
 | `SECURITY.md` | Implemented security boundary: manifest permissions, no credentials in the extension, Keychain records and device-flow storage, queue data and file modes, log redaction and rotation, source-URL sanitization, remote-hash trust, write-once conflicts, reset semantics, private/public repository consequences, secret rotation |
 | `TESTING.md` | Test layers and commands, suite coverage tables, fixture packet inventory, offline/restart/duplicate/conflict/retry checks, fake-versus-real boundary, packaging self-tests, owner-only real-machine checks |
 | `TROUBLESHOOTING.md` | Symptom-to-fix guide for host-not-found, protocol mismatch, authorization, target repository, pending handoffs, queue-full, alarm-delayed retries, log reading, permanent conflicts, rejected metadata, extension-ID drift |

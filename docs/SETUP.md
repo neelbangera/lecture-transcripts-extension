@@ -1,5 +1,7 @@
 # Setup
 
+This is the current **source-installation** guide. Packaged-installation tooling (`scripts/package-release.sh`, `Install.command`, `lecture-uploader --setup`) is implemented but no published release exists yet; see [DISTRIBUTION_PLAN.md](DISTRIBUTION_PLAN.md) for status and [RELEASING.md](RELEASING.md) for the maintainer checklist. Until a release passes that checklist, this guide remains the supported installation path.
+
 This guide installs the three local pieces of the system on one Mac and connects
 them to one GitHub repository:
 
