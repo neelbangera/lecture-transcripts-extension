@@ -37,8 +37,59 @@ func TestLoadValidConfig(t *testing.T) {
 	if cfg.SchemaVersion != 1 || cfg.GitHubAppClientID != "Iv1.abc123def456" || cfg.RepositoryID != 123456789 {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
-	if cfg.Owner != ExpectedOwner || cfg.Repo != ExpectedRepo || cfg.Branch != ExpectedBranch {
+	if cfg.Owner != "neelbangera" || cfg.Repo != "lecture-transcripts" || cfg.Branch != ExpectedBranch {
 		t.Fatalf("unexpected target: %+v", cfg)
+	}
+}
+
+func TestLoadAcceptsUserDestination(t *testing.T) {
+	content := `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":987654321,"owner":"someoneelse","repo":"other-repo","branch":"main"}`
+	cfg, err := LoadFrom(writeConfig(t, content))
+	if err != nil {
+		t.Fatalf("LoadFrom with user destination: %v", err)
+	}
+	if cfg.Owner != "someoneelse" || cfg.Repo != "other-repo" || cfg.RepositoryID != 987654321 {
+		t.Fatalf("unexpected user destination: %+v", cfg)
+	}
+}
+
+func TestValidateRepositoryName(t *testing.T) {
+	valid := [][2]string{
+		{"neelbangera", "lecture-transcripts"},
+		{"someoneelse", "other"},
+		{"o", "r"},
+		{"my-org", "my.repo_name-1"},
+	}
+	for _, v := range valid {
+		if err := ValidateRepositoryName(v[0], v[1]); err != nil {
+			t.Fatalf("ValidateRepositoryName(%q,%q) = %v, want nil", v[0], v[1], err)
+		}
+	}
+	invalid := [][2]string{
+		{"", "repo"},
+		{"owner", ""},
+		{"-owner", "repo"},
+		{"owner-", "repo"},
+		{"own_er", "repo"},
+		{"owner", ".Repo"},
+		{"owner", "."},
+		{"owner", ".."},
+		{"owner", "-repo"},
+		{"owner", "a/repo"},
+		{"own er", "repo"},
+	}
+	for _, v := range invalid {
+		if err := ValidateRepositoryName(v[0], v[1]); err == nil {
+			t.Fatalf("ValidateRepositoryName(%q,%q) = nil, want error", v[0], v[1])
+		}
+	}
+	longOwner := strings.Repeat("a", 40)
+	if err := ValidateRepositoryName(longOwner, "repo"); err == nil {
+		t.Fatalf("overlong owner must be rejected")
+	}
+	longRepo := "a" + strings.Repeat("b", 100)
+	if err := ValidateRepositoryName("owner", longRepo); err == nil {
+		t.Fatalf("overlong repo must be rejected")
 	}
 }
 
@@ -84,8 +135,12 @@ func TestLoadRejectsInvalidConfig(t *testing.T) {
 		{"zero repository id", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":0,"owner":"neelbangera","repo":"lecture-transcripts","branch":"main"}`},
 		{"negative repository id", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":-5,"owner":"neelbangera","repo":"lecture-transcripts","branch":"main"}`},
 		{"string repository id", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":"1","owner":"neelbangera","repo":"lecture-transcripts","branch":"main"}`},
-		{"wrong owner", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"someoneelse","repo":"lecture-transcripts","branch":"main"}`},
-		{"wrong repo", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"other","branch":"main"}`},
+		{"invalid owner chars", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"not an owner!","repo":"lecture-transcripts","branch":"main"}`},
+		{"invalid owner underscore", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"own_er","repo":"lecture-transcripts","branch":"main"}`},
+		{"empty owner", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"","repo":"lecture-transcripts","branch":"main"}`},
+		{"invalid repo slash", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"a/b","branch":"main"}`},
+		{"dot repo", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":".","branch":"main"}`},
+		{"empty repo", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"","branch":"main"}`},
 		{"wrong branch", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"lecture-transcripts","branch":"dev"}`},
 		{"unknown field", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"lecture-transcripts","branch":"main","token":"secret"}`},
 		{"string writeTimestamped", `{"schemaVersion":1,"githubAppClientId":"Iv1.abc123def456","repositoryId":1,"owner":"neelbangera","repo":"lecture-transcripts","branch":"main","writeTimestamped":"false"}`},
@@ -144,8 +199,11 @@ func TestExampleConfigIsNonfunctional(t *testing.T) {
 	if cfg.RepositoryID != 0 {
 		t.Fatalf("example repositoryId = %d, want 0 placeholder", cfg.RepositoryID)
 	}
-	if cfg.Owner == ExpectedOwner || cfg.Repo == ExpectedRepo || cfg.Branch == ExpectedBranch {
-		t.Fatalf("example must not contain real target values: %+v", cfg)
+	if cfg.Branch == ExpectedBranch {
+		t.Fatalf("example must not contain the real branch value: %+v", cfg)
+	}
+	if err := ValidateRepositoryName(cfg.Owner, cfg.Repo); err == nil {
+		t.Fatalf("example owner/repo must not both be valid GitHub names: %+v", cfg)
 	}
 	if !strings.Contains(strings.ToUpper(cfg.GitHubAppClientID), "REPLACE") {
 		t.Fatalf("example client id is not a placeholder: %q", cfg.GitHubAppClientID)

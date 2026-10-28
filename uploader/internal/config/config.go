@@ -31,8 +31,6 @@ const (
 
 	BackoffJitterFraction = 0.20
 
-	ExpectedOwner  = "neelbangera"
-	ExpectedRepo   = "lecture-transcripts"
 	ExpectedBranch = "main"
 
 	AppDirName     = "LectureTranscripts"
@@ -185,6 +183,8 @@ func decode(data []byte) (Config, error) {
 
 var (
 	clientIDPattern    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$`)
+	ownerPattern       = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$`)
+	repoPattern        = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$`)
 	placeholderMarkers = []string{
 		"replace",
 		"placeholder",
@@ -194,27 +194,47 @@ var (
 	}
 )
 
-func (c Config) Validate() error {
-	if c.SchemaVersion != SchemaVersion {
-		return fmt.Errorf("schemaVersion must be %d", SchemaVersion)
-	}
-	if !clientIDPattern.MatchString(c.GitHubAppClientID) {
+// ValidateClientID checks the public GitHub App client ID without implying
+// that it belongs to any particular App. Release metadata supplies the
+// verified value; source builds must not invent a default.
+func ValidateClientID(clientID string) error {
+	if !clientIDPattern.MatchString(clientID) {
 		return errors.New("githubAppClientId is missing or malformed")
 	}
-	lowered := strings.ToLower(c.GitHubAppClientID)
+	lowered := strings.ToLower(clientID)
 	for _, marker := range placeholderMarkers {
 		if strings.Contains(lowered, marker) {
 			return errors.New("githubAppClientId is a nonfunctional placeholder")
 		}
 	}
+	return nil
+}
+
+// ValidateRepositoryName accepts GitHub owner/repository names as individual
+// path components. The GitHub API remains authoritative for existence and
+// access.
+func ValidateRepositoryName(owner, repo string) error {
+	if !ownerPattern.MatchString(owner) {
+		return errors.New("owner is not a valid GitHub account name")
+	}
+	if !repoPattern.MatchString(repo) || repo == "." || repo == ".." {
+		return errors.New("repo is not a valid GitHub repository name")
+	}
+	return nil
+}
+
+func (c Config) Validate() error {
+	if c.SchemaVersion != SchemaVersion {
+		return fmt.Errorf("schemaVersion must be %d", SchemaVersion)
+	}
+	if err := ValidateClientID(c.GitHubAppClientID); err != nil {
+		return err
+	}
 	if c.RepositoryID <= 0 {
 		return errors.New("repositoryId must be a positive integer")
 	}
-	if c.Owner != ExpectedOwner {
-		return fmt.Errorf("owner must be %q", ExpectedOwner)
-	}
-	if c.Repo != ExpectedRepo {
-		return fmt.Errorf("repo must be %q", ExpectedRepo)
+	if err := ValidateRepositoryName(c.Owner, c.Repo); err != nil {
+		return err
 	}
 	if c.Branch != ExpectedBranch {
 		return fmt.Errorf("branch must be %q", ExpectedBranch)

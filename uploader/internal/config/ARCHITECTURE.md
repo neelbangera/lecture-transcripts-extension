@@ -63,9 +63,10 @@ must stop rather than guess.
 - a client ID containing a placeholder marker, case-insensitively:
   `replace`, `placeholder`, `changeme`, `your_`, `example`;
 - `repositoryId <= 0`;
-- `owner != "neelbangera"`, `repo != "lecture-transcripts"`,
-  `branch != "main"` (constants `ExpectedOwner`, `ExpectedRepo`,
-  `ExpectedBranch`).
+- invalid `owner`/`repo` GitHub identifiers via `ValidateRepositoryName`
+  (owner `^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$`, repo `^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$`, rejecting `.`, `..`, and path separators);
+- `branch != "main"` (constant `ExpectedBranch`). Local validation only rejects
+  malformed names; the GitHub API remains authoritative for existence and access.
 
 `decode` additionally rejects unknown fields (`DisallowUnknownFields`), a
 second trailing JSON value ("multiple JSON values"), and an empty/malformed
@@ -162,19 +163,19 @@ fails, so the example can never be used as a runtime config.
 
 | File | Role | Key exports |
 | --- | --- | --- |
-| `config.go` | Exact loader, validator, constants, path derivation | `SchemaVersion`, `MaxSerializedJobBytes`, `MaxTranscriptBytes`, `MaxSourceURLBytes`, `MaxRenderTimeMs`, `QueueMaxJobs`, `QueueMaxBytes`, `QueueRetention`, `UploadLease`, `LogMaxBytes`, `LogMaxFiles`, `BackoffJitterFraction`, `ExpectedOwner`, `ExpectedRepo`, `ExpectedBranch`, `AppDirName`, `LogDirName`, `ConfigFileName`, `QueueFileName`, `LockFileName`, `LogFileName`, `BackoffSchedule`, `Config`, `Paths`, `PathsFor`, `DefaultPaths`, `Load`, `LoadFrom`, `Config.Validate` |
+| `config.go` | Exact loader, validator, constants, path derivation | `SchemaVersion`, `MaxSerializedJobBytes`, `MaxTranscriptBytes`, `MaxSourceURLBytes`, `MaxRenderTimeMs`, `QueueMaxJobs`, `QueueMaxBytes`, `QueueRetention`, `UploadLease`, `LogMaxBytes`, `LogMaxFiles`, `BackoffJitterFraction`, `ExpectedBranch`, `ValidateClientID`, `ValidateRepositoryName`, `AppDirName`, `LogDirName`, `ConfigFileName`, `QueueFileName`, `LockFileName`, `LogFileName`, `BackoffSchedule`, `Config`, `Paths`, `PathsFor`, `DefaultPaths`, `Load`, `LoadFrom`, `Config.Validate` |
 | `config.example.json` | Nonfunctional shape documentation with placeholder values; intentionally invalid at runtime | (data file) |
-| `config_test.go` | Loader, fail-closed, path, and contract-limit tests | `TestLoadValidConfig`, `TestWriteTimestampedConfig`, `TestLoadRejectsInvalidConfig`, `TestLoadRejectsMissingFile`, `TestExampleConfigIsNonfunctional`, `TestPathsForHome`, `TestDefaultPathsUseHomeEnvironment`, `TestLimitsMatchProtocolContract`, `TestBackoffScheduleContract`, `TestQueueAndLoggingLimits` |
+| `config_test.go` | Loader, fail-closed, path, and contract-limit tests | `TestLoadValidConfig`, `TestLoadAcceptsUserDestination`, `TestValidateRepositoryName`, `TestWriteTimestampedConfig`, `TestLoadRejectsInvalidConfig`, `TestLoadRejectsMissingFile`, `TestExampleConfigIsNonfunctional`, `TestPathsForHome`, `TestDefaultPathsUseHomeEnvironment`, `TestLimitsMatchProtocolContract`, `TestBackoffScheduleContract`, `TestQueueAndLoggingLimits` |
 
 ## Testing and verification
 
 Run `cd uploader && go test ./internal/config/ -count=1`. The suite verifies:
 
-- a valid file loads with the exact target values
+- a valid file loads, including a user-chosen destination
   (`TestLoadValidConfig`);
 - `writeTimestamped` absent/true/false behavior (`TestWriteTimestampedConfig`);
 - every rejection case: empty, malformed, wrong schema, missing/short/
-  placeholder client ID, zero/negative/string repository ID, wrong owner/repo/
+  placeholder client ID, zero/negative/string repository ID, invalid owner/repo/
   branch, unknown field, string/numeric/null `writeTimestamped`, trailing JSON
   value (`TestLoadRejectsInvalidConfig`);
 - a missing file fails closed (`TestLoadRejectsMissingFile`);

@@ -41,6 +41,21 @@ func main() {
 // lock, queue, credential, and origin failure exits before a protocol byte is
 // written, so a misconfigured host can never serve a partial session.
 func run(args []string, stdin io.Reader, stdout io.Writer) error {
+	// Human-facing modes must be selected before config/logging/Native Messaging
+	// setup so their text can never enter a normal Chrome protocol session.
+	if len(args) > 0 {
+		switch args[0] {
+		case "--setup":
+			return runSetupCommand(args[1:], stdin, stdout)
+		case "--version":
+			if len(args) != 1 {
+				return errors.New("--version does not accept arguments")
+			}
+			_, err := fmt.Fprintln(stdout, version)
+			return err
+		}
+	}
+
 	paths, err := config.DefaultPaths()
 	if err != nil {
 		return err
