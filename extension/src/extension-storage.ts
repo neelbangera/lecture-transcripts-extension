@@ -220,6 +220,18 @@ export class ExtensionStorage {
     });
   }
 
+  /** Drop every reopen-to-recapture notice; returns how many were removed. */
+  async clearOverflowNotices(): Promise<number> {
+    return this.serial(async () => {
+      const state = await this.readUnserialized();
+      const removed = state.overflowNotices.length;
+      if (removed === 0) return 0;
+      state.overflowNotices = [];
+      await this.write(state);
+      return removed;
+    });
+  }
+
   async setUploaderStatus(status: UploaderStatus): Promise<void> {
     return this.serial(async () => {
       const state = await this.readUnserialized();
@@ -248,6 +260,29 @@ export class ExtensionStorage {
       const state = await this.readUnserialized();
       state.lastStatus = null;
       await this.write(state);
+    });
+  }
+
+  /**
+   * Destination-change reset. Clears pending handoffs (unacknowledged full
+   * jobs that must never be replayed into a new repository), derived
+   * identities, overflow notices, and the last-known uploader status so no
+   * stale row can redirect into a new destination. Uploader queue/config
+   * clearing happens out of band (drain/discard, then uploader reset); this
+   * method only clears extension-local handoff state. Returns the number of
+   * pending handoffs cleared for the outcome message.
+   */
+  async clearDestinationState(): Promise<{ pendingHandoffs: number }> {
+    return this.serial(async () => {
+      const state = await this.readUnserialized();
+      const cleared = state.pendingHandoffs.length;
+      state.pendingHandoffs = [];
+      state.derivedIdentities = [];
+      state.overflowNotices = [];
+      state.lastStatus = null;
+      state.lastOutcome = null;
+      await this.write(state);
+      return { pendingHandoffs: cleared };
     });
   }
 

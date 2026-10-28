@@ -1042,6 +1042,78 @@ describe("BackgroundCoordinator popup commands", () => {
     expect(client.resetCalls).toBe(1);
   });
 
+  it("refuses a destination reset while automatic capture is still on", async () => {
+    const area = new MemoryStorageArea();
+    const storage = new ExtensionStorage(area);
+    await storage.addPendingHandoff(jobFor(1));
+    await storage.setUploaderStatus(status());
+    const client = new FakeNativeMessagingClient();
+    const coordinator = new BackgroundCoordinator({
+      client: client as unknown as NativeMessagingClient,
+      storage,
+      runtime: new FakeRuntime(),
+      alarms: new FakeAlarms(),
+      extensionVersion: "0.1.0",
+      now: () => NOW_MS,
+      loadAutoCapture: async () => true,
+    });
+
+    const response = await coordinator.handleMessage(
+      { type: "popup_reset_destination" },
+      POPUP_SENDER,
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.status).toBe("capture_paused_required");
+    expect((await storage.snapshot()).pendingHandoffs).toBe(1);
+    expect((await storage.snapshot()).uploader).not.toBeNull();
+    expect(client.resetCalls).toBe(0);
+  });
+
+  it("clears handoff state on a destination reset once capture is paused", async () => {
+    const area = new MemoryStorageArea();
+    const storage = new ExtensionStorage(area);
+    await storage.addPendingHandoff(jobFor(1));
+    await storage.addPendingHandoff(jobFor(2));
+    await storage.setUploaderStatus(status());
+    const client = new FakeNativeMessagingClient();
+    const coordinator = new BackgroundCoordinator({
+      client: client as unknown as NativeMessagingClient,
+      storage,
+      runtime: new FakeRuntime(),
+      alarms: new FakeAlarms(),
+      extensionVersion: "0.1.0",
+      now: () => NOW_MS,
+      loadAutoCapture: async () => false,
+    });
+
+    const response = await coordinator.handleMessage(
+      { type: "popup_reset_destination" },
+      POPUP_SENDER,
+    );
+
+    expect(response.ok).toBe(true);
+    expect(response.status).toBe("destination_reset");
+    const snapshot = await storage.snapshot();
+    expect(snapshot.pendingHandoffs).toBe(0);
+    expect(snapshot.overflowNotices).toEqual([]);
+    expect(snapshot.uploader).toBeNull();
+    expect(snapshot.lastOutcome).toMatchObject({ status: "destination_reset" });
+    // The connection-only uploader reset is never triggered here; uploader
+    // queue/config clearing happens out of band before a new setup.
+    expect(client.resetCalls).toBe(0);
+  });
+
+  it("rejects a destination reset message with extra fields", async () => {
+    const { coordinator } = makeHarness();
+    const response = await coordinator.handleMessage(
+      { type: "popup_reset_destination", extra: true },
+      POPUP_SENDER,
+    );
+    expect(response.ok).toBe(false);
+    expect(response.errorCategory).toBe("invalid_message");
+  });
+
   it("relays an accepted retry and refreshes the status page", async () => {
     const { coordinator, client } = makeHarness();
     client.retryResponse = commandResult({
@@ -1142,6 +1214,64 @@ describe("BackgroundCoordinator popup commands", () => {
     expect(response.ok).toBe(false);
     expect(response.status).toBe("rejected_permission");
     expect(response.message).toBe("Rejected — GitHub permission denied");
+  });
+});
+
+describe("BackgroundCoordinator notice clearing", () => {
+  const NOTICE = {
+    lectureKey: "eecs491/2026-fall/006",
+    lectureDate: "2026-10-16",
+    capturedAt: "2026-10-18T19:33:54Z",
+    reason: "stale_derived_identity" as const,
+    staleLectureKey: "eecs491/2026-fall/006",
+  };
+
+  it("dismisses one notice by index and returns the fresh snapshot", async () => {
+    const { coordinator, storage } = makeHarness();
+    await storage.addOverflowNotice(NOTICE);
+    await storage.addOverflowNotice({ ...NOTICE, lectureKey: "eecs491/2026-fall/005" });
+
+    const response = await coordinator.handleMessage(
+      { type: "popup_dismiss_notice", index: 0 },
+      POPUP_SENDER,
+    );
+
+    expect(response.ok).toBe(true);
+    expect(response.snapshot?.overflowNotices).toEqual([NOTICE]);
+  });
+
+  it("rejects a dismissal for an index that no longer exists", async () => {
+    const { coordinator } = makeHarness();
+    const response = await coordinator.handleMessage(
+      { type: "popup_dismiss_notice", index: 3 },
+      POPUP_SENDER,
+    );
+    expect(response.ok).toBe(false);
+    expect(response.errorCategory).toBe("invalid_message");
+  });
+
+  it("clears every notice", async () => {
+    const { coordinator, storage } = makeHarness();
+    await storage.addOverflowNotice(NOTICE);
+    const response = await coordinator.handleMessage(
+      { type: "popup_clear_notices" },
+      POPUP_SENDER,
+    );
+    expect(response.ok).toBe(true);
+    expect(response.snapshot?.overflowNotices).toEqual([]);
+  });
+
+  it("rejects malformed notice messages", async () => {
+    const { coordinator } = makeHarness();
+    for (const message of [
+      { type: "popup_dismiss_notice", index: -1 },
+      { type: "popup_dismiss_notice", index: 1.5 },
+      { type: "popup_dismiss_notice" },
+      { type: "popup_clear_notices", index: 0 },
+    ]) {
+      const response = await coordinator.handleMessage(message, POPUP_SENDER);
+      expect(response.errorCategory).toBe("invalid_message");
+    }
   });
 });
 

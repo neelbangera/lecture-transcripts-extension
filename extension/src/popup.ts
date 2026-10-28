@@ -3,7 +3,10 @@ import {
   canDiscardJob,
   canRetryJob,
   clearableJobs,
+  clearConflictsConfirmText,
+  clearNoticesConfirmText,
   clearUploadedConfirmText,
+  conflictJobs,
   discardConfirmText,
 } from "./job-actions";
 import {
@@ -60,6 +63,7 @@ const authorizationLink = element<HTMLAnchorElement>("authorization-link");
 const authorizationKeychain = element<HTMLParagraphElement>("authorization-keychain");
 const connectButton = element<HTMLButtonElement>("connect-button");
 const resetButton = element<HTMLButtonElement>("reset-button");
+const resetDestinationButton = element<HTMLButtonElement>("reset-destination-button");
 const refreshButton = element<HTMLButtonElement>("refresh-button");
 const settingsButton = element<HTMLButtonElement>("settings-button");
 const lastOutcome = element<HTMLParagraphElement>("last-outcome");
@@ -68,10 +72,12 @@ const pendingCopy = element<HTMLParagraphElement>("pending-copy");
 const overflowSection = element<HTMLElement>("overflow-section");
 const overflowCount = element<HTMLSpanElement>("overflow-count");
 const overflowList = element<HTMLUListElement>("overflow-list");
+const clearNoticesButton = element<HTMLButtonElement>("clear-notices-button");
 const queueCount = element<HTMLSpanElement>("queue-count");
 const queueCopy = element<HTMLParagraphElement>("queue-copy");
 const jobList = element<HTMLUListElement>("job-list");
 const clearUploadedButton = element<HTMLButtonElement>("clear-uploaded-button");
+const clearConflictsButton = element<HTMLButtonElement>("clear-conflicts-button");
 const loadMoreButton = element<HTMLButtonElement>("load-more-button");
 const versions = element<HTMLSpanElement>("versions");
 const extensionId = element<HTMLElement>("extension-id");
@@ -88,7 +94,7 @@ let announcedMilestone: ExpiryMilestone | null = null;
 
 type NoticeVariant = "info" | "success" | "warn" | "error";
 
-const OUTCOME_SUCCESS = new Set(["uploaded", "unchanged", "discarded", "reset"]);
+const OUTCOME_SUCCESS = new Set(["uploaded", "unchanged", "discarded", "reset", "destination_reset"]);
 const OUTCOME_WARN = new Set([
   "retryable_error",
   "not_ready",
@@ -144,8 +150,11 @@ function setBusy(value: boolean): void {
   loading = value;
   connectButton.disabled = value;
   resetButton.disabled = value;
+  resetDestinationButton.disabled = value;
   refreshButton.disabled = value;
   clearUploadedButton.disabled = value;
+  clearConflictsButton.disabled = value;
+  clearNoticesButton.disabled = value;
   loadMoreButton.disabled = value;
 }
 
@@ -330,7 +339,7 @@ function renderOverflow(notices: OverflowNotice[]): void {
   overflowCount.textContent = String(notices.length);
   overflowList.replaceChildren();
   overflowSection.classList.toggle("hidden", notices.length === 0);
-  for (const notice of notices) {
+  for (const [index, notice] of notices.entries()) {
     const item = document.createElement("li");
     item.className = "job";
     const titleRow = document.createElement("div");
@@ -369,7 +378,17 @@ function renderOverflow(notices: OverflowNotice[]): void {
     meta.textContent = notice.staleLectureKey
       ? `was ${notice.staleLectureKey}${date ? ` · ${date}` : ""}`
       : [date, `captured ${formatCapturedAt(notice.capturedAt)}`].filter(Boolean).join(" · ");
-    item.append(titleRow, meta);
+    const actions = document.createElement("div");
+    actions.className = "job-actions";
+    const dismiss = document.createElement("button");
+    dismiss.className = "button secondary";
+    dismiss.type = "button";
+    dismiss.textContent = "Dismiss";
+    dismiss.addEventListener("click", () => {
+      void dismissNotice(index);
+    });
+    actions.append(dismiss);
+    item.append(titleRow, meta, actions);
     overflowList.append(item);
   }
 }
@@ -470,6 +489,7 @@ function renderJobs(status: UploaderStatus | null, append = false): void {
   queueCount.textContent = String(total);
   queueCopy.classList.toggle("hidden", total > 0);
   clearUploadedButton.classList.toggle("hidden", clearableJobs(loadedJobs).length === 0);
+  clearConflictsButton.classList.toggle("hidden", conflictJobs(loadedJobs).length === 0);
   loadMoreButton.classList.toggle("hidden", nextBeforeJobId === null);
 }
 
@@ -535,6 +555,28 @@ async function connect(): Promise<void> {
   }
 }
 
+async function resetDestination(): Promise<void> {
+  if (loading) return;
+  const queued = loadedJobs.length;
+  const pending = pendingCount.textContent ?? "0";
+  const message =
+    `Reset extension handoff state for a new repository?\n\n` +
+    `Pending handoffs: ${pending}. Uploader rows loaded: ${queued}.\n` +
+    `Before this: turn OFF Automatic capture in Settings, drain the uploader queue to the OLD repository ` +
+    `(or discard local rows / run uninstall --reset for uploader state).\n` +
+    `This clears pending handoffs, derived identities, notices, and status. It never deletes GitHub files.`;
+  if (!window.confirm(message)) return;
+  setBusy(true);
+  try {
+    const response = await send({ type: "popup_reset_destination" });
+    if (response.snapshot) render(response.snapshot);
+    if (!response.ok && response.message) setOutcome(response.message, "error");
+    else if (response.ok) setOutcome("Handoff state cleared. Clear uploader state too, then run setup for the new repository.", "success");
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function reset(): Promise<void> {
   if (loading || !window.confirm("Reset the GitHub connection? Queued transcripts will be kept.")) return;
   setBusy(true);
@@ -572,11 +614,9 @@ async function discardJob(job: JobSummary): Promise<void> {
   }
 }
 
-async function clearUploaded(): Promise<void> {
-  if (loading) return;
-  const targets = clearableJobs(loadedJobs);
-  if (targets.length === 0) return;
-  if (!window.confirm(clearUploadedConfirmText(targets.length))) return;
+async function discardRows(targets: JobSummary[], confirmText: string, noun: string): Promise<void> {
+  if (loading || targets.length === 0) return;
+  if (!window.confirm(confirmText)) return;
   setBusy(true);
   let failures = 0;
   try {
@@ -589,14 +629,51 @@ async function clearUploaded(): Promise<void> {
   }
   await refresh();
   if (failures > 0) {
-    setOutcome(`${failures} uploaded ${failures === 1 ? "row was" : "rows were"} not cleared.`, "error");
+    setOutcome(`${failures} ${noun} ${failures === 1 ? "row was" : "rows were"} not cleared.`, "error");
+  }
+}
+
+async function clearUploaded(): Promise<void> {
+  const targets = clearableJobs(loadedJobs);
+  await discardRows(targets, clearUploadedConfirmText(targets.length), "uploaded");
+}
+
+async function clearConflicts(): Promise<void> {
+  const targets = conflictJobs(loadedJobs);
+  await discardRows(targets, clearConflictsConfirmText(targets.length), "conflict");
+}
+
+async function dismissNotice(index: number): Promise<void> {
+  if (loading) return;
+  setBusy(true);
+  try {
+    const response = await send({ type: "popup_dismiss_notice", index });
+    if (response.snapshot) render(response.snapshot);
+    if (!response.ok && response.message) setOutcome(response.message, "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function clearNotices(count: number): Promise<void> {
+  if (loading || count === 0 || !window.confirm(clearNoticesConfirmText(count))) return;
+  setBusy(true);
+  try {
+    const response = await send({ type: "popup_clear_notices" });
+    if (response.snapshot) render(response.snapshot);
+    if (!response.ok && response.message) setOutcome(response.message, "error");
+  } finally {
+    setBusy(false);
   }
 }
 
 connectButton.addEventListener("click", () => void connect());
 resetButton.addEventListener("click", () => void reset());
+resetDestinationButton.addEventListener("click", () => void resetDestination());
 refreshButton.addEventListener("click", () => void refresh());
 clearUploadedButton.addEventListener("click", () => void clearUploaded());
+clearConflictsButton.addEventListener("click", () => void clearConflicts());
+clearNoticesButton.addEventListener("click", () => void clearNotices(overflowList.childElementCount));
 loadMoreButton.addEventListener("click", () => void loadMore());
 copyCodeButton.addEventListener("click", () => {
   const code = authorizationCode.textContent?.trim();

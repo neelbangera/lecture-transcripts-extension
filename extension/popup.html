@@ -40,6 +40,7 @@
       <section class="actions" aria-label="Connection actions">
         <button id="connect-button" class="button primary" type="button">Connect GitHub</button>
         <button id="reset-button" class="button secondary" type="button">Reset connection</button>
+        <button id="reset-destination-button" class="button secondary" type="button">Reset for new repository</button>
         <button id="refresh-button" class="button secondary" type="button">Refresh</button>
       </section>
 
@@ -60,6 +61,7 @@
         </div>
         <p class="muted">These captures were not durably accepted. Reopen each transcript after capacity is available.</p>
         <ul id="overflow-list" class="job-list"></ul>
+        <button id="clear-notices-button" class="button danger" type="button">Clear all</button>
       </section>
 
       <section class="card">
@@ -70,6 +72,7 @@
         <p id="queue-copy" class="muted">No uploads queued.</p>
         <ul id="job-list" class="job-list"></ul>
         <button id="clear-uploaded-button" class="button danger hidden" type="button">Clear uploaded</button>
+        <button id="clear-conflicts-button" class="button danger hidden" type="button">Clear conflicts</button>
         <button id="load-more-button" class="button secondary hidden" type="button">Load older jobs</button>
       </section>
 

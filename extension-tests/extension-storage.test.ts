@@ -321,6 +321,18 @@ describe("ExtensionStorage overflow notices", () => {
   });
 });
 
+describe("ExtensionStorage notice clearing", () => {
+  it("clears every notice and reports how many were removed", async () => {
+    const storage = new ExtensionStorage(new MemoryStorageArea());
+    expect(await storage.clearOverflowNotices()).toBe(0);
+    await storage.addOverflowNotice(noticeFor(1));
+    await storage.addOverflowNotice(noticeFor(2));
+
+    expect(await storage.clearOverflowNotices()).toBe(2);
+    expect((await storage.snapshot()).overflowNotices).toEqual([]);
+  });
+});
+
 describe("ExtensionStorage status and snapshot", () => {
   it("exposes the exact snapshot shape for an empty store", async () => {
     const storage = new ExtensionStorage(new MemoryStorageArea());
@@ -463,5 +475,55 @@ describe("ExtensionStorage derived identities", () => {
     expect(
       await storage.findDerivedIdentity(derivedFor(MAX_DERIVED_IDENTITIES + 2).sourceUrl),
     ).not.toBeNull();
+  });
+});
+
+describe("ExtensionStorage destination reset", () => {
+  it("clears handoffs, derived identities, notices, and status", async () => {
+    const area = new (class implements StorageAreaLike {
+      values = new Map<string, unknown>();
+      async get(keys?: string | string[] | null) {
+        const out: Record<string, unknown> = {};
+        const names = keys == null ? [...this.values.keys()] : Array.isArray(keys) ? keys : [keys];
+        for (const k of names) if (this.values.has(k)) out[k] = structuredClone(this.values.get(k));
+        return out;
+      }
+      async set(items: Record<string, unknown>) {
+        for (const [k, v] of Object.entries(items)) this.values.set(k, structuredClone(v));
+      }
+    })();
+    const storage = new ExtensionStorage(area);
+    await storage.addPendingHandoff(jobFor(1));
+    await storage.recordDerivedIdentity({
+      sourceUrl: "https://leccap.engin.umich.edu/leccap/player/r/lecture-1",
+      kind: "lecture",
+      lectureNumber: 1,
+      lectureKey: "eecs484/2026-fall/001",
+      contentHash: "abc",
+      capturedAt: CAPTURED_AT,
+    });
+    await storage.addOverflowNotice(noticeFor(1));
+    await storage.setUploaderStatus({
+      type: "status",
+      protocolVersion: 1,
+      requestId: null,
+      extensionVersion: "0.1.0",
+      uploaderVersion: "0.2.0",
+      authState: "connected",
+      authorization: { userCode: null, verificationUri: null, verificationUriComplete: null, expiresAt: null },
+      drainState: "idle",
+      counts: { ...EMPTY_COUNTS },
+      jobs: [],
+      nextBeforeJobId: null,
+    });
+
+    const cleared = await storage.clearDestinationState();
+
+    expect(cleared).toEqual({ pendingHandoffs: 1 });
+    const snapshot = await storage.snapshot();
+    expect(snapshot.pendingHandoffs).toBe(0);
+    expect(snapshot.overflowNotices).toEqual([]);
+    expect(snapshot.uploader).toBeNull();
+    expect(await storage.findDerivedIdentity("https://leccap.engin.umich.edu/leccap/player/r/lecture-1")).toBeNull();
   });
 });

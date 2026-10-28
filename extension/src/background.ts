@@ -14,7 +14,7 @@ import {
   OverflowNoticeFullError,
   type PendingHandoff,
 } from "./extension-storage";
-import { loadNotificationsEnabled } from "./settings-storage";
+import { loadAutoCapture, loadNotificationsEnabled } from "./settings-storage";
 import {
   errorLabel,
   statusLabel,
@@ -83,9 +83,12 @@ export type ExtensionMessage =
   | { type: "popup_snapshot" }
   | { type: "popup_connect" }
   | { type: "popup_reset" }
+  | { type: "popup_reset_destination" }
   | { type: "popup_status"; beforeJobId?: number }
   | { type: "popup_retry"; jobId: number }
-  | { type: "popup_discard"; jobId: number };
+  | { type: "popup_discard"; jobId: number }
+  | { type: "popup_dismiss_notice"; index: number }
+  | { type: "popup_clear_notices" };
 
 export interface BackgroundResponse {
   ok: boolean;
@@ -105,6 +108,8 @@ export interface BackgroundCoordinatorOptions {
   now?: () => number;
   /** Overrides the storage-backed `notificationsEnabled` read (tests). */
   loadNotificationsEnabled?: () => Promise<boolean>;
+  /** Overrides the storage-backed `autoCapture` read (tests). */
+  loadAutoCapture?: () => Promise<boolean>;
 }
 
 function chromeApi(): ChromeLike | undefined {
@@ -153,7 +158,11 @@ function isExtensionMessage(value: unknown): value is ExtensionMessage {
     case "popup_snapshot":
     case "popup_connect":
     case "popup_reset":
+    case "popup_reset_destination":
+    case "popup_clear_notices":
       return hasExactKeys(value, ["type"]);
+    case "popup_dismiss_notice":
+      return hasExactKeys(value, ["type", "index"]) && Number.isInteger(value.index) && (value.index as number) >= 0;
     case "popup_status":
       return hasExactKeys(value, ["type"], ["beforeJobId"]) && (value.beforeJobId === undefined || isPositiveInteger(value.beforeJobId));
     case "popup_retry":
@@ -225,6 +234,8 @@ export class BackgroundCoordinator {
     this.now = options.now ?? Date.now;
     this.readNotificationsEnabled =
       options.loadNotificationsEnabled ?? (() => loadNotificationsEnabled());
+    this.readAutoCapture =
+      options.loadAutoCapture ?? (() => loadAutoCapture());
     this.client.onStatus((status) => {
       void this.handleStatus(status, true);
     });
@@ -242,6 +253,7 @@ export class BackgroundCoordinator {
   private readonly notifications: NotificationsLike | undefined;
   private readonly now: () => number;
   private readonly readNotificationsEnabled: () => Promise<boolean>;
+  private readonly readAutoCapture: () => Promise<boolean>;
   private readonly notifiedTerminal = new Set<string>();
 
   async start(): Promise<void> {
@@ -278,6 +290,9 @@ export class BackgroundCoordinator {
       case "popup_reset":
         this.markInteractive();
         return this.handleReset();
+      case "popup_reset_destination":
+        this.markInteractive();
+        return this.handleDestinationReset();
       case "popup_status":
         this.markInteractive();
         return this.handleStatusRequest(message.beforeJobId);
@@ -287,6 +302,17 @@ export class BackgroundCoordinator {
       case "popup_discard":
         this.markInteractive();
         return this.handleDiscard(message.jobId);
+      case "popup_dismiss_notice": {
+        this.markInteractive();
+        const removed = await this.storage.removeOverflowNotice(message.index);
+        return removed
+          ? { ok: true, snapshot: await this.storage.snapshot() }
+          : { ok: false, errorCategory: "invalid_message", message: errorLabel("invalid_message"), snapshot: await this.storage.snapshot() };
+      }
+      case "popup_clear_notices":
+        this.markInteractive();
+        await this.storage.clearOverflowNotices();
+        return { ok: true, snapshot: await this.storage.snapshot() };
     }
   }
 
@@ -496,6 +522,49 @@ export class BackgroundCoordinator {
         });
       }
       return { ok: result.result === "accepted", status: result.status ?? result.errorCategory ?? "internal", snapshot: await this.storage.snapshot() };
+    } catch (error) {
+      return { ...responseError(error), snapshot: await this.storage.snapshot() };
+    }
+  }
+
+  /**
+   * Destination-change reset. Distinct from the connection-only reset: it
+   * requires Automatic capture to be off (paused), then clears pending
+   * handoffs, derived identities, overflow notices, and the last-known status
+   * so nothing can be replayed into a new repository. The uploader queue and
+   * config are cleared out of band (drain or discard, then uploader reset);
+   * `lecture-uploader --setup` refuses a new destination while old uploader
+   * state remains, which is the confirmation that both sides were cleared.
+   */
+  private async handleDestinationReset(): Promise<BackgroundResponse> {
+    try {
+      let autoCapture = true;
+      try {
+        autoCapture = await this.readAutoCapture();
+      } catch {
+        autoCapture = true;
+      }
+      if (autoCapture) {
+        return {
+          ok: false,
+          errorCategory: "capture_paused_required",
+          status: "capture_paused_required",
+          message: "Turn off Automatic capture in Settings first, then reset for a new repository.",
+          snapshot: await this.storage.snapshot(),
+        };
+      }
+      const { pendingHandoffs } = await this.storage.clearDestinationState();
+      await this.storage.recordOutcome({
+        status: "destination_reset",
+        lectureKey: null,
+        contentHash: null,
+        message:
+          pendingHandoffs === 0
+            ? "Extension handoff state cleared for a new repository. Clear uploader state too, then run setup."
+            : `Cleared ${pendingHandoffs} pending handoff${pendingHandoffs === 1 ? "" : "s"} for a new repository. Clear uploader state too, then run setup.`,
+        action: "none",
+      });
+      return { ok: true, status: "destination_reset", snapshot: await this.storage.snapshot() };
     } catch (error) {
       return { ...responseError(error), snapshot: await this.storage.snapshot() };
     }

@@ -212,7 +212,7 @@ Leccap page (document_idle)
 
 ### Messaging summary
 
-- **Internal**: `capture_job`, `popup_snapshot`, `popup_connect`, `popup_reset`, `popup_status`, `popup_retry`, `popup_discard` → `BackgroundResponse { ok, snapshot?, errorCategory?, status?, message? }`.
+- **Internal**: `capture_job`, `popup_snapshot`, `popup_connect`, `popup_reset`, `popup_reset_destination`, `popup_status`, `popup_retry`, `popup_discard` → `BackgroundResponse { ok, snapshot?, errorCategory?, status?, message? }`.
 - **Native wire**: requests `connect`, `submit_job`, `status_request`, `retry_job`, `discard_job`, `reset`; responses `ack`, `command_result`, `status`, `error`. Status pages carry at most 50 `JobSummary` rows and a `nextBeforeJobId` cursor; the transcript is only ever inside `submit_job.job`.
 
 ## File responsibilities

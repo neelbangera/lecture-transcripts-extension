@@ -18,6 +18,7 @@ import {
   type ExtensionSnapshot,
   type JobSummary,
   type LastOutcome,
+  type OverflowNotice,
   type UploaderStatus,
 } from "../extension/src/status";
 
@@ -150,6 +151,63 @@ afterEach(() => {
   delete globals.chrome;
   vi.unstubAllGlobals();
   vi.resetModules();
+});
+
+describe("popup clearing", () => {
+  const NOTICE: OverflowNotice = {
+    lectureKey: "eecs491/2026-fall/006",
+    lectureDate: "2026-10-16",
+    capturedAt: "2026-10-18T19:33:54Z",
+    reason: "stale_derived_identity",
+    staleLectureKey: "eecs491/2026-fall/006",
+  };
+  const CONFLICT: JobSummary = { ...JOB, jobId: 2, status: "permanent_conflict" };
+
+  it("dismisses one recapture notice and clears them all", async () => {
+    const sent: Array<{ type: string; index?: number }> = [];
+    await mountPopup((message) => {
+      sent.push(message);
+      return {
+        ok: true,
+        snapshot: { ...makeSnapshot(), overflowNotices: message.type === "popup_clear_notices" ? [] : [NOTICE, NOTICE] },
+      };
+    });
+    (dom.window as unknown as { confirm: () => boolean }).confirm = () => true;
+    expect(element("overflow-list").children).toHaveLength(2);
+
+    const dismiss = element("overflow-list").querySelectorAll("button")[1] as HTMLButtonElement;
+    expect(dismiss.textContent).toBe("Dismiss");
+    dismiss.click();
+    await settle();
+    expect(sent).toContainEqual({ type: "popup_dismiss_notice", index: 1 });
+
+    element<HTMLButtonElement>("clear-notices-button").click();
+    await settle();
+    expect(sent).toContainEqual({ type: "popup_clear_notices" });
+    expect(element("overflow-section").classList.contains("hidden")).toBe(true);
+  });
+
+  it("shows clear conflicts only when conflict rows are loaded and discards each one", async () => {
+    const sent: Array<{ type: string; jobId?: number }> = [];
+    await mountPopup((message) => {
+      sent.push(message);
+      return { ok: true, snapshot: makeSnapshot({ jobs: [JOB, CONFLICT] }) };
+    });
+    (dom.window as unknown as { confirm: () => boolean }).confirm = () => true;
+    const button = element<HTMLButtonElement>("clear-conflicts-button");
+    expect(button.classList.contains("hidden")).toBe(false);
+
+    button.click();
+    await settle();
+    expect(sent.filter((message) => message.type === "popup_discard")).toEqual([
+      { type: "popup_discard", jobId: 2 },
+    ]);
+  });
+
+  it("hides clear conflicts when no conflict rows are loaded", async () => {
+    await mountPopup(() => ({ ok: true, snapshot: makeSnapshot({ jobs: [JOB] }) }));
+    expect(element("clear-conflicts-button").classList.contains("hidden")).toBe(true);
+  });
 });
 
 describe("popup queue and outcome states", () => {
@@ -349,5 +407,24 @@ describe("popup extension identity", () => {
     await settle();
     expect(copiedTexts).toEqual(["abcdefghijklmnopqrstuvwxyzabcdef"]);
     expect(element("copy-id-button").textContent).toBe("Copied");
+  });
+});
+
+describe("popup destination reset", () => {
+  it("renders a distinct reset-for-new-repository action that clears handoffs", async () => {
+    const seen: string[] = [];
+    await mountPopup((message) => {
+      seen.push(message.type);
+      if (message.type === "popup_snapshot") return { ok: true, snapshot: makeSnapshot() };
+      if (message.type === "popup_reset_destination") {
+        return { ok: true, status: "destination_reset", snapshot: makeSnapshot() };
+      }
+      return { ok: true, snapshot: makeSnapshot() };
+    });
+    const button = element<HTMLButtonElement>("reset-destination-button");
+    expect(button.textContent).toMatch(/new repository/i);
+    // The connection-only reset stays distinct.
+    expect(element("reset-button").textContent).toMatch(/reset connection/i);
+    expect(seen).toContain("popup_snapshot");
   });
 });

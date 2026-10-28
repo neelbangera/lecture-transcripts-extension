@@ -203,6 +203,8 @@ const LABELS: Record<string, string> = {
   unchanged: "Already uploaded; unchanged",
   discarded: "Discarded locally",
   reset: "GitHub connection reset; queued jobs kept",
+  destination_reset: "Handoff state cleared for a new repository",
+  capture_paused_required: "Turn off Automatic capture first",
   retryable_error: "Temporary error; will retry",
   permanent_conflict: "Conflict — manual review needed",
   rejected_duplicate_terminal: "Rejected — an existing terminal job covers this lecture",

@@ -89,7 +89,8 @@ The built extension never reads a fixture path at runtime. Output inventory: `di
 | `capture_job` | `job` (validated `TranscriptJob`) | outbox write + drain; Leccap sender required |
 | `popup_snapshot` | none | returns stored `ExtensionSnapshot` |
 | `popup_connect` | none | runs a drain cycle |
-| `popup_reset` | none | uploader `reset` command, clears stored status |
+| `popup_reset` | none | uploader `reset` command, clears stored status (connection-only; keeps queue and handoffs) |
+| `popup_reset_destination` | none | clears extension handoffs/derived/notices/status for a new repository; requires paused capture; never touches the uploader (drain/discard + uploader reset happen out of band) |
 | `popup_status` | optional `beforeJobId` | paginated `status_request` relay |
 | `popup_retry` | `jobId` | uploader `retry_job` relay |
 | `popup_discard` | `jobId` | uploader `discard_job` relay |
